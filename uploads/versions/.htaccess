@@ -1,0 +1,3 @@
+# Güncelleme dosyaları doğrudan erişime kapalıdır.
+# İndirme yalnızca api/download-update.php üzerinden lisans doğrulamasıyla yapılır.
+Require all denied

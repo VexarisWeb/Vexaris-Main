@@ -1,0 +1,52 @@
+# Vexaris
+
+> Self-hosted e-commerce infrastructure for selling digital products. List products, accept payments, and deliver automatically — all from one panel.
+
+Vexaris is free, self-hosted software for selling digital goods: e-pins, license keys, software packages, Minecraft plugins, server setups, e-books and downloadable files. Sellers apply for access; approved accounts receive the product, a license key, and panel access.
+
+- Homepage: https://vexaris.com.tr/
+- Features: https://vexaris.com.tr/features
+- Pricing: https://vexaris.com.tr/pricing (Free $0, Starter $6.99, Professional $14.99, Enterprise $39.99; yearly billing −20%)
+- Blog: https://vexaris.com.tr/blog
+- License check: https://vexaris.com.tr/license-check
+- Demo: https://demo.vexaris.com.tr
+- Status: https://status.vexaris.com.tr
+
+## How it works
+
+1. Publish your product: upload zip/rar/7z/jar files or paste one-per-line e-pins and license keys. Price, discount, category and ordering in a single form.
+2. Customer checks out: cart, coupons, balance or card payment with silent Turnstile verification.
+3. System delivers: the second payment is approved, a stock line is pulled, the license key is signed, and files land in the customer's library. Average delivery time: 0.4 seconds.
+4. Support and updates: tickets, new versions and download lists are built in.
+
+## Payments
+
+9 payment and sales integrations: Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, Paywant and Whop. Crypto, installments, 3D Secure, saved cards, IPN/webhook approval. Card details never touch Vexaris servers.
+
+## Store modules
+
+- Product & stock management (unlimited and single-stock modes; sales auto-close when stock runs out)
+- Coupons & balance (percentage/gift coupons, wallet payments, refunds to balance)
+- Support tickets (categories, priorities, messaging, history)
+- Roles & permissions (admin, manager, moderator, support team)
+- Themes (default, azure, ember) and integrations (social login, captcha, live support)
+- Mail templates & SEO (customizable transactional mails, titles, descriptions, OG tags)
+- Blog, announcements, FAQ, reviews, licenses, version tracking, applications
+- Maintenance mode, scheduled publishing, categories, sliders, download tokens
+
+## Accounts and access
+
+- Registration is open; seller applications are reviewed within 24 hours.
+- Sign-in supports email/password plus Google, Discord, GitHub and Microsoft OAuth.
+- Forgot-password flow uses a 6-digit emailed code; sessions can be managed per device.
+- Free plan: application-based, limited products, x.vexaris.com.tr subdomain.
+
+## Licensing
+
+Each install is bound to licensed domains (subdomains included) with online verification. License status can be checked at https://vexaris.com.tr/license-check. Self-host setup is available on special request; standard use runs on Vexaris SaaS infrastructure hosted abroad.
+
+## Support
+
+- Support tickets and Discord notifications with webhooks
+- Contact: info@vexaris.com.tr
+- Docs and updates ship through the in-panel blog and changelog

@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /user/
+Disallow: /dashboard
+
+Sitemap: https://vexaris.com.tr/sitemap.xml
