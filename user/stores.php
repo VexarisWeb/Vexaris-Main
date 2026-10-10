@@ -130,6 +130,34 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
     }
 }
 
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? '') === 'update-store')) {
+    csrf_check();
+    $sid = (int)($_POST['store_id'] ?? 0);
+    try {
+        $st = $pdo->prepare("SELECT slug, plan, app_version FROM hosted_stores WHERE id=? AND (user_id=? OR owner=?) AND status='active' LIMIT 1");
+        $st->execute([$sid, $uid, $uemail]);
+        $row = $st->fetch();
+        if (!$row) stores_json(['ok' => false, 'msg' => 'Store not found.']);
+        $slug = (string)$row['slug'];
+        $latest = function_exists('saas_latest_version') ? saas_latest_version($pdo) : '';
+        if ($latest === '' || !version_compare($latest, (string)($row['app_version'] ?? ''), '>')) {
+            stores_json(['ok' => false, 'msg' => 'Already up to date.']);
+        }
+        $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
+        $st->execute([$slug]);
+        if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'Update already queued.']);
+        $st = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
+        $st->execute([$uid]);
+        $ohash = (string)$st->fetchColumn();
+        if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $ohash)) $ohash = '';
+        $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?, ?, '','en','update','pending',?)");
+        $ins->execute([$uid, $slug, (string)($row['plan'] ?? 'free'), $uemail, $ohash]);
+        stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId(), 'version' => $latest]);
+    } catch (Exception $e) {
+        stores_json(['ok' => false, 'msg' => 'Server error.']);
+    }
+}
+
 if (isset($_GET['check'])) {
     $slug = strtolower(trim((string)($_GET['slug'] ?? '')));
     $slug = preg_replace('/[^a-z0-9\-]/', '', $slug);
@@ -172,7 +200,7 @@ require_once __DIR__ . '/_inc/header.php';
 
 $store = null;
 try {
-    $st = $pdo->prepare("SELECT id, slug, domain, plan, site_name, users, products, revenue, currency, traffic_bytes, traffic_updated, status, reported_at, created_at FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id DESC LIMIT 1");
+    $st = $pdo->prepare("SELECT id, slug, domain, plan, site_name, users, products, revenue, currency, traffic_bytes, traffic_updated, app_version, status, reported_at, created_at FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id DESC LIMIT 1");
     $st->execute([$uid, $uemail]);
     $store = $st->fetch() ?: null;
 } catch (Exception $e) {}
@@ -218,6 +246,8 @@ for ($di = 13; $di >= 0; $di--) { $dd = date('Y-m-d', strtotime("-$di days")); $
 $trafMax = max(1, max($trafDays));
 $allowed = $sp === 'starter' ? ['Default', 'Azure'] : ($sp === 'free' ? ['Default'] : ['Default', 'Azure', 'Ember']);
 $sname = trim((string)($store['site_name'] ?? ''));
+$latestVer = function_exists('saas_latest_version') ? saas_latest_version($pdo) : '';
+$updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['app_version'] ?? ''), '>');
 ?>
 <div class="panel-card"><div class="panel-card__body">
     <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1.1rem;flex-wrap:wrap;">
@@ -228,6 +258,12 @@ $sname = trim((string)($store['site_name'] ?? ''));
         </div>
         <span style="font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:4px 12px;border-radius:999px;background:<?= $sp === 'free' ? 'rgba(255,255,255,.07);color:#cfd6e4' : 'rgba(0,212,255,.12);color:#7dd7fc' ?>;"><?= htmlspecialchars($sp) ?></span>
     </div>
+    <?php if ($updAvail): ?>
+    <div style="background:rgba(250,204,21,.07);border:1px solid rgba(250,204,21,.35);border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;font-size:13px;color:#facc15;"><i class="fas fa-cloud-arrow-down"></i> Update available — <strong>v<?= htmlspecialchars($latestVer) ?></strong> (yours: v<?= htmlspecialchars((string)($store['app_version'] ?? '?')) ?>). About 1 minute downtime.</div>
+        <button class="btn-panel btn-cyan" style="font-size:13px;" id="nxUpdBtn" onclick="nxStartUpdate(<?= (int)$store['id'] ?>)"><i class="fas fa-rotate"></i> Update Now</button>
+    </div>
+    <?php endif; ?>
     <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div style="flex:1;min-width:200px;font-size:13px;color:#9aa3ac;"><i class="fas fa-key" style="color:#ff7a1a;"></i> Store admin — username <strong style="color:var(--text,#e8eaf6);">admin</strong>, password is your Vexaris password (also emailed at setup).</div>
         <a class="btn-panel btn-cyan" style="font-size:13px;" href="https://<?= htmlspecialchars($store['domain']) ?>/login" target="_blank" rel="noopener"><i class="fas fa-right-to-bracket"></i> Store Login</a>
@@ -285,7 +321,7 @@ $sname = trim((string)($store['site_name'] ?? ''));
         <button type="submit" class="btn-panel btn-cyan"><i class="fas fa-credit-card"></i> Upgrade</button>
     </form>
     <div style="display:flex;gap:8px;margin-bottom:1.2rem;">
-        <a class="btn-panel" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($store['domain']) ?>/admin/dashboard.php" target="_blank" rel="noopener"><i class="fas fa-gauge"></i> Admin</a>
+        <button class="btn-panel" style="flex:1;justify-content:center;opacity:1;background:rgba(255,122,26,.16);border:1px solid rgba(255,122,26,.55);color:#ffb37a;" onclick="nxAdminLogin()"><i class="fas fa-gauge"></i> Admin</button>
         <a class="btn-panel btn-cyan" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($store['domain']) ?>" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i> Visit</a>
     </div>
     <button class="btn-panel" style="width:100%;justify-content:center;color:#f87171;" onclick="nxDeleteFor(<?= (int)$store['id'] ?>,'<?= htmlspecialchars($store['domain'], ENT_QUOTES) ?>')"><i class="fas fa-trash"></i> Delete Store</button>
@@ -305,7 +341,7 @@ $sname = trim((string)($store['site_name'] ?? ''));
                 <input id="nxStoreSlug" type="text" maxlength="40" placeholder="mystore" style="flex:1;min-width:0;box-sizing:border-box;background:var(--bg-surface,#0f1422);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px 0 0 10px;padding:11px 14px;color:var(--text,#e8eaf6);font-size:14px;outline:none;border-right:none;">
                 <span style="background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:0 10px 10px 0;padding:11px 14px;font-size:14px;color:#9aa3ac;white-space:nowrap;">.vexaris.net</span>
             </div>
-            <div id="nxSlugMsg" style="font-size:12px;min-height:18px;margin-bottom:10px;"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div id="nxSlugMsg" style="font-size:12px;min-height:18px;"></div><div id="nxSlugCount" style="font-size:11px;color:#64748b;">0/40</div></div>
             <div id="nxTsWrap" style="margin-bottom:14px;"><?php require_once __DIR__ . '/../core/turnstile.php'; if (function_exists('turnstile_widget')) { echo turnstile_widget('nxTs'); echo turnstile_script(); } ?></div>
             <div style="display:flex;gap:10px;">
                 <button class="btn-panel" id="nxSmCancel" style="flex:1;">Cancel</button>
@@ -353,6 +389,7 @@ $sname = trim((string)($store['site_name'] ?? ''));
 </div>
 <script>
 var NXD = null;
+var NX_SLUG = <?= json_encode($store ? (string)$store['slug'] : '') ?>;
 (function(){
 var modal=document.getElementById('nxStoreModal');
 var openBtn=document.getElementById('nxNewStoreBtn');
@@ -365,9 +402,11 @@ if(modal){modal.addEventListener('click',function(e){ if(e.target===modal)closeM
 var slugEl=document.getElementById('nxSlugMsg'),createBtn=document.getElementById('nxSmCreate'),slugIn=document.getElementById('nxStoreSlug');
 var slugTimer=null,slugOk=false;
 function setMsg(t,ok){ slugEl.textContent=t||''; slugEl.style.color=ok?'#4ade80':'#f87171'; createBtn.disabled=!ok; slugOk=!!ok; }
+var slugCount=document.getElementById('nxSlugCount');
 if(slugIn){slugIn.addEventListener('input',function(){
   clearTimeout(slugTimer); setMsg('',false);
-  var v=slugIn.value.toLowerCase().replace(/[^a-z0-9\-]/g,''); slugIn.value=v;
+  var v=slugIn.value.toLowerCase().replace(/[^a-z0-9\-]/g,''); if(v.length>40){v=v.substring(0,40);} slugIn.value=v;
+  if(slugCount){slugCount.textContent=v.length+'/40';}
   if(v.length<3){return;}
   slugTimer=setTimeout(function(){
     setMsg('Checking…',false);
@@ -461,6 +500,35 @@ window.openStoreDelete=function(){
 var delCancel=document.getElementById('nxDelCancel');
 if(delCancel){delCancel.addEventListener('click',function(){document.getElementById('nxDeleteModal').style.display='none';});}
 window.nxDeleteFor=function(id,domain){NXD={id:id,domain:domain};openStoreDelete();};
+window.nxStartUpdate=function(sid){
+  var b=document.getElementById('nxUpdBtn');if(b){b.disabled=true;b.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Queuing…';}
+  var fd=new FormData();fd.append('action','update-store');fd.append('store_id',sid);
+  fetch('/dashboard/stores',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
+    if(d&&d.ok&&d.job_id){
+      var m=document.getElementById('nxStoreModal');if(m){m.classList.remove('nx-modal-show');void m.offsetWidth;m.style.display='flex';m.classList.add('nx-modal-show');}
+      document.getElementById('nxSmStep1').style.display='none';
+      document.getElementById('nxSmStep2').style.display='block';
+      nxResetProg();progT0=Date.now();
+      clearInterval(progTick);
+      progTick=setInterval(function(){document.getElementById('nxProgSec').textContent=Math.floor((Date.now()-progT0)/1000)+'s';},500);
+      document.getElementById('nxProgStore').textContent='Updating to v'+(d.version||'latest')+'…';
+      nxPct(5);setStep('queue','run');
+      document.getElementById('nxProgMsg').textContent='Queued…';
+      document.getElementById('nxProgLink').style.display='none';
+      startProgress(d.job_id);
+    }else{
+      if(b){b.disabled=false;b.innerHTML='<i class="fas fa-rotate"></i> Update Now';}
+      alert((d&&d.msg)||'Failed');
+    }
+  }).catch(function(){if(b){b.disabled=false;}alert('Failed');});
+};
+window.nxAdminLogin=function(){
+  if(!NX_SLUG)return;
+  var fd=new FormData();fd.append('action','issue-owner');fd.append('slug',NX_SLUG);
+  fetch('/api/admin-token.php',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
+    if(d&&d.ok&&d.url){window.open(d.url,'_blank','noopener');}else{alert((d&&d.msg)||'Failed');}
+  }).catch(function(){alert('Failed');});
+};
 
 var delGo=document.getElementById('nxDelGo');
 if(delGo){delGo.addEventListener('click',function(){

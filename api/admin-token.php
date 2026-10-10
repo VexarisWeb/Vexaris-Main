@@ -45,6 +45,41 @@ if ($action === 'issue') {
     exit;
 }
 
+if ($action === 'issue-owner') {
+    boot_session();
+    require_login();
+    $me = current_user();
+    $meId = (int)($me['id'] ?? 0);
+    $meEmail = strtolower(trim((string)($me['email'] ?? '')));
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+        http_response_code(405);
+        echo json_encode(['ok' => false]);
+        exit;
+    }
+    csrf_check();
+    $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim((string)($_POST['slug'] ?? ''))));
+    if ($slug === '' || $meId <= 0) {
+        echo json_encode(['ok' => false, 'msg' => 'bad request']);
+        exit;
+    }
+    try {
+        $st = $pdo->prepare("SELECT id FROM hosted_stores WHERE slug=? AND status='active' AND (user_id=? OR owner=?) LIMIT 1");
+        $st->execute([$slug, $meId, $meEmail]);
+        if (!$st->fetch()) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'msg' => 'not yours']);
+            exit;
+        }
+        $token = bin2hex(random_bytes(32));
+        $pdo->prepare("INSERT INTO store_tokens (token, slug, admin_id, used) VALUES (?,?,?,0)")->execute([$token, $slug, $meId]);
+        echo json_encode(['ok' => true, 'url' => 'https://' . $slug . '.vexaris.net/shop/admin-login.php?token=' . $token]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['ok' => false]);
+    }
+    exit;
+}
+
 if ($action === 'consume') {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
         http_response_code(405);

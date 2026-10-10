@@ -40,9 +40,52 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action']
         $planMsg = 'Invalid request.';
     }
 }
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array(($_POST['store_action'] ?? ''), ['update-one', 'update-all'], true)) {
+    $tok = (string)($_POST['_csrf'] ?? '');
+    $sess = (string)($_SESSION['csrf'] ?? '');
+    if ($sess !== '' && $tok !== '' && hash_equals($sess, $tok)) {
+        try {
+            $latest = function_exists('saas_latest_version') ? saas_latest_version($db) : '';
+            if ($latest === '') {
+                $planMsg = 'No version found.';
+            } else {
+                $mkUpd = function ($sid) use ($db) {
+                    $st = $db->prepare("SELECT slug, plan, owner, user_id, app_version FROM hosted_stores WHERE id=? AND status='active' LIMIT 1");
+                    $st->execute([(int)$sid]);
+                    $row = $st->fetch();
+                    if (!$row) return false;
+                    if (!version_compare($latest, (string)($row['app_version'] ?? ''), '>')) return false;
+                    $st = $db->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
+                    $st->execute([(string)$row['slug']]);
+                    if ($st->fetch()) return false;
+                    $st = $db->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
+                    $st->execute([(int)($row['user_id'] ?? 0)]);
+                    $oh = (string)$st->fetchColumn();
+                    if (!preg_match('/^\\$(2y|2a|argon2i|argon2id)\\$/', $oh)) $oh = '';
+                    $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?, ?, '','en','update','pending',?)")
+                        ->execute([(int)($row['user_id'] ?? 0), (string)$row['slug'], (string)($row['plan'] ?? 'free'), (string)($row['owner'] ?? ''), $oh]);
+                    return true;
+                };
+                if (($_POST['store_action'] ?? '') === 'update-all') {
+                    $ids = $db->query("SELECT id FROM hosted_stores WHERE status='active' ORDER BY id DESC LIMIT 200")->fetchAll(PDO::FETCH_COLUMN);
+                    $n = 0;
+                    foreach ($ids as $sid) { if ($mkUpd($sid)) $n++; }
+                    $planMsg = 'OK: ' . $n . ' store update queued (v' . $latest . ').';
+                } else {
+                    $planMsg = $mkUpd((int)($_POST['store_id'] ?? 0)) ? 'OK: update queued (v' . $latest . ').' : 'Store not found, up to date, or already queued.';
+                }
+            }
+        } catch (Exception $e) {
+            $planMsg = 'Server error.';
+        }
+    } else {
+        $planMsg = 'Invalid request.';
+    }
+}
+$latestVer = function_exists('saas_latest_version') ? saas_latest_version($db) : '';
 $rows = [];
 try {
-    $rows = $db->query("SELECT h.id, h.user_id, h.slug, h.domain, h.plan, h.owner, h.users, h.revenue, h.currency, h.abuse_score, h.abuse_detail, h.status, h.reported_at, h.created_at, u.username AS uname FROM hosted_stores h LEFT JOIN users u ON u.id=h.user_id ORDER BY h.id DESC LIMIT 200")->fetchAll();
+    $rows = $db->query("SELECT h.id, h.user_id, h.slug, h.domain, h.plan, h.app_version, h.owner, h.users, h.revenue, h.currency, h.abuse_score, h.abuse_detail, h.status, h.reported_at, h.created_at, u.username AS uname FROM hosted_stores h LEFT JOIN users u ON u.id=h.user_id ORDER BY h.id DESC LIMIT 200")->fetchAll();
 } catch (Exception $e) {}
 $totalRev = 0.0;
 $totalUsers = 0;
@@ -51,9 +94,16 @@ foreach ($rows as $r) { $totalRev += (float)$r['revenue']; $totalUsers += (int)$
 $revParts = [];
 foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $c));
 ?>
-<div class="main__header">
-    <h1>Mağazalar</h1>
-    <p><?= count($rows) ?> store · <?= $totalUsers ?> users · <?= implode(' + ', $revParts) ?> revenue</p>
+<div class="main__header" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <div style="flex:1;min-width:220px;">
+        <h1 style="margin:0;">Mağazalar</h1>
+        <p style="margin:4px 0 0;"><?= count($rows) ?> store · <?= $totalUsers ?> users · <?= implode(' + ', $revParts) ?> revenue · latest <strong>v<?= htmlspecialchars($latestVer !== '' ? $latestVer : '?') ?></strong></p>
+    </div>
+    <form method="POST" action="/admin?tab=stores" style="margin:0;">
+        <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf ?? '') ?>">
+        <input type="hidden" name="store_action" value="update-all">
+        <button type="submit" class="btn btn-primary btn-sm" title="Queue update for all outdated stores"><i class="fas fa-cloud-arrow-down"></i> Update All</button>
+    </form>
 </div>
 <?php if ($planMsg !== ''): ?>
 <div style="background:<?= strncmp($planMsg, 'OK', 2) === 0 ? 'rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#4ade80' : 'rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171' ?>;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;margin-bottom:20px;"><?= htmlspecialchars($planMsg) ?></div>
@@ -70,6 +120,7 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
                     <th>Created By</th>
                     <th style="width:90px">Users</th>
                     <th style="width:120px">Revenue</th>
+                    <th style="width:90px">Version</th>
                     <th style="width:100px">Status</th>
                     <th style="width:90px">Abuse</th>
                     <th style="width:110px;text-align:center">Detail</th>
@@ -77,7 +128,7 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
             </thead>
             <tbody>
                 <?php if (!$rows): ?>
-                <tr><td colspan="10" style="text-align:center;padding:2.5rem" class="text-muted">Henüz mağaza yok.</td></tr>
+                <tr><td colspan="11" style="text-align:center;padding:2.5rem" class="text-muted">Henüz mağaza yok.</td></tr>
                 <?php else: foreach ($rows as $i => $r): ?>
                 <tr>
                     <td><?= (int)$r['id'] ?></td>
@@ -99,6 +150,17 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
                     <td style="font-size:13px;"><?= htmlspecialchars($r['uname'] ?? '-') ?></td>
                     <td><?= (int)$r['users'] ?></td>
                     <td><?= htmlspecialchars(store_money((float)$r['revenue'], (string)($r['currency'] ?? 'TRY'))) ?></td>
+                    <td><?php $av = (string)($r['app_version'] ?? ''); $outd = $latestVer !== '' && $av !== '' && version_compare($latestVer, $av, '>'); ?>
+                        <span style="font-size:12px;font-weight:700;">v<?= htmlspecialchars($av !== '' ? $av : '?') ?></span>
+                        <?php if ($outd): ?>
+                        <form method="POST" action="/admin?tab=stores" style="margin:4px 0 0;">
+                            <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf ?? '') ?>">
+                            <input type="hidden" name="store_action" value="update-one">
+                            <input type="hidden" name="store_id" value="<?= (int)$r['id'] ?>">
+                            <button type="submit" class="btn btn-ghost btn-sm" title="Update to v<?= htmlspecialchars($latestVer) ?>" style="color:#facc15;border-color:rgba(250,204,21,.4);"><i class="fas fa-cloud-arrow-down"></i> v<?= htmlspecialchars($latestVer) ?></button>
+                        </form>
+                        <?php endif; ?>
+                    </td>
                     <td><?= htmlspecialchars($r['status']) ?></td>
                     <td><?php $ab=(int)($r['abuse_score']??0); if($ab>=3): ?><span title="<?= htmlspecialchars($r['abuse_detail']??'') ?>" style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(239,68,68,.14);color:#f87171;"><?= $ab ?> AUTO</span><?php elseif($ab>0): ?><span title="<?= htmlspecialchars($r['abuse_detail']??'') ?>" style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(250,204,21,.14);color:#facc15;"><?= $ab ?></span><?php else: ?><span style="color:var(--dim);">-</span><?php endif; ?></td>
                     <td style="text-align:center;"><button class="btn btn-ghost btn-sm" onclick='openStorePopup(<?= json_encode(array_merge($r, ['revenue_fmt' => store_money((float)$r['revenue'], (string)($r['currency'] ?? 'TRY'))]), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'><i class="fas fa-eye"></i> View</button></td>

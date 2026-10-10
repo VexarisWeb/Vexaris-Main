@@ -270,6 +270,7 @@ function run_migrations(): void {
         ensure_column($pdo, 'hosting_jobs', 'kind', "`kind` VARCHAR(20) NOT NULL DEFAULT 'provision'");
         ensure_column($pdo, 'hosting_jobs', 'owner_hash', "`owner_hash` VARCHAR(255) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'site_name', "`site_name` VARCHAR(80) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosted_stores', 'app_version', "`app_version` VARCHAR(30) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'traffic_bytes', "`traffic_bytes` BIGINT NOT NULL DEFAULT 0");
         ensure_column($pdo, 'hosted_stores', 'traffic_updated', "`traffic_updated` DATETIME NULL");
         $pdo->exec("CREATE TABLE IF NOT EXISTS store_traffic_daily (
@@ -911,6 +912,17 @@ function store_money(float $amount, string $cur = 'TRY'): string {
     if ($c === 'USD') return '$' . number_format($amount, 2, '.', ',');
     if ($c === 'EUR') return number_format($amount, 2, ',', '.') . ' €';
     return '₺' . number_format($amount, 2, ',', '.');
+}
+
+function saas_latest_version(?PDO $pdo = null): string {
+    try {
+        $pdo = $pdo ?: db();
+        if (!$pdo) return '';
+        $st = $pdo->query("SELECT version FROM versions WHERE is_active=1 ORDER BY id DESC LIMIT 1");
+        $v = trim((string)$st->fetchColumn());
+        if ($v !== '' && strlen($v) <= 30) return $v;
+    } catch (Exception $e) {}
+    return '';
 }
 
 function user_effective_plan(int $userId): array {
