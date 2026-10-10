@@ -320,7 +320,7 @@ function hosting_features(string $plan): array {
         'seo' => true, 'announcements' => true, 'coupons' => true,
         'custom_pages' => true, 'references' => true, 'reviews' => true,
         'discord_integration' => true, 'roles_permissions' => true,
-        'updates' => false,
+        'updates' => true,
     ];
     $f['plan'] = $plan;
     return $f;
