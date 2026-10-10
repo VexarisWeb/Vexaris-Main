@@ -5,4 +5,4 @@ Disallow: /api/
 Disallow: /user/
 Disallow: /dashboard
 
-Sitemap: https://vexaris.com.tr/sitemap.xml
+Sitemap: https://vexaris.net/sitemap.xml

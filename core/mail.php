@@ -61,9 +61,62 @@ function mail_wrap_layout(\PDO $pdo, string $bodyHtml, array $vars): string {
          . '</td></tr></table></td></tr></table></body></html>';
 }
 
+function mail_send_brevo(\PDO $pdo, array $cfg, string $to, string $subject, string $bodyHtml, array $vars = [], array $from = []): bool {
+    $apiKey = trim((string)($cfg['mail_brevo_api_key'] ?? ''));
+    if ($apiKey === '' || !function_exists('curl_init')) {
+        error_log('VX mail: Brevo transfer secili ama API anahtari yok veya curl eksik.');
+        return false;
+    }
+    $fromEmail = trim((string)($from['email'] ?? ''));
+    $fromName = trim((string)($from['name'] ?? ''));
+    if ($fromEmail === '') $fromEmail = trim((string)($cfg['mail_from_email'] ?? ''));
+    if ($fromName === '') $fromName = trim((string)($cfg['mail_from_name'] ?? ''));
+    if ($fromEmail === '') $fromEmail = 'info@vexaris.net';
+    $siteName = '';
+    try {
+        $st = $pdo->prepare("SELECT `value` FROM settings WHERE `key`='site_name' LIMIT 1");
+        $st->execute();
+        $siteName = (string)$st->fetchColumn();
+    } catch (Exception $e) {}
+    if ($fromName === '') $fromName = $siteName !== '' ? $siteName : 'Vexaris';
+    $plainSrc = mail_render($bodyHtml, $vars);
+    $plainSrc = str_ireplace(['<br>', '<br/>', '<br />', '</p>', '</div>', '</tr>', '</h1>', '</h2>', '</h3>'], "\n", $plainSrc);
+    $plain = html_entity_decode(trim((string)preg_replace('/[ \t\x0B\f]+/', ' ', (string)preg_replace('/\n\s*\n+/', "\n\n", strip_tags($plainSrc)))), ENT_QUOTES, 'UTF-8');
+    $payload = [
+        'sender' => ['email' => $fromEmail, 'name' => $fromName],
+        'to' => [['email' => $to]],
+        'subject' => mail_render($subject, $vars),
+        'htmlContent' => mail_wrap_layout($pdo, $bodyHtml, $vars),
+        'textContent' => $plain,
+    ];
+    $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_TIMEOUT => 12,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json', 'api-key: ' . $apiKey],
+        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
+    ]);
+    $resp = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($resp === false || $code < 200 || $code >= 300) {
+        error_log('VX mail brevo: HTTP ' . $code . ' ' . ($err !== '' ? $err . ' ' : '') . mb_substr((string)$resp, 0, 200));
+        return false;
+    }
+    return true;
+}
+
 function mail_send(\PDO $pdo, string $to, string $subject, string $bodyHtml, array $vars = [], array $from = []): bool {
     $cfg = mail_get_settings($pdo);
     if (($cfg['mail_enabled'] ?? '0') !== '1') return false;
+
+    $transfer = strtolower(trim((string)($cfg['mail_transfer'] ?? 'sendmail')));
+    if ($transfer === 'brevo') {
+        return mail_send_brevo($pdo, $cfg, $to, $subject, $bodyHtml, $vars, $from);
+    }
 
     if (!is_file(VX_MAIL_AUTOLOAD)) {
         error_log('VX mail: PHPMailer bulunamadı: ' . VX_MAIL_AUTOLOAD);
@@ -73,7 +126,6 @@ function mail_send(\PDO $pdo, string $to, string $subject, string $bodyHtml, arr
 
     try {
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-        $transfer = strtolower(trim((string)($cfg['mail_transfer'] ?? 'sendmail')));
         if ($transfer === 'smtp') {
             $host = trim((string)($cfg['mail_smtp_host'] ?? ''));
             $user = trim((string)($cfg['mail_smtp_user'] ?? ''));
