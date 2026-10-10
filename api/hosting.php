@@ -153,6 +153,8 @@ try {
         $users = max(0, (int)($_POST['users'] ?? 0));
         $revenue = max(0, (float)($_POST['revenue'] ?? 0));
         $products = max(0, (int)($_POST['products'] ?? 0));
+        $currency = strtoupper(trim((string)($_POST['currency'] ?? 'TRY')));
+        if (!in_array($currency, ['TRY', 'USD', 'EUR'], true)) $currency = 'TRY';
         $st = $pdo->prepare("SELECT * FROM hosting_jobs WHERE id=? LIMIT 1");
         $st->execute([$jobId]);
         $job = $st->fetch();
@@ -178,8 +180,8 @@ try {
                 hosting_mail($pdo, $jobOwner, 'Your store has been deleted — Vexaris', hosting_deleted_html($jobSlug));
             }
         } elseif ($ok) {
-            $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, owner, users, revenue, status, reported_at) VALUES (?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), status='active', reported_at=NOW()")
-                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.net', $jobPlan, $jobOwner, $users, $revenue, $products]);
+            $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, owner, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()")
+                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.net', $jobPlan, $jobOwner, $users, $revenue, $products, $currency]);
             if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
                 hosting_mail($pdo, $jobOwner, 'Your store is ready — Vexaris', hosting_created_html($jobSlug, $jobPlan));
             }
@@ -187,18 +189,52 @@ try {
         echo json_encode(['ok' => true, 'msg' => 'recorded']);
         exit;
     }
+    if ($action === 'abuse') {
+        $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim((string)($_POST['slug'] ?? ''))));
+        $score = max(0, (int)($_POST['score'] ?? 0));
+        $detail = mb_substr(trim((string)($_POST['detail'] ?? '')), 0, 255);
+        if ($slug === '') {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'msg' => 'bad slug']);
+            exit;
+        }
+        try {
+            $pdo->prepare("UPDATE hosted_stores SET abuse_score=?, abuse_detail=? WHERE slug=?")->execute([$score, $detail, $slug]);
+        } catch (Exception $e) {}
+        echo json_encode(['ok' => true, 'msg' => 'recorded']);
+        exit;
+    }
+    if ($action === 'ban-user') {
+        $email = strtolower(trim((string)($_POST['email'] ?? '')));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'msg' => 'bad email']);
+            exit;
+        }
+        try {
+            $st = $pdo->prepare("UPDATE users SET ban_reason='abuse' WHERE email=? AND ban_reason=''");
+            $st->execute([$email]);
+            echo json_encode(['ok' => true, 'msg' => 'banned', 'count' => $st->rowCount()]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'msg' => 'server error']);
+        }
+        exit;
+    }
     if ($action === 'report') {
         $list = json_decode((string)($_POST['stores'] ?? '[]'), true);
         if (!is_array($list)) $list = [];
         $n = 0;
-        $up = $pdo->prepare("INSERT INTO hosted_stores (slug, domain, plan, owner, users, revenue, status, reported_at) VALUES (?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), status='active', reported_at=NOW()");
+        $up = $pdo->prepare("INSERT INTO hosted_stores (slug, domain, plan, owner, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()");
         foreach (array_slice($list, 0, 200) as $s) {
             if (!is_array($s)) continue;
             $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower((string)($s['slug'] ?? '')));
             if ($slug === '') continue;
             $plan = strtolower((string)($s['plan'] ?? 'free'));
             if (!in_array($plan, $plans, true)) $plan = 'free';
-            $up->execute([$slug, $slug . '.vexaris.net', $plan, mb_substr((string)($s['owner'] ?? ''), 0, 190), max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0)), max(0, (int)($s['products'] ?? 0))]);
+            $scur = strtoupper(trim((string)($s['currency'] ?? 'TRY')));
+            if (!in_array($scur, ['TRY', 'USD', 'EUR'], true)) $scur = 'TRY';
+            $up->execute([$slug, $slug . '.vexaris.net', $plan, mb_substr((string)($s['owner'] ?? ''), 0, 190), max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0)), max(0, (int)($s['products'] ?? 0)), $scur]);
             $n++;
         }
         echo json_encode(['ok' => true, 'msg' => 'reported', 'count' => $n]);

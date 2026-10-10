@@ -269,6 +269,9 @@ function run_migrations(): void {
         ensure_column($pdo, 'licenses', 'user_id', '`user_id` INT UNSIGNED NULL');
         ensure_column($pdo, 'hosting_jobs', 'kind', "`kind` VARCHAR(20) NOT NULL DEFAULT 'provision'");
         ensure_column($pdo, 'hosted_stores', 'products', '`products` INT NOT NULL DEFAULT 0');
+        ensure_column($pdo, 'hosted_stores', 'currency', "`currency` VARCHAR(5) NOT NULL DEFAULT 'TRY'");
+        ensure_column($pdo, 'hosted_stores', 'abuse_score', '`abuse_score` INT NOT NULL DEFAULT 0');
+        ensure_column($pdo, 'hosted_stores', 'abuse_detail', '`abuse_detail` VARCHAR(255) NOT NULL DEFAULT ' . "''");
         try {
             $hasIdx = $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'licenses' AND INDEX_NAME = 'idx_lic_user'")->fetchColumn();
             if (!(int)$hasIdx) $pdo->exec("ALTER TABLE `licenses` ADD KEY `idx_lic_user` (`user_id`)");
@@ -882,6 +885,13 @@ function client_ip(): string {
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return $ip;
     }
     return trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
+}
+
+function store_money(float $amount, string $cur = 'TRY'): string {
+    $c = strtoupper(trim($cur));
+    if ($c === 'USD') return '$' . number_format($amount, 2, '.', ',');
+    if ($c === 'EUR') return number_format($amount, 2, ',', '.') . ' €';
+    return '₺' . number_format($amount, 2, ',', '.');
 }
 
 function user_effective_plan(int $userId): array {

@@ -42,15 +42,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action']
 }
 $rows = [];
 try {
-    $rows = $db->query("SELECT id, user_id, slug, domain, plan, owner, users, revenue, status, reported_at, created_at FROM hosted_stores ORDER BY id DESC LIMIT 200")->fetchAll();
+    $rows = $db->query("SELECT id, user_id, slug, domain, plan, owner, users, revenue, currency, abuse_score, abuse_detail, status, reported_at, created_at FROM hosted_stores ORDER BY id DESC LIMIT 200")->fetchAll();
 } catch (Exception $e) {}
 $totalRev = 0.0;
 $totalUsers = 0;
-foreach ($rows as $r) { $totalRev += (float)$r['revenue']; $totalUsers += (int)$r['users']; }
+$revByCur = [];
+foreach ($rows as $r) { $totalRev += (float)$r['revenue']; $totalUsers += (int)$r['users']; $c = strtoupper((string)($r['currency'] ?? 'TRY')); $revByCur[$c] = ($revByCur[$c] ?? 0) + (float)$r['revenue']; }
+$revParts = [];
+foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $c));
 ?>
 <div class="main__header">
     <h1>Mağazalar</h1>
-    <p><?= count($rows) ?> store · <?= $totalUsers ?> users · <?= number_format($totalRev, 2) ?> revenue</p>
+    <p><?= count($rows) ?> store · <?= $totalUsers ?> users · <?= implode(' + ', $revParts) ?> revenue</p>
 </div>
 <?php if ($planMsg !== ''): ?>
 <div style="background:<?= strncmp($planMsg, 'OK', 2) === 0 ? 'rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#4ade80' : 'rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171' ?>;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;margin-bottom:20px;"><?= htmlspecialchars($planMsg) ?></div>
@@ -67,6 +70,7 @@ foreach ($rows as $r) { $totalRev += (float)$r['revenue']; $totalUsers += (int)$
                     <th style="width:90px">Users</th>
                     <th style="width:120px">Revenue</th>
                     <th style="width:100px">Status</th>
+                    <th style="width:90px">Abuse</th>
                     <th style="width:110px;text-align:center">Detail</th>
                 </tr>
             </thead>
@@ -92,9 +96,10 @@ foreach ($rows as $r) { $totalRev += (float)$r['revenue']; $totalUsers += (int)$
                     </td>
                     <td class="text-muted" style="font-size:13px;"><?= htmlspecialchars($r['owner']) ?></td>
                     <td><?= (int)$r['users'] ?></td>
-                    <td><?= number_format((float)$r['revenue'], 2) ?></td>
+                    <td><?= htmlspecialchars(store_money((float)$r['revenue'], (string)($r['currency'] ?? 'TRY'))) ?></td>
                     <td><?= htmlspecialchars($r['status']) ?></td>
-                    <td style="text-align:center;"><button class="btn btn-ghost btn-sm" onclick='openStorePopup(<?= json_encode($r, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'><i class="fas fa-eye"></i> View</button></td>
+                    <td><?php $ab=(int)($r['abuse_score']??0); if($ab>=3): ?><span title="<?= htmlspecialchars($r['abuse_detail']??'') ?>" style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(239,68,68,.14);color:#f87171;"><?= $ab ?> AUTO</span><?php elseif($ab>0): ?><span title="<?= htmlspecialchars($r['abuse_detail']??'') ?>" style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(250,204,21,.14);color:#facc15;"><?= $ab ?></span><?php else: ?><span style="color:var(--dim);">-</span><?php endif; ?></td>
+                    <td style="text-align:center;"><button class="btn btn-ghost btn-sm" onclick='openStorePopup(<?= json_encode(array_merge($r, ['revenue_fmt' => store_money((float)$r['revenue'], (string)($r['currency'] ?? 'TRY'))]), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'><i class="fas fa-eye"></i> View</button></td>
                 </tr>
                 <?php endforeach; endif; ?>
             </tbody>
@@ -131,7 +136,7 @@ function openStorePopup(r){
   document.getElementById('spDomain').textContent=r.domain||'-';
   document.getElementById('spPlan').textContent=(r.plan||'-')+' plan';
   document.getElementById('spUsers').textContent=r.users||0;
-  document.getElementById('spRevenue').textContent=Number(r.revenue||0).toFixed(2);
+  document.getElementById('spRevenue').textContent=r.revenue_fmt||Number(r.revenue||0).toFixed(2);
   document.getElementById('spOwner').textContent=r.owner||'-';
   document.getElementById('spStatus').textContent=r.status||'-';
   document.getElementById('spCreated').textContent=r.created_at||'-';

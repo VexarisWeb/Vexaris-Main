@@ -126,7 +126,7 @@ if (isset($_GET['check_job'])) {
 
 $stores = [];
 try {
-    $st = $pdo->prepare("SELECT id, slug, domain, plan, users, products, revenue, status, reported_at, created_at FROM hosted_stores WHERE user_id=? OR owner=? ORDER BY id DESC LIMIT 50");
+    $st = $pdo->prepare("SELECT id, slug, domain, plan, users, products, revenue, currency, status, reported_at, created_at FROM hosted_stores WHERE user_id=? OR owner=? ORDER BY id DESC LIMIT 50");
     $st->execute([$uid, $uemail]);
     $stores = $st->fetchAll();
 } catch (Exception $e) {}
@@ -150,7 +150,7 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
     $sp = strtolower($s['plan'] ?? 'free');
     $themes = $planThemes[$sp] ?? ['Default'];
 ?>
-    <div class="panel-card" style="margin:0;display:flex;flex-direction:column;cursor:pointer;" onclick='openStoreDetail(<?= json_encode(['id' => (int)$s['id'], 'domain' => $s['domain'], 'plan' => $sp, 'users' => (int)$s['users'], 'products' => (int)($s['products'] ?? 0), 'revenue' => (float)$s['revenue'], 'status' => $s['status'], 'created' => $s['created_at']], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'>
+    <div class="panel-card" style="margin:0;display:flex;flex-direction:column;cursor:pointer;" onclick='openStoreDetail(<?= json_encode(['id' => (int)$s['id'], 'domain' => $s['domain'], 'plan' => $sp, 'users' => (int)$s['users'], 'products' => (int)($s['products'] ?? 0), 'revenue' => (float)$s['revenue'], 'revenue_fmt' => store_money((float)$s['revenue'], (string)($s['currency'] ?? 'TRY')), 'status' => $s['status'], 'created' => $s['created_at']], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'>
         <div class="panel-card__body" style="flex:1;display:flex;flex-direction:column;">
             <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.8rem">
                 <div style="width:46px;height:46px;flex:none;background:linear-gradient(135deg,rgba(255,122,26,.2),rgba(255,60,17,.1));border:1px solid rgba(255,122,26,.35);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#ff7a1a;font-size:18px;"><i class="fas fa-store"></i></div>
@@ -162,11 +162,11 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
             <div style="display:flex;gap:1rem;font-size:13px;color:#9aa3ac;margin-bottom:.9rem">
                 <span title="Users"><i class="fas fa-users"></i> <?= (int)$s['users'] ?></span>
                 <span title="Products"><i class="fas fa-box"></i> <?= (int)($s['products'] ?? 0) ?></span>
-                <span title="Revenue"><i class="fas fa-chart-line"></i> <?= number_format((float)$s['revenue'], 2) ?></span>
+                <span title="Revenue"><i class="fas fa-chart-line"></i> <?= htmlspecialchars(store_money((float)$s['revenue'], (string)($s['currency'] ?? 'TRY'))) ?></span>
             </div>
             <div style="display:flex;gap:8px;margin-top:auto;">
-                <a class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($s['domain']) ?>/admin/dashboard.php" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fas fa-gauge"></i> Admin</a>
-                <a class="btn btn-primary btn-sm" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($s['domain']) ?>" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fas fa-arrow-up-right-from-square"></i> Visit</a>
+                <a class="btn-panel" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($s['domain']) ?>/admin/dashboard.php" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fas fa-gauge"></i> Admin</a>
+                <a class="btn-panel btn-cyan" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($s['domain']) ?>" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fas fa-arrow-up-right-from-square"></i> Visit</a>
             </div>
         </div>
     </div>
@@ -175,7 +175,7 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
 <?php endif; ?>
 
 <?php if (!$hasFree): ?>
-<button class="btn btn-primary" id="nxNewStoreBtn"><i class="fas fa-plus"></i> New Free Store</button>
+<button class="btn-panel btn-cyan" id="nxNewStoreBtn"><i class="fas fa-plus"></i> New Free Store</button>
 <?php else: ?>
 <p style="font-size:13px;color:#9aa3ac;"><i class="fas fa-circle-info"></i> Free plan includes 1 store. Upgrade your plan for more stores.</p>
 <?php endif; ?>
@@ -195,8 +195,8 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
             <div id="nxSlugMsg" style="font-size:12px;min-height:18px;margin-bottom:10px;"></div>
             <div id="nxTsWrap" style="margin-bottom:14px;"><?php require_once __DIR__ . '/../core/turnstile.php'; if (function_exists('turnstile_widget')) { echo turnstile_widget('nxTs'); echo turnstile_script(); } ?></div>
             <div style="display:flex;gap:10px;">
-                <button class="btn btn-ghost" id="nxSmCancel" style="flex:1;">Cancel</button>
-                <button class="btn btn-primary" id="nxSmCreate" style="flex:2;" disabled>Create Store</button>
+                <button class="btn-panel" id="nxSmCancel" style="flex:1;">Cancel</button>
+                <button class="btn-panel btn-cyan" id="nxSmCreate" style="flex:2;" disabled>Create Store</button>
             </div>
         </div>
         <div id="nxSmStep2" style="display:none;text-align:center;padding:10px 0;">
@@ -208,8 +208,8 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
                 <div data-ps="done" style="display:flex;gap:10px;align-items:center;font-size:14px;opacity:.45;"><span class="nx-ps-ic">⏳</span><span>Store live</span></div>
             </div>
             <div id="nxProgMsg" style="font-size:13px;color:#9aa3ac;min-height:20px;"></div>
-            <div id="nxProgLink" style="display:none;margin-top:12px;"><a class="btn btn-primary" id="nxProgA" href="#" target="_blank" rel="noopener">Visit Your Store</a></div>
-            <div style="margin-top:12px;"><button class="btn btn-ghost" id="nxSmClose2">Close</button></div>
+            <div id="nxProgLink" style="display:none;margin-top:12px;"><a class="btn-panel btn-cyan" id="nxProgA" href="#" target="_blank" rel="noopener">Visit Your Store</a></div>
+            <div style="margin-top:12px;"><button class="btn-panel" id="nxSmClose2">Close</button></div>
         </div>
     </div>
 </div>
@@ -249,9 +249,9 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly −20%</option>
             </select>
-            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-credit-card"></i> Upgrade</button>
+            <button type="submit" class="btn-panel btn-cyan"><i class="fas fa-credit-card"></i> Upgrade</button>
         </form>
-        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;color:#f87171;" onclick="openStoreDelete()"><i class="fas fa-trash"></i> Delete Store</button>
+        <button class="btn-panel" style="width:100%;justify-content:center;color:#f87171;" onclick="openStoreDelete()"><i class="fas fa-trash"></i> Delete Store</button>
     </div>
 </div>
 
@@ -262,8 +262,8 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
         <input id="nxDelPass" type="password" placeholder="Your password" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;outline:none;margin-bottom:12px;">
         <div id="nxDelMsg" style="font-size:12px;min-height:18px;margin-bottom:8px;"></div>
         <div style="display:flex;gap:10px;">
-            <button class="btn btn-ghost" id="nxDelCancel" style="flex:1;">Cancel</button>
-            <button class="btn btn-primary" id="nxDelGo" style="flex:1;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171;">Delete Forever</button>
+            <button class="btn-panel" id="nxDelCancel" style="flex:1;">Cancel</button>
+            <button class="btn-panel" id="nxDelGo" style="flex:1;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171;">Delete Forever</button>
         </div>
     </div>
 </div>
@@ -338,7 +338,7 @@ window.openStoreDetail=function(r){
   NXD=r;
   document.getElementById('nxdDomain').textContent=r.domain||'-';
   document.getElementById('nxdPlan').textContent=(r.plan||'-')+' plan';
-  document.getElementById('nxdRevenue').textContent=Number(r.revenue||0).toFixed(2);
+  document.getElementById('nxdRevenue').textContent=r.revenue_fmt||Number(r.revenue||0).toFixed(2);
   document.getElementById('nxdProducts').textContent=r.products||0;
   document.getElementById('nxdUsers').textContent=r.users||0;
   var exp='Free forever';
