@@ -58,8 +58,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
         $st->execute([$slug]);
         if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'Subdomain taken.']);
-        $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,'free',?,?,?,'en','provision','pending')");
-        $ins->execute([$uid, $slug, $uemail, $name]);
+        try {
+            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,'free',?,?,?,'en','provision','pending')");
+            $ins->execute([$uid, $slug, $uemail, $name]);
+        } catch (Exception $e2) {
+            stores_json(['ok' => false, 'msg' => 'Subdomain taken.']);
+        }
         stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId()]);
     } catch (Exception $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
@@ -85,8 +89,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND kind='delete' AND status IN ('pending','claimed') LIMIT 1");
         $st->execute([$slug]);
         if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'Delete already queued.']);
-        $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,'free',?,'','en','delete','pending')");
-        $ins->execute([$uid, $slug, $uemail]);
+        try {
+            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,'free',?,'','en','delete','pending')");
+            $ins->execute([$uid, $slug, $uemail]);
+        } catch (Exception $e2) {
+            stores_json(['ok' => false, 'msg' => 'Delete already queued.']);
+        }
         stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId()]);
     } catch (Exception $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
@@ -101,7 +109,7 @@ if (isset($_GET['check'])) {
     if (in_array($slug, $reserved, true)) stores_json(['ok' => true, 'available' => false, 'msg' => 'reserved']);
     try {
         $st = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
-        $st->execute(['%' . $slug . '.vexaris.net%']);
+        $st->execute(['%"' . $slug . '.vexaris.net"%']);
         if ($st->fetch()) stores_json(['ok' => true, 'available' => false, 'msg' => 'taken']);
         $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
         $st->execute([$slug]);

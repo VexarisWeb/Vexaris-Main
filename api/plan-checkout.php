@@ -30,8 +30,17 @@ if (!whop_payments_enabled()) {
     header('Location: /pricing?err=disabled');
     exit;
 }
+$upSlug = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim((string)($_POST['store_slug'] ?? ''))));
 $pdo = db();
 if (!$pdo) $fail();
+if ($upSlug !== '') {
+    try {
+        $uemail = strtolower(trim((string)(current_user()['email'] ?? '')));
+        $st = $pdo->prepare("SELECT id FROM hosted_stores WHERE slug=? AND (user_id=? OR owner=?) LIMIT 1");
+        $st->execute([$upSlug, $uid, $uemail]);
+        if (!$st->fetch()) $upSlug = '';
+    } catch (Exception $e) { $upSlug = ''; }
+}
 
 try {
     $amount = $cycle === 'yearly' ? $offers[$plan]['y'] : $offers[$plan]['m'];
@@ -50,7 +59,7 @@ try {
 
     $returnUrl = 'https://vexaris.net/dashboard/orders?paid=1&order=' . urlencode($orderNo);
     $res = whop_create_plan_checkout($plan, $cycle,
-        ['order_no' => $orderNo, 'user_id' => (string)$uid, 'plan' => $plan, 'cycle' => $cycle, 'store_slug' => preg_replace('/[^a-z0-9\-]/', '', strtolower(trim((string)($_POST['store_slug'] ?? ''))))],
+        ['order_no' => $orderNo, 'user_id' => (string)$uid, 'plan' => $plan, 'cycle' => $cycle, 'store_slug' => $upSlug],
         $returnUrl);
     if (!empty($res['error']) || empty($res['url'])) {
         $pdo->prepare("UPDATE orders SET status = 'failed' WHERE order_no = ?")->execute([$orderNo]);

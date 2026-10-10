@@ -28,7 +28,7 @@ if ($action === 'check') {
     }
     try {
         $st = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
-        $st->execute(['%' . $slug . '.vexaris.net%']);
+        $st->execute(['%"' . $slug . '.vexaris.net"%']);
         if ($st->fetch()) {
             echo json_encode(['ok' => false, 'available' => false, 'msg' => 'taken']);
             exit;
@@ -67,6 +67,20 @@ if (!hash_equals(hash_hmac('sha256', $payload, $secret), $sig)) {
     echo json_encode(['ok' => false, 'msg' => 'bad signature']);
     exit;
 }
+try {
+    $nz = $pdo->prepare("SELECT id FROM license_nonces WHERE nonce=? LIMIT 1");
+    $nz->execute([$nonce]);
+    if ($nz->fetch()) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'msg' => 'nonce used']);
+        exit;
+    }
+    $pdo->prepare("INSERT INTO license_nonces (nonce) VALUES (?)")->execute([$nonce]);
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'msg' => 'server error']);
+    exit;
+}
 if ($domain === '' || strlen($domain) > 253) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'msg' => 'bad domain']);
@@ -82,7 +96,7 @@ try {
         $customer = mb_substr(trim((string)($_POST['customer'] ?? $domain)), 0, 255);
         if ($customer === '') $customer = $domain;
         $ck = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
-        $ck->execute(['%' . $domain . '%']);
+        $ck->execute(['%\"' . $domain . '\"%']);
         $row = $ck->fetch();
         $features = json_encode(hosting_features($plan));
         if ($row) {
@@ -105,7 +119,7 @@ try {
             exit;
         }
         $st = $pdo->prepare("SELECT id, features FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
-        $st->execute(['%' . $domain . '%']);
+        $st->execute(['%\"' . $domain . '\"%']);
         $row = $st->fetch();
         if (!$row) {
             http_response_code(404);
@@ -119,7 +133,7 @@ try {
     }
     if ($action === 'suspend' || $action === 'unsuspend') {
         $st = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
-        $st->execute(['%' . $domain . '%']);
+        $st->execute(['%\"' . $domain . '\"%']);
         $row = $st->fetch();
         if (!$row) {
             http_response_code(404);
@@ -190,7 +204,7 @@ try {
                 $pdo->prepare("DELETE FROM hosted_stores WHERE slug=?")->execute([$jobSlug]);
             } catch (Exception $e2) {}
             try {
-                $pdo->prepare("UPDATE licenses SET status='suspended' WHERE allowed_domains LIKE ?")->execute(['%' . $jobSlug . '.vexaris.net%']);
+                $pdo->prepare("UPDATE licenses SET status='suspended' WHERE allowed_domains LIKE ?")->execute(['%"' . $jobSlug . '.vexaris.net"%']);
             } catch (Exception $e2) {}
             if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
                 hosting_mail($pdo, $jobOwner, 'Your store has been deleted — Vexaris', hosting_deleted_html($jobSlug));
