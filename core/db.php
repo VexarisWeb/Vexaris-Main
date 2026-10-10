@@ -267,6 +267,8 @@ function run_migrations(): void {
             suspended_until DATETIME NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         ensure_column($pdo, 'licenses', 'user_id', '`user_id` INT UNSIGNED NULL');
+        ensure_column($pdo, 'hosting_jobs', 'kind', "`kind` VARCHAR(20) NOT NULL DEFAULT 'provision'");
+        ensure_column($pdo, 'hosted_stores', 'products', '`products` INT NOT NULL DEFAULT 0');
         try {
             $hasIdx = $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'licenses' AND INDEX_NAME = 'idx_lic_user'")->fetchColumn();
             if (!(int)$hasIdx) $pdo->exec("ALTER TABLE `licenses` ADD KEY `idx_lic_user` (`user_id`)");

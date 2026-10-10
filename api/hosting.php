@@ -135,7 +135,7 @@ try {
         exit;
     }
     if ($action === 'jobs') {
-        $st = $pdo->prepare("SELECT id, slug, plan, owner, site_name, lang FROM hosting_jobs WHERE status='pending' OR (status='claimed' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)) ORDER BY id ASC LIMIT 5");
+        $st = $pdo->prepare("SELECT id, slug, plan, owner, site_name, lang, kind FROM hosting_jobs WHERE status='pending' OR (status='claimed' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)) ORDER BY id ASC LIMIT 5");
         $st->execute();
         $rows = $st->fetchAll();
         $ids = [];
@@ -152,6 +152,7 @@ try {
         $msg = mb_substr(trim((string)($_POST['message'] ?? '')), 0, 255);
         $users = max(0, (int)($_POST['users'] ?? 0));
         $revenue = max(0, (float)($_POST['revenue'] ?? 0));
+        $products = max(0, (int)($_POST['products'] ?? 0));
         $st = $pdo->prepare("SELECT * FROM hosting_jobs WHERE id=? LIMIT 1");
         $st->execute([$jobId]);
         $job = $st->fetch();
@@ -162,9 +163,26 @@ try {
         }
         $pdo->prepare("UPDATE hosting_jobs SET status=?, last_msg=? WHERE id=?")
             ->execute([$ok ? 'done' : 'failed', $msg, $jobId]);
-        if ($ok) {
+        $jobKind = (string)($job['kind'] ?? 'provision');
+        $jobOwner = (string)($job['owner'] ?? '');
+        $jobSlug = (string)($job['slug'] ?? '');
+        $jobPlan = (string)($job['plan'] ?? 'free');
+        if ($ok && $jobKind === 'delete') {
+            try {
+                $pdo->prepare("DELETE FROM hosted_stores WHERE slug=?")->execute([$jobSlug]);
+            } catch (Exception $e2) {}
+            try {
+                $pdo->prepare("UPDATE licenses SET status='suspended' WHERE allowed_domains LIKE ?")->execute(['%' . $jobSlug . '.vexaris.net%']);
+            } catch (Exception $e2) {}
+            if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
+                hosting_mail($pdo, $jobOwner, 'Your store has been deleted — Vexaris', hosting_deleted_html($jobSlug));
+            }
+        } elseif ($ok) {
             $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, owner, users, revenue, status, reported_at) VALUES (?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), status='active', reported_at=NOW()")
-                ->execute([(int)($job['user_id'] ?? 0), (string)$job['slug'], (string)$job['slug'] . '.vexaris.net', (string)$job['plan'], (string)$job['owner'], $users, $revenue]);
+                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.net', $jobPlan, $jobOwner, $users, $revenue, $products]);
+            if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
+                hosting_mail($pdo, $jobOwner, 'Your store is ready — Vexaris', hosting_created_html($jobSlug, $jobPlan));
+            }
         }
         echo json_encode(['ok' => true, 'msg' => 'recorded']);
         exit;
@@ -180,7 +198,7 @@ try {
             if ($slug === '') continue;
             $plan = strtolower((string)($s['plan'] ?? 'free'));
             if (!in_array($plan, $plans, true)) $plan = 'free';
-            $up->execute([$slug, $slug . '.vexaris.net', $plan, mb_substr((string)($s['owner'] ?? ''), 0, 190), max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0))]);
+            $up->execute([$slug, $slug . '.vexaris.net', $plan, mb_substr((string)($s['owner'] ?? ''), 0, 190), max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0)), max(0, (int)($s['products'] ?? 0))]);
             $n++;
         }
         echo json_encode(['ok' => true, 'msg' => 'reported', 'count' => $n]);
@@ -213,6 +231,34 @@ function hosting_features(string $plan): array {
     ];
     $f['plan'] = $plan;
     return $f;
+}
+
+function hosting_mail(?PDO $pdo, string $to, string $subject, string $html): void {
+    if (!$pdo || $to === '') return;
+    try {
+        require_once __DIR__ . '/../core/mail.php';
+        if (function_exists('mail_send')) mail_send($pdo, $to, $subject, $html);
+    } catch (Exception $e) {}
+}
+
+function hosting_created_html(string $slug, string $plan): string {
+    $url = 'https://' . $slug . '.vexaris.net';
+    return '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#0d1b3e;border-radius:16px;overflow:hidden;">'
+        . '<div style="padding:28px;text-align:center;background:linear-gradient(135deg,#ff7a1a,#ff3c11);color:#fff;"><h1 style="margin:0;font-size:22px;">Your store is ready!</h1></div>'
+        . '<div style="padding:26px;color:#e8eaf6;font-size:14px;line-height:1.7;">'
+        . '<p style="margin:0 0 12px;">Your <strong>' . htmlspecialchars(ucfirst($plan)) . '</strong> store is live:</p>'
+        . '<p style="margin:0 0 18px;"><a href="' . htmlspecialchars($url) . '" style="color:#8cb8ff;font-weight:700;">' . htmlspecialchars($slug . '.vexaris.net') . '</a></p>'
+        . '<p style="margin:0;color:#9aa3ac;font-size:13px;">Manage it anytime from your dashboard under My Stores.</p>'
+        . '</div></div>';
+}
+
+function hosting_deleted_html(string $slug): string {
+    return '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#0d1b3e;border-radius:16px;overflow:hidden;">'
+        . '<div style="padding:28px;text-align:center;background:linear-gradient(135deg,#3a4356,#1c2333);color:#fff;"><h1 style="margin:0;font-size:22px;">Store deleted</h1></div>'
+        . '<div style="padding:26px;color:#e8eaf6;font-size:14px;line-height:1.7;">'
+        . '<p style="margin:0 0 12px;">Your store <strong>' . htmlspecialchars($slug . '.vexaris.net') . '</strong> and all its data have been permanently deleted.</p>'
+        . '<p style="margin:0;color:#9aa3ac;font-size:13px;">You can create a new free store anytime from your dashboard.</p>'
+        . '</div></div>';
 }
 
 function hosting_reserved(string $slug): bool {

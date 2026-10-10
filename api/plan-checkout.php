@@ -50,7 +50,7 @@ try {
 
     $returnUrl = 'https://vexaris.net/dashboard/orders?paid=1&order=' . urlencode($orderNo);
     $res = whop_create_plan_checkout($plan, $cycle,
-        ['order_no' => $orderNo, 'user_id' => (string)$uid, 'plan' => $plan, 'cycle' => $cycle],
+        ['order_no' => $orderNo, 'user_id' => (string)$uid, 'plan' => $plan, 'cycle' => $cycle, 'store_slug' => preg_replace('/[^a-z0-9\-]/', '', strtolower(trim((string)($_POST['store_slug'] ?? ''))))],
         $returnUrl);
     if (!empty($res['error']) || empty($res['url'])) {
         $pdo->prepare("UPDATE orders SET status = 'failed' WHERE order_no = ?")->execute([$orderNo]);

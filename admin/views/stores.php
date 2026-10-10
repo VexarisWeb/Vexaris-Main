@@ -1,5 +1,45 @@
 <?php
 $db = db();
+$planMsg = '';
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action'] ?? '') === 'set-plan')) {
+    $tok = (string)($_POST['_csrf'] ?? '');
+    $sess = (string)($_SESSION['csrf'] ?? '');
+    if ($sess !== '' && $tok !== '' && hash_equals($sess, $tok)) {
+        $sid = (int)($_POST['store_id'] ?? 0);
+        $nplan = strtolower(trim((string)($_POST['plan'] ?? '')));
+        if (!in_array($nplan, ['free', 'starter', 'professional', 'enterprise'], true)) {
+            $planMsg = 'Invalid plan.';
+        } else {
+            try {
+                $st = $db->prepare("SELECT slug, owner, user_id FROM hosted_stores WHERE id=? LIMIT 1");
+                $st->execute([$sid]);
+                $row = $st->fetch();
+                if (!$row) {
+                    $planMsg = 'Store not found.';
+                } else {
+                    $slug = (string)$row['slug'];
+                    $st = $db->prepare("SELECT id, features FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
+                    $st->execute(['%' . $slug . '.vexaris.net%']);
+                    $lic = $st->fetch();
+                    if ($lic) {
+                        $f = json_decode((string)$lic['features'], true);
+                        if (!is_array($f)) $f = [];
+                        $f['plan'] = $nplan;
+                        $db->prepare("UPDATE licenses SET features=? WHERE id=?")->execute([json_encode($f), (int)$lic['id']]);
+                    }
+                    $db->prepare("UPDATE hosted_stores SET plan=? WHERE id=?")->execute([$nplan, $sid]);
+                    $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,?,?,?,?,'en','provision','pending')")
+                        ->execute([(int)($row['user_id'] ?? 0), $slug, $nplan, (string)($row['owner'] ?? ''), $slug]);
+                    $planMsg = 'OK: plan set to ' . $nplan . ', limits queued.';
+                }
+            } catch (Exception $e) {
+                $planMsg = 'Server error.';
+            }
+        }
+    } else {
+        $planMsg = 'Invalid request.';
+    }
+}
 $rows = [];
 try {
     $rows = $db->query("SELECT id, user_id, slug, domain, plan, owner, users, revenue, status, reported_at, created_at FROM hosted_stores ORDER BY id DESC LIMIT 200")->fetchAll();
@@ -12,6 +52,9 @@ foreach ($rows as $r) { $totalRev += (float)$r['revenue']; $totalUsers += (int)$
     <h1>Mağazalar</h1>
     <p><?= count($rows) ?> store · <?= $totalUsers ?> users · <?= number_format($totalRev, 2) ?> revenue</p>
 </div>
+<?php if ($planMsg !== ''): ?>
+<div style="background:<?= strncmp($planMsg, 'OK', 2) === 0 ? 'rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#4ade80' : 'rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#f87171' ?>;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;margin-bottom:20px;"><?= htmlspecialchars($planMsg) ?></div>
+<?php endif; ?>
 <div class="panel">
     <div class="table-wrap">
         <table>
@@ -34,7 +77,19 @@ foreach ($rows as $r) { $totalRev += (float)$r['revenue']; $totalUsers += (int)$
                 <tr>
                     <td><?= (int)$r['id'] ?></td>
                     <td><a href="https://<?= htmlspecialchars($r['domain']) ?>" target="_blank" rel="noopener" style="color:var(--cyan);font-weight:600;"><?= htmlspecialchars($r['domain']) ?></a></td>
-                    <td><span style="text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.05em;"><?= htmlspecialchars($r['plan']) ?></span></td>
+                    <td><span style="text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.05em;"><?= htmlspecialchars($r['plan']) ?></span>
+                        <form method="POST" action="/admin?tab=stores" style="margin:4px 0 0;display:flex;gap:4px;">
+                            <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf ?? '') ?>">
+                            <input type="hidden" name="store_action" value="set-plan">
+                            <input type="hidden" name="store_id" value="<?= (int)$r['id'] ?>">
+                            <select name="plan" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;padding:4px 6px;outline:none;">
+                                <?php foreach (['free','starter','professional','enterprise'] as $po): ?>
+                                <option value="<?= $po ?>" <?= ($r['plan'] ?? '') === $po ? 'selected' : '' ?>><?= ucfirst($po) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="btn btn-ghost btn-sm" title="Save plan"><i class="fas fa-check"></i></button>
+                        </form>
+                    </td>
                     <td class="text-muted" style="font-size:13px;"><?= htmlspecialchars($r['owner']) ?></td>
                     <td><?= (int)$r['users'] ?></td>
                     <td><?= number_format((float)$r['revenue'], 2) ?></td>
