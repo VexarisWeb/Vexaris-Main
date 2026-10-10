@@ -53,6 +53,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token()) ?>">
     <title>Dashboard — Vexaris</title>
     <link rel="icon" type="image/png" href="/assets/images/vexaris-logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">

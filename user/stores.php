@@ -38,11 +38,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
     if ($name === '' || strlen($slug) < 3 || strlen($slug) > 40) {
         stores_json(['ok' => false, 'msg' => 'Invalid name or subdomain.']);
     }
-    $reserved = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise'];
+    $reserved = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise','vexaris','mustafa8907'];
     if (in_array($slug, $reserved, true)) {
         stores_json(['ok' => false, 'msg' => 'This subdomain is reserved.']);
     }
     try {
+        $st = $pdo->prepare("SELECT id FROM users WHERE username=? LIMIT 1");
+        $st->execute([$slug]);
+        if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'This subdomain is reserved.']);
         $st = $pdo->prepare("SELECT COUNT(*) FROM hosted_stores WHERE (user_id=? OR owner=?) AND plan='free' AND status='active'");
         $st->execute([$uid, $uemail]);
         $have = (int)$st->fetchColumn();
@@ -105,11 +108,14 @@ if (isset($_GET['check'])) {
     $slug = strtolower(trim((string)($_GET['slug'] ?? '')));
     $slug = preg_replace('/[^a-z0-9\-]/', '', $slug);
     if (strlen($slug) < 3 || strlen($slug) > 40) stores_json(['ok' => true, 'available' => false, 'msg' => 'length']);
-    $reserved = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise'];
+    $reserved = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise','vexaris','mustafa8907'];
     if (in_array($slug, $reserved, true)) stores_json(['ok' => true, 'available' => false, 'msg' => 'reserved']);
     try {
         $st = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
         $st->execute(['%"' . $slug . '.vexaris.net"%']);
+        if ($st->fetch()) stores_json(['ok' => true, 'available' => false, 'msg' => 'taken']);
+        $st = $pdo->prepare("SELECT id FROM users WHERE username=? LIMIT 1");
+        $st->execute([$slug]);
         if ($st->fetch()) stores_json(['ok' => true, 'available' => false, 'msg' => 'taken']);
         $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
         $st->execute([$slug]);

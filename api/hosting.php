@@ -33,6 +33,12 @@ if ($action === 'check') {
             echo json_encode(['ok' => false, 'available' => false, 'msg' => 'taken']);
             exit;
         }
+        $st = $pdo->prepare("SELECT id FROM users WHERE username=? LIMIT 1");
+        $st->execute([$slug]);
+        if ($st->fetch()) {
+            echo json_encode(['ok' => false, 'available' => false, 'msg' => 'taken']);
+            exit;
+        }
         $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
         $st->execute([$slug]);
         if ($st->fetch()) {
@@ -328,7 +334,7 @@ function hosting_deleted_html(string $slug): string {
 }
 
 function hosting_reserved(string $slug): bool {
-    static $r = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise'];
+    static $r = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise','vexaris','mustafa8907'];
     return in_array(strtolower($slug), $r, true);
 }
 
