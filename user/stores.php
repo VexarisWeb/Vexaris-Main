@@ -46,28 +46,33 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st = $pdo->prepare("SELECT id FROM users WHERE username=? LIMIT 1");
         $st->execute([$slug]);
         if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'This subdomain is reserved.']);
-        $st = $pdo->prepare("SELECT COUNT(*) FROM hosted_stores WHERE (user_id=? OR owner=?) AND plan='free' AND status='active'");
+        $pdo->beginTransaction();
+        $st = $pdo->prepare("SELECT COUNT(*) FROM hosted_stores WHERE (user_id=? OR owner=?) AND plan='free' AND status='active' FOR UPDATE");
         $st->execute([$uid, $uemail]);
         $have = (int)$st->fetchColumn();
-        $st = $pdo->prepare("SELECT COUNT(*) FROM hosting_jobs WHERE user_id=? AND plan='free' AND status IN ('pending','claimed')");
+        $st = $pdo->prepare("SELECT COUNT(*) FROM hosting_jobs WHERE user_id=? AND plan='free' AND status IN ('pending','claimed') FOR UPDATE");
         $st->execute([$uid]);
         $have += (int)$st->fetchColumn();
         if ($have >= 1) {
+            $pdo->rollBack();
             stores_json(['ok' => false, 'msg' => 'Free plan includes 1 store. Upgrade for more.']);
         }
-        $st = $pdo->prepare("SELECT id FROM hosted_stores WHERE slug=? LIMIT 1");
+        $st = $pdo->prepare("SELECT id FROM hosted_stores WHERE slug=? LIMIT 1 FOR UPDATE");
         $st->execute([$slug]);
-        if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'Subdomain taken.']);
-        $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
+        if ($st->fetch()) { $pdo->rollBack(); stores_json(['ok' => false, 'msg' => 'Subdomain taken.']); }
+        $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1 FOR UPDATE");
         $st->execute([$slug]);
-        if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'Subdomain taken.']);
+        if ($st->fetch()) { $pdo->rollBack(); stores_json(['ok' => false, 'msg' => 'Subdomain taken.']); }
         try {
-            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,'free',?,?,?,'en','provision','pending')");
+            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,?, 'free',?,?,'en','provision','pending')");
             $ins->execute([$uid, $slug, $uemail, $name]);
+            $jid = (int)$pdo->lastInsertId();
+            $pdo->commit();
         } catch (Exception $e2) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
             stores_json(['ok' => false, 'msg' => 'Subdomain taken.']);
         }
-        stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId()]);
+        stores_json(['ok' => true, 'job_id' => $jid]);
     } catch (Exception $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
     }
@@ -93,7 +98,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st->execute([$slug]);
         if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'Delete already queued.']);
         try {
-            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,'free',?,'','en','delete','pending')");
+            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,?,'free',?,'','en','delete','pending')");
             $ins->execute([$uid, $slug, $uemail]);
         } catch (Exception $e2) {
             stores_json(['ok' => false, 'msg' => 'Delete already queued.']);
@@ -221,7 +226,19 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
             </div>
         </div>
         <div id="nxSmStep2" style="display:none;text-align:center;padding:10px 0;">
-            <h3 style="margin:0 0 16px;font-size:18px;font-weight:800;">Creating your store…</h3>
+            <h3 style="margin:0 0 4px;font-size:18px;font-weight:800;">Creating your store…</h3>
+            <p id="nxProgStore" style="font-size:13px;color:#8cb8ff;margin:0 0 14px;font-weight:700;"></p>
+            <div style="position:relative;width:120px;height:120px;margin:0 auto 14px;">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="10"/>
+                    <circle id="nxProgRing" cx="60" cy="60" r="52" fill="none" stroke="url(#nxGrad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .6s ease;"/>
+                    <defs><linearGradient id="nxGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7a1a"/><stop offset="1" stop-color="#2bd4ff"/></linearGradient></defs>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                    <span id="nxProgPct" style="font-size:24px;font-weight:900;">0%</span>
+                    <span id="nxProgSec" style="font-size:11px;color:#9aa3ac;">0s</span>
+                </div>
+            </div>
             <div id="nxProgSteps" style="text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:8px;">
                 <div data-ps="queue" style="display:flex;gap:10px;align-items:center;font-size:14px;"><span class="nx-ps-ic"><i class="fas fa-clock" style="color:#64748b;"></i></span><span>Queued</span></div>
                 <div data-ps="db" style="display:flex;gap:10px;align-items:center;font-size:14px;opacity:.45;"><span class="nx-ps-ic"><i class="fas fa-clock" style="color:#64748b;"></i></span><span>Database ready</span></div>
@@ -320,6 +337,13 @@ if(createBtn){createBtn.addEventListener('click',function(){
   if(!slugOk)return;
   createBtn.disabled=true;
   createBtn.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Creating…';
+  nxResetProg();
+  progT0=Date.now();
+  clearInterval(progTick);
+  progTick=setInterval(function(){document.getElementById('nxProgSec').textContent=Math.floor((Date.now()-progT0)/1000)+'s';},500);
+  var nm=document.getElementById('nxStoreName').value;
+  document.getElementById('nxProgStore').textContent=(nm?nm+' · ':'')+slugIn.value+'.vexaris.net';
+  nxPct(5);
   document.getElementById('nxSmStep1').style.display='none';
   document.getElementById('nxSmStep2').style.display='block';
   setStep('queue','run');
@@ -345,7 +369,19 @@ function backToForm(msg){
   document.getElementById('nxProgLink').style.display='none';
   if(msg){alert(msg);}
 }
-var progTimer=null;
+var progTimer=null,progT0=0,progTick=null;
+function nxPct(p){
+  p=Math.max(0,Math.min(100,Math.round(p)));
+  document.getElementById('nxProgPct').textContent=p+'%';
+  document.getElementById('nxProgRing').style.strokeDashoffset=(326.7*(1-p/100)).toFixed(1);
+}
+function nxResetProg(){
+  nxPct(0);
+  document.getElementById('nxProgSec').textContent='0s';
+  document.getElementById('nxProgStore').textContent='';
+  var rows=document.querySelectorAll('#nxProgSteps [data-ps]');
+  rows.forEach(function(r){r.style.opacity='.45';r.querySelector('.nx-ps-ic').innerHTML='<i class="fas fa-clock" style="color:#64748b;"></i>';});
+}
 function setStep(id,state){
   var rows=document.querySelectorAll('#nxProgSteps [data-ps]');
   rows.forEach(function(r){
@@ -363,10 +399,10 @@ function startProgress(job){
     fetch('/dashboard/stores?check_job='+job).then(function(r){return r.json()}).then(function(d){
       if(!d||!d.ok){msg.textContent='Error checking status.';return;}
       var st=d.status;
-      if(st==='pending'){msg.textContent='Queued…';}
-      else if(st==='claimed'){setStep('queue','done');setStep('db','run');setStep('build','run');msg.textContent='Building database and container…';}
-      else if(st==='done'){clearInterval(progTimer);setStep('queue','done');setStep('db','done');setStep('build','done');setStep('done','done');msg.textContent='Ready!';var l=document.getElementById('nxProgLink');l.style.display='block';document.getElementById('nxProgA').href='https://'+d.domain;}
-      else if(st==='failed'){clearInterval(progTimer);msg.textContent='Failed: '+(d.message||'error');}
+      if(st==='pending'){nxPct(12);msg.textContent='Queued…';}
+      else if(st==='claimed'){nxPct(45);setStep('queue','done');setStep('db','run');setStep('build','run');msg.textContent='Building database and container…';}
+      else if(st==='done'){clearInterval(progTimer);clearInterval(progTick);nxPct(100);setStep('queue','done');setStep('db','done');setStep('build','done');setStep('done','done');msg.textContent='Ready!';var l=document.getElementById('nxProgLink');l.style.display='block';document.getElementById('nxProgA').href='https://'+d.domain;}
+      else if(st==='failed'){clearInterval(progTimer);clearInterval(progTick);msg.textContent='Failed: '+(d.message||'error');}
     }).catch(function(){});
   },1500);
 }
