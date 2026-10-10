@@ -11,6 +11,7 @@ $tabPermissions = [
     'users'       => 'users',
     'products'    => 'products',
     'licenses'    => 'licenses',
+    'stores'      => 'licenses',
     'versions'    => 'versions',
     'demo'        => 'demo',
     'settings'    => 'settings',
