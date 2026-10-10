@@ -36,14 +36,18 @@ if ($pdo) {
                     <td style="color:rgba(255,255,255,.45);font-size:.8rem"><?= date('d.m.Y H:i', strtotime($p['granted_at'])) ?></td>
                     <td style="text-align:right">
                         <?php $isUpdate = !empty($p['latest_version']) && (strtotime($p['granted_at']) < strtotime($p['latest_version_created'] ?? $p['granted_at']) || (int)$p['indirme_sayisi']>0); ?>
+                        <?php if (setting_get('vx_downloads_off', '0') === '1'): ?>
+                        <span class="btn-panel" style="opacity:.5;cursor:not-allowed" title="Downloads are disabled"><i class="fas fa-ban"></i> Disabled</span>
+                        <?php else: ?>
                         <a href="/api/download?product_id=<?= (int)$p['id'] ?>" class="btn-panel <?= $isUpdate ? 'btn-cyan' : 'btn-green' ?>"><i class="fas fa-<?= $isUpdate ? 'arrow-rotate' : 'download' ?>"></i> <?= $isUpdate ? 'Update' : 'Download' ?></a>
+                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
         </table>
         <p style="font-size:.75rem;color:rgba(255,255,255,.35);margin-top:1rem">
-            <i class="fas fa-circle-info"></i> Each download creates a <strong>5-minute, single-use</strong> link. Click the button again to re-download.
+            <?php if (setting_get('vx_downloads_off', '0') === '1'): ?><i class="fas fa-circle-info"></i> Downloads are currently disabled.<?php else: ?><i class="fas fa-circle-info"></i> Each download creates a <strong>5-minute, single-use</strong> link. Click the button again to re-download.<?php endif; ?>
         </p>
         <?php else: ?>
             <div class="empty"><i class="fas fa-box-open"></i>No products assigned to you.</div>

@@ -4,6 +4,8 @@ boot_session();
 
 $pdo = db();
 
+try { if (setting_get('vx_downloads_off', '0') === '1') { http_response_code(403); header('Content-Type: text/plain; charset=utf-8'); echo 'Downloads are disabled.'; exit; } } catch (Throwable $e) {}
+
 if ($pdo && isset($_GET['token'])) {
     $token = trim((string)$_GET['token']);
     if ($token !== '') {

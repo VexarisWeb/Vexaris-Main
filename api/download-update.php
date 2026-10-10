@@ -6,6 +6,7 @@ function dlupd_hmac_key(): string {
 }
 
 $pdo = db();
+try { if (setting_get('vx_downloads_off', '0') === '1') { http_response_code(403); header('Content-Type: text/plain; charset=utf-8'); echo 'Downloads are disabled.'; exit; } } catch (Throwable $e) {}
 if (!$pdo) {
     http_response_code(503);
     echo json_encode(['ok' => false, 'msg' => 'unavailable']);
