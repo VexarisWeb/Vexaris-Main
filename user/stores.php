@@ -200,6 +200,7 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
 <p style="font-size:13px;color:#9aa3ac;"><i class="fas fa-circle-info"></i> Free plan includes 1 store. Upgrade your plan for more stores.</p>
 <?php endif; ?>
 
+<style>@keyframes nxPop{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}@keyframes nxFade{from{opacity:0;}to{opacity:1;}}.nx-modal-show{animation:nxFade .18s ease;}.nx-modal-show>div{animation:nxPop .22s cubic-bezier(.22,1,.36,1);}.nx-spin{animation:nxRot 1s linear infinite;}@keyframes nxRot{to{transform:rotate(360deg);}}</style>
 <div id="nxStoreModal" style="display:none;position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px;">
     <div style="width:100%;max-width:460px;background:var(--bg-card,#131929);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:18px;padding:26px;">
         <div id="nxSmStep1">
@@ -222,10 +223,10 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
         <div id="nxSmStep2" style="display:none;text-align:center;padding:10px 0;">
             <h3 style="margin:0 0 16px;font-size:18px;font-weight:800;">Creating your store…</h3>
             <div id="nxProgSteps" style="text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:8px;">
-                <div data-ps="queue" style="display:flex;gap:10px;align-items:center;font-size:14px;"><span class="nx-ps-ic">⏳</span><span>Queued</span></div>
-                <div data-ps="db" style="display:flex;gap:10px;align-items:center;font-size:14px;opacity:.45;"><span class="nx-ps-ic">⏳</span><span>Database ready</span></div>
-                <div data-ps="build" style="display:flex;gap:10px;align-items:center;font-size:14px;opacity:.45;"><span class="nx-ps-ic">⏳</span><span>Container building</span></div>
-                <div data-ps="done" style="display:flex;gap:10px;align-items:center;font-size:14px;opacity:.45;"><span class="nx-ps-ic">⏳</span><span>Store live</span></div>
+                <div data-ps="queue" style="display:flex;gap:10px;align-items:center;font-size:14px;"><span class="nx-ps-ic"><i class="fas fa-clock" style="color:#64748b;"></i></span><span>Queued</span></div>
+                <div data-ps="db" style="display:flex;gap:10px;align-items:center;font-size:14px;opacity:.45;"><span class="nx-ps-ic"><i class="fas fa-clock" style="color:#64748b;"></i></span><span>Database ready</span></div>
+                <div data-ps="build" style="display:flex;gap:10px;align-items:center;font-size:14px;opacity:.45;"><span class="nx-ps-ic"><i class="fas fa-clock" style="color:#64748b;"></i></span><span>Container building</span></div>
+                <div data-ps="done" style="display:flex;gap:10px;align-items:center;font-size:14px;opacity:.45;"><span class="nx-ps-ic"><i class="fas fa-clock" style="color:#64748b;"></i></span><span>Store live</span></div>
             </div>
             <div id="nxProgMsg" style="font-size:13px;color:#9aa3ac;min-height:20px;"></div>
             <div id="nxProgLink" style="display:none;margin-top:12px;"><a class="btn-panel btn-cyan" id="nxProgA" href="#" target="_blank" rel="noopener">Visit Your Store</a></div>
@@ -293,8 +294,8 @@ var NXD_EXPIRY = <?= json_encode($myPlan['until'] ?? 0) ?>;
 (function(){
 var modal=document.getElementById('nxStoreModal');
 var openBtn=document.getElementById('nxNewStoreBtn');
-function openM(){ if(modal){modal.style.display='flex';} }
-function closeM(){ if(modal){modal.style.display='none';} document.getElementById('nxSmStep1').style.display='block'; document.getElementById('nxSmStep2').style.display='none'; }
+function openM(){ if(modal){modal.classList.remove('nx-modal-show');void modal.offsetWidth;modal.style.display='flex';modal.classList.add('nx-modal-show');} }
+function closeM(){ if(modal){modal.classList.remove('nx-modal-show');modal.style.display='none';} document.getElementById('nxSmStep1').style.display='block'; document.getElementById('nxSmStep2').style.display='none'; }
 if(openBtn){openBtn.addEventListener('click',openM);}
 var c1=document.getElementById('nxSmCancel'); if(c1){c1.addEventListener('click',closeM);}
 var c2=document.getElementById('nxSmClose2'); if(c2){c2.addEventListener('click',closeM);}
@@ -317,6 +318,13 @@ function csrf(){var m=document.querySelector('meta[name="csrf-token"]');return m
 function tsToken(){var el=document.querySelector('#nxTsWrap [name="cf-turnstile-response"]');return el?el.value:'';}
 if(createBtn){createBtn.addEventListener('click',function(){
   if(!slugOk)return;
+  createBtn.disabled=true;
+  createBtn.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Creating…';
+  document.getElementById('nxSmStep1').style.display='none';
+  document.getElementById('nxSmStep2').style.display='block';
+  setStep('queue','run');
+  document.getElementById('nxProgMsg').textContent='Sending request…';
+  document.getElementById('nxProgLink').style.display='none';
   var fd=new FormData();
   fd.append('action','create-store');
   fd.append('store_name',document.getElementById('nxStoreName').value);
@@ -324,21 +332,29 @@ if(createBtn){createBtn.addEventListener('click',function(){
   fd.append('cf-turnstile-response',tsToken());
   createBtn.disabled=true;
   fetch('/dashboard/stores',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
-    if(d&&d.ok&&d.job_id){startProgress(d.job_id);}else{alert((d&&d.msg)||'Failed');createBtn.disabled=false;}
-  }).catch(function(){alert('Failed');createBtn.disabled=false;});
+    if(d&&d.ok&&d.job_id){startProgress(d.job_id);}else{backToForm((d&&d.msg)||'Failed');}
+  }).catch(function(){backToForm('Failed');});
 });}
+function backToForm(msg){
+  document.getElementById('nxSmStep2').style.display='none';
+  document.getElementById('nxSmStep1').style.display='block';
+  createBtn.disabled=false;
+  createBtn.innerHTML='Create Store';
+  var rows=document.querySelectorAll('#nxProgSteps [data-ps]');
+  rows.forEach(function(r){r.style.opacity='.45';r.querySelector('.nx-ps-ic').innerHTML='<i class="fas fa-clock" style="color:#64748b;"></i>';});
+  document.getElementById('nxProgLink').style.display='none';
+  if(msg){alert(msg);}
+}
 var progTimer=null;
 function setStep(id,state){
   var rows=document.querySelectorAll('#nxProgSteps [data-ps]');
   rows.forEach(function(r){
     var on=r.getAttribute('data-ps')===id;
-    if(state==='done'&&on){r.querySelector('.nx-ps-ic').textContent='✅';r.style.opacity='1';}
-    if(state==='run'&&on){r.querySelector('.nx-ps-ic').textContent='🔄';r.style.opacity='1';}
+    if(state==='done'&&on){r.querySelector('.nx-ps-ic').innerHTML='<i class="fas fa-circle-check" style="color:#4ade80;"></i>';r.style.opacity='1';}
+    if(state==='run'&&on){r.querySelector('.nx-ps-ic').innerHTML='<i class="fas fa-circle-notch nx-spin" style="color:#8cb8ff;"></i>';r.style.opacity='1';}
   });
 }
 function startProgress(job){
-  document.getElementById('nxSmStep1').style.display='none';
-  document.getElementById('nxSmStep2').style.display='block';
   setStep('queue','run');
   var msg=document.getElementById('nxProgMsg');
   msg.textContent='Queued…';
@@ -352,7 +368,7 @@ function startProgress(job){
       else if(st==='done'){clearInterval(progTimer);setStep('queue','done');setStep('db','done');setStep('build','done');setStep('done','done');msg.textContent='Ready!';var l=document.getElementById('nxProgLink');l.style.display='block';document.getElementById('nxProgA').href='https://'+d.domain;}
       else if(st==='failed'){clearInterval(progTimer);msg.textContent='Failed: '+(d.message||'error');}
     }).catch(function(){});
-  },3000);
+  },1500);
 }
 window.openStoreDetail=function(r){
   NXD=r;
@@ -377,7 +393,7 @@ window.openStoreDetail=function(r){
     d.textContent=(ok?'✓ ':'🔒 ')+t;
     th.appendChild(d);
   });
-  document.getElementById('nxDetailModal').style.display='flex';
+  var dm=document.getElementById('nxDetailModal');dm.classList.remove('nx-modal-show');void dm.offsetWidth;dm.style.display='flex';dm.classList.add('nx-modal-show');
 };
 window.closeStoreDetail=function(){document.getElementById('nxDetailModal').style.display='none';};
 window.openStoreDelete=function(){
@@ -385,7 +401,7 @@ window.openStoreDelete=function(){
   document.getElementById('nxdDelName').textContent=NXD.domain||'';
   document.getElementById('nxDelPass').value='';
   document.getElementById('nxDelMsg').textContent='';
-  document.getElementById('nxDeleteModal').style.display='flex';
+  var dl=document.getElementById('nxDeleteModal');dl.classList.remove('nx-modal-show');void dl.offsetWidth;dl.style.display='flex';dl.classList.add('nx-modal-show');
 };
 var delCancel=document.getElementById('nxDelCancel');
 if(delCancel){delCancel.addEventListener('click',function(){document.getElementById('nxDeleteModal').style.display='none';});}
