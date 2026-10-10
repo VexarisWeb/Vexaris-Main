@@ -278,6 +278,9 @@ try {
         </a>
 
         <div class="sidebar__section">Store</div>
+        <a href="/dashboard/stores" class="sidebar__link <?= $panelPage === 'stores' ? 'active' : '' ?>">
+            <i class="fas fa-store"></i> My Stores
+        </a>
         <a href="/dashboard/store" class="sidebar__link <?= $panelPage === 'store' ? 'active' : '' ?>">
             <i class="fas fa-bag-shopping"></i> Store
         </a>

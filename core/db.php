@@ -287,6 +287,39 @@ function run_migrations(): void {
             KEY idx_arl_created (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        $pdo->exec("CREATE TABLE IF NOT EXISTS hosted_stores (
+            id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+            slug       VARCHAR(40) NOT NULL,
+            domain     VARCHAR(190) NOT NULL,
+            plan       VARCHAR(20) NOT NULL DEFAULT 'free',
+            owner      VARCHAR(190) NOT NULL DEFAULT '',
+            users      INT NOT NULL DEFAULT 0,
+            revenue    DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+            status     VARCHAR(20) NOT NULL DEFAULT 'active',
+            reported_at DATETIME NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_hs_slug (slug),
+            KEY idx_hs_user (user_id),
+            KEY idx_hs_domain (domain)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS hosting_jobs (
+            id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+            slug       VARCHAR(40) NOT NULL,
+            plan       VARCHAR(20) NOT NULL DEFAULT 'free',
+            owner      VARCHAR(190) NOT NULL DEFAULT '',
+            site_name  VARCHAR(80) NOT NULL DEFAULT '',
+            lang       VARCHAR(5) NOT NULL DEFAULT 'en',
+            status     VARCHAR(20) NOT NULL DEFAULT 'pending',
+            attempts   INT NOT NULL DEFAULT 0,
+            last_msg   VARCHAR(255) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY idx_hj_status (status, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
         $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
             id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             user_id    INT UNSIGNED NOT NULL,

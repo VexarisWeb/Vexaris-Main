@@ -289,6 +289,9 @@ $csrf = csrf_token();
         <a href="/admin?tab=licenses" class="sidebar__link <?= $tab === 'licenses' ? 'active' : '' ?>">
             <i class="fas fa-key"></i> Lisanslar
         </a>
+        <a href="/admin?tab=stores" class="sidebar__link <?= $tab === 'stores' ? 'active' : '' ?>">
+            <i class="fas fa-store"></i> Mağazalar
+        </a>
         <?php endif; ?>
         <?php if (has_permission('versions')): ?>
         <a href="/admin?tab=versions" class="sidebar__link <?= $tab === 'versions' ? 'active' : '' ?>">
