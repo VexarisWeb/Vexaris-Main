@@ -269,6 +269,15 @@ function run_migrations(): void {
         ensure_column($pdo, 'licenses', 'user_id', '`user_id` INT UNSIGNED NULL');
         ensure_column($pdo, 'hosting_jobs', 'kind', "`kind` VARCHAR(20) NOT NULL DEFAULT 'provision'");
         ensure_column($pdo, 'hosting_jobs', 'owner_hash', "`owner_hash` VARCHAR(255) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosted_stores', 'site_name', "`site_name` VARCHAR(80) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosted_stores', 'traffic_bytes', "`traffic_bytes` BIGINT NOT NULL DEFAULT 0");
+        ensure_column($pdo, 'hosted_stores', 'traffic_updated', "`traffic_updated` DATETIME NULL");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS store_traffic_daily (
+            slug       VARCHAR(40) NOT NULL,
+            day        DATE NOT NULL,
+            bytes      BIGINT NOT NULL DEFAULT 0,
+            PRIMARY KEY (slug, day)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         $pdo->exec("CREATE TABLE IF NOT EXISTS store_tokens (
             id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             token      VARCHAR(64) UNIQUE NOT NULL,

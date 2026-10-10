@@ -216,8 +216,9 @@ try {
                 hosting_mail($pdo, $jobOwner, 'Your store has been deleted — Vexaris', hosting_deleted_html($jobSlug));
             }
         } elseif ($ok) {
-            $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, owner, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()")
-                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.net', $jobPlan, $jobOwner, $users, $revenue, $products, $currency]);
+            $jsite = mb_substr(trim((string)($job['site_name'] ?? '')), 0, 80);
+            $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, site_name, owner, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), site_name=VALUES(site_name), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()")
+                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.net', $jobPlan, $jsite, $jobOwner, $users, $revenue, $products, $currency]);
             if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
                 $amode = (string)($_POST['admin_mode'] ?? '');
                 if ($amode !== 'hash' && $amode !== 'generated') $amode = 'hash';
@@ -267,7 +268,8 @@ try {
         $list = json_decode((string)($_POST['stores'] ?? '[]'), true);
         if (!is_array($list)) $list = [];
         $n = 0;
-        $up = $pdo->prepare("INSERT INTO hosted_stores (slug, domain, plan, owner, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()");
+        $up = $pdo->prepare("INSERT INTO hosted_stores (slug, domain, plan, owner, users, revenue, products, currency, traffic_bytes, status, reported_at, traffic_updated) VALUES (?,?,?,?,?,?,?,?,?, 'active',NOW(),NOW()) ON DUPLICATE KEY UPDATE plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), traffic_bytes=VALUES(traffic_bytes), status='active', reported_at=NOW(), traffic_updated=NOW()");
+        $upDay = $pdo->prepare("INSERT INTO store_traffic_daily (slug, day, bytes) VALUES (?,?,?) ON DUPLICATE KEY UPDATE bytes=VALUES(bytes)");
         foreach (array_slice($list, 0, 200) as $s) {
             if (!is_array($s)) continue;
             $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower((string)($s['slug'] ?? '')));
@@ -276,9 +278,13 @@ try {
             if (!in_array($plan, $plans, true)) $plan = 'free';
             $scur = strtoupper(trim((string)($s['currency'] ?? 'TRY')));
             if (!in_array($scur, ['TRY', 'USD', 'EUR'], true)) $scur = 'TRY';
-            $up->execute([$slug, $slug . '.vexaris.net', $plan, mb_substr((string)($s['owner'] ?? ''), 0, 190), max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0)), max(0, (int)($s['products'] ?? 0)), $scur]);
+            $tmon = max(0, (int)($s['traf_month'] ?? 0));
+            $tday = max(0, (int)($s['traf_today'] ?? 0));
+            $up->execute([$slug, $slug . '.vexaris.net', $plan, mb_substr((string)($s['owner'] ?? ''), 0, 190), max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0)), max(0, (int)($s['products'] ?? 0)), $scur, $tmon]);
+            try { $upDay->execute([$slug, date('Y-m-d'), $tday]); } catch (Exception $e2) {}
             $n++;
         }
+        try { $pdo->exec("DELETE FROM store_traffic_daily WHERE day < DATE_SUB(CURDATE(), INTERVAL 35 DAY)"); } catch (Exception $e2) {}
         echo json_encode(['ok' => true, 'msg' => 'reported', 'count' => $n]);
         exit;
     }

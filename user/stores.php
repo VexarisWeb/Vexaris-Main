@@ -47,18 +47,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st->execute([$slug]);
         if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'This subdomain is reserved.']);
         $isAdmin = (int)($user['is_admin'] ?? 0) === 1;
+        $effPlan = 'free';
+        try {
+            if (function_exists('user_effective_plan')) {
+                $ep = user_effective_plan($uid);
+                $p = strtolower(trim((string)($ep['plan'] ?? 'free')));
+                if (in_array($p, ['free', 'starter', 'professional', 'enterprise'], true)) $effPlan = $p;
+            }
+        } catch (Exception $e0) {}
         $pdo->beginTransaction();
-        $st = $pdo->prepare("SELECT COUNT(*) FROM hosted_stores WHERE (user_id=? OR owner=?) AND plan='free' AND status='active' FOR UPDATE");
+        $st = $pdo->prepare("SELECT COUNT(*) FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' FOR UPDATE");
         $st->execute([$uid, $uemail]);
         $have = (int)$st->fetchColumn();
-        $st = $pdo->prepare("SELECT COUNT(*) FROM hosting_jobs WHERE user_id=? AND plan='free' AND status IN ('pending','claimed') FOR UPDATE");
+        $st = $pdo->prepare("SELECT COUNT(*) FROM hosting_jobs WHERE user_id=? AND status IN ('pending','claimed') FOR UPDATE");
         $st->execute([$uid]);
         $have += (int)$st->fetchColumn();
         if ($have >= 1 && !$isAdmin) {
             $pdo->rollBack();
-            stores_json(['ok' => false, 'msg' => 'Free plan includes 1 store. Upgrade for more.']);
+            stores_json(['ok' => false, 'msg' => 'Your plan includes 1 store. Delete it to create a new one.']);
         }
-        if (!$isAdmin) {
+        if (!$isAdmin && $effPlan === 'free') {
             $st = $pdo->prepare("SELECT COUNT(*) FROM hosting_jobs WHERE user_id=? AND plan='free' AND kind='provision' AND status='done'");
             $st->execute([$uid]);
             if ((int)$st->fetchColumn() >= 2) {
@@ -77,8 +85,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $ohash = (string)$st->fetchColumn();
         if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $ohash)) $ohash = '';
         try {
-            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?, 'free',?,?,'en','provision','pending',?)");
-            $ins->execute([$uid, $slug, $uemail, $name, $ohash]);
+            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?, ?,?,?, 'en','provision','pending',?)");
+            $ins->execute([$uid, $slug, $effPlan, $uemail, $name, $ohash]);
             $jid = (int)$pdo->lastInsertId();
             $pdo->commit();
         } catch (Exception $e2) {
@@ -162,60 +170,134 @@ if (isset($_GET['check_job'])) {
 
 require_once __DIR__ . '/_inc/header.php';
 
-$stores = [];
+$store = null;
 try {
-    $st = $pdo->prepare("SELECT id, slug, domain, plan, users, products, revenue, currency, status, reported_at, created_at FROM hosted_stores WHERE user_id=? OR owner=? ORDER BY id DESC LIMIT 50");
+    $st = $pdo->prepare("SELECT id, slug, domain, plan, site_name, users, products, revenue, currency, traffic_bytes, traffic_updated, status, reported_at, created_at FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id DESC LIMIT 1");
     $st->execute([$uid, $uemail]);
-    $stores = $st->fetchAll();
+    $store = $st->fetch() ?: null;
 } catch (Exception $e) {}
 $myPlan = function_exists('user_effective_plan') ? user_effective_plan($uid) : ['plan' => 'free', 'until' => 0];
-$hasFree = false;
-foreach ($stores as $s) {
-    if (($s['plan'] ?? '') === 'free' && ($s['status'] ?? '') === 'active') { $hasFree = true; break; }
+$planQuotaGB = ['free' => 10, 'starter' => 50, 'professional' => 200, 'enterprise' => 1000];
+$hasActive = $store !== null;
+$traf14 = [];
+if ($store) {
+    try {
+        $st = $pdo->prepare("SELECT day, bytes FROM store_traffic_daily WHERE slug=? AND day > DATE_SUB(CURDATE(), INTERVAL 14 DAY) ORDER BY day ASC");
+        $st->execute([(string)$store['slug']]);
+        foreach ($st->fetchAll() as $r) $traf14[(string)$r['day']] = (int)$r['bytes'];
+    } catch (Exception $e) {}
 }
-$planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'professional' => ['Default', 'Azure', 'Ember'], 'enterprise' => ['Default', 'Azure', 'Ember']];
+function nx_fmt_bytes($b) {
+    $b = max(0, (float)$b);
+    if ($b >= 1073741824) return number_format($b / 1073741824, 2) . ' GB';
+    if ($b >= 1048576) return number_format($b / 1048576, 1) . ' MB';
+    if ($b >= 1024) return number_format($b / 1024, 0) . ' KB';
+    return (int)$b . ' B';
+}
 ?>
 <div class="main__header">
     <h1>My Stores</h1>
     <p>One-click free store on your own subdomain.</p>
 </div>
 
-<?php if (!$stores): ?>
-<div class="panel-card"><div class="panel-card__body"><div class="empty"><i class="fas fa-store"></i>No stores yet. Create your free store in seconds.</div></div></div>
-<?php else: ?>
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.2rem;margin-bottom:1.4rem">
-<?php foreach ($stores as $s):
-    $sp = strtolower($s['plan'] ?? 'free');
-    $themes = $planThemes[$sp] ?? ['Default'];
+<?php if (!$store): ?>
+<div class="panel-card"><div class="panel-card__body" style="max-width:520px;">
+    <h3 style="margin:0 0 4px;font-size:18px;font-weight:800;"><i class="fas fa-store" style="color:#ff7a1a;margin-right:8px;"></i>Create Your Store</h3>
+    <p style="font-size:13px;color:#9aa3ac;margin:0 0 18px;">Your plan includes 1 store on its own subdomain.</p>
+    <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Store Name</label>
+    <input id="nxQName" type="text" maxlength="80" placeholder="My Awesome Store" style="width:100%;box-sizing:border-box;background:var(--bg-surface,#0f1422);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px;padding:11px 14px;color:var(--text,#e8eaf6);font-size:14px;outline:none;margin-bottom:14px;">
+    <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Subdomain</label>
+    <div style="display:flex;gap:0;margin-bottom:6px;">
+        <input id="nxQSlug" type="text" maxlength="40" placeholder="mystore" style="flex:1;min-width:0;box-sizing:border-box;background:var(--bg-surface,#0f1422);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px 0 0 10px;padding:11px 14px;color:var(--text,#e8eaf6);font-size:14px;outline:none;border-right:none;">
+        <span style="background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:0 10px 10px 0;padding:11px 14px;font-size:14px;color:#9aa3ac;white-space:nowrap;">.vexaris.net</span>
+    </div>
+    <div id="nxQMsg" style="font-size:12px;min-height:18px;margin-bottom:10px;"></div>
+    <div id="nxTsQWrap" style="margin-bottom:14px;"><?php require_once __DIR__ . '/../core/turnstile.php'; if (function_exists('turnstile_widget')) { echo turnstile_widget('nxTsQ'); echo turnstile_script(); } ?></div>
+    <button class="btn-panel btn-cyan" id="nxQCreate" style="width:100%;justify-content:center;" disabled><i class="fas fa-rocket"></i> Create Store</button>
+</div></div>
+<?php else:
+$sp = strtolower($store['plan'] ?? 'free');
+$quotaGB = $planQuotaGB[$sp] ?? 10;
+$quotaB = $quotaGB * 1073741824;
+$usedB = (int)($store['traffic_bytes'] ?? 0);
+$trafPct = $quotaB > 0 ? min(100, round($usedB / $quotaB * 100, 1)) : 0;
+$trafDays = [];
+for ($di = 13; $di >= 0; $di--) { $dd = date('Y-m-d', strtotime("-$di days")); $trafDays[$dd] = $traf14[$dd] ?? 0; }
+$trafMax = max(1, max($trafDays));
+$allowed = $sp === 'starter' ? ['Default', 'Azure'] : ($sp === 'free' ? ['Default'] : ['Default', 'Azure', 'Ember']);
+$sname = trim((string)($store['site_name'] ?? ''));
 ?>
-    <div class="panel-card" style="margin:0;display:flex;flex-direction:column;cursor:pointer;" onclick='openStoreDetail(<?= json_encode(['id' => (int)$s['id'], 'domain' => $s['domain'], 'plan' => $sp, 'users' => (int)$s['users'], 'products' => (int)($s['products'] ?? 0), 'revenue' => (float)$s['revenue'], 'revenue_fmt' => store_money((float)$s['revenue'], (string)($s['currency'] ?? 'TRY')), 'status' => $s['status'], 'created' => $s['created_at']], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'>
-        <div class="panel-card__body" style="flex:1;display:flex;flex-direction:column;">
-            <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.8rem">
-                <div style="width:46px;height:46px;flex:none;background:linear-gradient(135deg,rgba(255,122,26,.2),rgba(255,60,17,.1));border:1px solid rgba(255,122,26,.35);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#ff7a1a;font-size:18px;"><i class="fas fa-store"></i></div>
-                <div style="min-width:0;flex:1;">
-                    <div style="font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($s['domain']) ?></div>
-                    <span style="display:inline-block;margin-top:3px;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:<?= $sp === 'free' ? 'rgba(255,255,255,.07);color:#cfd6e4' : 'rgba(0,212,255,.12);color:#7dd7fc' ?>;"><?= htmlspecialchars($sp) ?></span>
-                </div>
-            </div>
-            <div style="display:flex;gap:1rem;font-size:13px;color:#9aa3ac;margin-bottom:.9rem">
-                <span title="Users"><i class="fas fa-users"></i> <?= (int)$s['users'] ?></span>
-                <span title="Products"><i class="fas fa-box"></i> <?= (int)($s['products'] ?? 0) ?></span>
-                <span title="Revenue"><i class="fas fa-chart-line"></i> <?= htmlspecialchars(store_money((float)$s['revenue'], (string)($s['currency'] ?? 'TRY'))) ?></span>
-            </div>
-            <div style="display:flex;gap:8px;margin-top:auto;">
-                <a class="btn-panel" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($s['domain']) ?>/admin/dashboard.php" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fas fa-gauge"></i> Admin</a>
-                <a class="btn-panel btn-cyan" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($s['domain']) ?>" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fas fa-arrow-up-right-from-square"></i> Visit</a>
-            </div>
+<div class="panel-card"><div class="panel-card__body">
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1.1rem;flex-wrap:wrap;">
+        <div style="width:52px;height:52px;flex:none;background:linear-gradient(135deg,rgba(255,122,26,.2),rgba(255,60,17,.1));border:1px solid rgba(255,122,26,.35);border-radius:15px;display:flex;align-items:center;justify-content:center;color:#ff7a1a;font-size:20px;"><i class="fas fa-store"></i></div>
+        <div style="min-width:0;flex:1;">
+            <div style="font-weight:800;font-size:17px;"><?= $sname !== '' ? htmlspecialchars($sname) : htmlspecialchars($store['domain']) ?></div>
+            <div style="font-size:13px;color:#8cb8ff;font-weight:700;"><?= htmlspecialchars($store['domain']) ?></div>
+        </div>
+        <span style="font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:4px 12px;border-radius:999px;background:<?= $sp === 'free' ? 'rgba(255,255,255,.07);color:#cfd6e4' : 'rgba(0,212,255,.12);color:#7dd7fc' ?>;"><?= htmlspecialchars($sp) ?></span>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;font-size:13px;color:#9aa3ac;"><i class="fas fa-key" style="color:#ff7a1a;"></i> Store admin — username <strong style="color:var(--text,#e8eaf6);">admin</strong>, password is your Vexaris password (also emailed at setup).</div>
+        <a class="btn-panel btn-cyan" style="font-size:13px;" href="https://<?= htmlspecialchars($store['domain']) ?>/login" target="_blank" rel="noopener"><i class="fas fa-right-to-bracket"></i> Store Login</a>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.1rem">
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:1rem;text-align:center;">
+            <div style="font-size:11px;color:var(--muted,#9aa3ac);font-weight:700;text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-chart-line"></i> Revenue</div>
+            <div style="font-size:20px;font-weight:900;"><?= htmlspecialchars(store_money((float)$store['revenue'], (string)($store['currency'] ?? 'TRY'))) ?></div>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:1rem;text-align:center;">
+            <div style="font-size:11px;color:var(--muted,#9aa3ac);font-weight:700;text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-box"></i> Products</div>
+            <div style="font-size:20px;font-weight:900;"><?= (int)($store['products'] ?? 0) ?></div>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:1rem;text-align:center;">
+            <div style="font-size:11px;color:var(--muted,#9aa3ac);font-weight:700;text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-users"></i> Users</div>
+            <div style="font-size:20px;font-weight:900;"><?= (int)$store['users'] ?></div>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:1rem;text-align:center;">
+            <div style="font-size:11px;color:var(--muted,#9aa3ac);font-weight:700;text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-traffic-light"></i> Traffic</div>
+            <div style="font-size:20px;font-weight:900;"><?= htmlspecialchars(nx_fmt_bytes($usedB)) ?></div>
+            <div style="font-size:11px;color:#9aa3ac;">of <?= (int)$quotaGB ?> GB</div>
         </div>
     </div>
-<?php endforeach; ?>
-</div>
-<?php endif; ?>
-
-<?php if (!$hasFree): ?>
-<button class="btn-panel btn-cyan" id="nxNewStoreBtn"><i class="fas fa-plus"></i> New Free Store</button>
-<?php else: ?>
-<p style="font-size:13px;color:#9aa3ac;"><i class="fas fa-circle-info"></i> Free plan includes 1 store. Upgrade your plan for more stores.</p>
+    <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:8px;"><span><i class="fas fa-gauge-high"></i> Monthly bandwidth</span><span><?= htmlspecialchars(nx_fmt_bytes($usedB)) ?> / <?= (int)$quotaGB ?> GB (<?= htmlspecialchars((string)$trafPct) ?>%)</span></div>
+        <div style="height:10px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:<?= htmlspecialchars((string)$trafPct) ?>%;border-radius:999px;background:linear-gradient(90deg,#ff7a1a,#2bd4ff);transition:width .6s ease;"></div></div>
+        <div style="font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:8px;">Last 14 days</div>
+        <div style="display:flex;align-items:flex-end;gap:5px;height:90px;">
+            <?php foreach ($trafDays as $dd => $bv): $h = max(3, round($bv / $trafMax * 100)); ?>
+            <div title="<?= htmlspecialchars(date('j M', strtotime($dd)) . ': ' . nx_fmt_bytes($bv)) ?>" style="flex:1;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,rgba(43,212,255,.85),rgba(255,122,26,.55));height:<?= (int)$h ?>%;min-width:0;"></div>
+            <?php endforeach; ?>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#64748b;margin-top:5px;"><span><?= htmlspecialchars(date('j M', strtotime(array_key_first($trafDays)))) ?></span><span>today: <?= htmlspecialchars(nx_fmt_bytes(end($trafDays))) ?></span><span><?= htmlspecialchars(date('j M')) ?></span></div>
+        <?php if (!empty($store['traffic_updated'])): ?><div style="font-size:11px;color:#64748b;margin-top:6px;">Updated <?= htmlspecialchars((string)$store['traffic_updated']) ?></div><?php endif; ?>
+    </div>
+    <div style="font-size:13px;font-weight:800;margin-bottom:8px;"><i class="fas fa-paintbrush"></i> My Themes</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.2rem;">
+        <?php foreach (['Default', 'Azure', 'Ember'] as $t): $ok = in_array($t, $allowed, true); ?>
+        <div style="padding:8px 14px;border-radius:999px;font-size:12px;font-weight:800;<?= $ok ? 'background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.35);' : 'background:rgba(255,255,255,.04);color:#64748b;border:1px solid var(--border,rgba(255,255,255,.08));' ?>"><?= $ok ? '✓ ' : '🔒 ' ?><?= htmlspecialchars($t) ?></div>
+        <?php endforeach; ?>
+    </div>
+    <div style="font-size:13px;font-weight:800;margin-bottom:8px;"><i class="fas fa-arrow-up"></i> Upgrade Plan</div>
+    <form method="POST" action="/api/plan-checkout" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.2rem;">
+        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
+        <input type="hidden" name="store_slug" value="<?= htmlspecialchars((string)$store['slug']) ?>">
+        <select name="plan" style="flex:1;min-width:140px;background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px;color:var(--text,#e8eaf6);padding:10px 12px;font-size:13px;outline:none;">
+            <option value="starter">Starter</option>
+            <option value="professional">Professional</option>
+            <option value="enterprise">Enterprise</option>
+        </select>
+        <select name="cycle" style="background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px;color:var(--text,#e8eaf6);padding:10px 12px;font-size:13px;outline:none;">
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly −20%</option>
+        </select>
+        <button type="submit" class="btn-panel btn-cyan"><i class="fas fa-credit-card"></i> Upgrade</button>
+    </form>
+    <div style="display:flex;gap:8px;margin-bottom:1.2rem;">
+        <a class="btn-panel" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($store['domain']) ?>/admin/dashboard.php" target="_blank" rel="noopener"><i class="fas fa-gauge"></i> Admin</a>
+        <a class="btn-panel btn-cyan" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($store['domain']) ?>" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i> Visit</a>
+    </div>
+    <button class="btn-panel" style="width:100%;justify-content:center;color:#f87171;" onclick="nxDeleteFor(<?= (int)$store['id'] ?>,'<?= htmlspecialchars($store['domain'], ENT_QUOTES) ?>')"><i class="fas fa-trash"></i> Delete Store</button>
+</div></div>
 <?php endif; ?>
 
 <style>@keyframes nxPop{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}@keyframes nxFade{from{opacity:0;}to{opacity:1;}}.nx-modal-show{animation:nxFade .18s ease;}.nx-modal-show>div{animation:nxPop .22s cubic-bezier(.22,1,.36,1);}.nx-spin{animation:nxRot 1s linear infinite;}@keyframes nxRot{to{transform:rotate(360deg);}}</style>
@@ -265,47 +347,6 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
     </div>
 </div>
 
-<div id="nxDetailModal" style="display:none;position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
-    <div style="width:100%;max-width:600px;background:#0d1b3e;border:1px solid rgba(0,212,255,.25);border-radius:20px;padding:1.8rem;position:relative;max-height:88vh;overflow-y:auto">
-        <button onclick="closeStoreDetail()" style="position:absolute;top:1rem;right:1rem;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:8px;color:var(--text);width:30px;height:30px;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center"><i class="fas fa-xmark"></i></button>
-        <h3 style="font-size:1.05rem;font-weight:800;margin:0 0 4px;"><i class="fas fa-store" style="color:var(--cyan);margin-right:8px"></i><span id="nxdDomain">-</span></h3>
-        <p id="nxdPlan" style="font-size:12px;color:var(--muted);margin:0 0 1.2rem;text-transform:uppercase;letter-spacing:.06em;"></p>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:1.2rem">
-            <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:1rem;text-align:center;">
-                <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-chart-line"></i> Revenue</div>
-                <div id="nxdRevenue" style="font-size:22px;font-weight:900;">0</div>
-            </div>
-            <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:1rem;text-align:center;">
-                <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-box"></i> Products</div>
-                <div id="nxdProducts" style="font-size:22px;font-weight:900;">0</div>
-            </div>
-            <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:1rem;text-align:center;">
-                <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-users"></i> Users</div>
-                <div id="nxdUsers" style="font-size:22px;font-weight:900;">0</div>
-            </div>
-        </div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:1rem;">Plan expires: <strong id="nxdExpiry" style="color:var(--text);">-</strong></div>
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px;"><i class="fas fa-paintbrush"></i> My Themes</div>
-        <div id="nxdThemes" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.2rem;"></div>
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px;"><i class="fas fa-arrow-up"></i> Upgrade Plan</div>
-        <form method="POST" action="/api/plan-checkout" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.2rem;">
-            <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
-            <input type="hidden" name="store_slug" id="nxdUpSlug" value="">
-            <select name="plan" id="nxdUpPlan" style="flex:1;min-width:140px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:13px;outline:none;">
-                <option value="starter">Starter</option>
-                <option value="professional">Professional</option>
-                <option value="enterprise">Enterprise</option>
-            </select>
-            <select name="cycle" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:13px;outline:none;">
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly −20%</option>
-            </select>
-            <button type="submit" class="btn-panel btn-cyan"><i class="fas fa-credit-card"></i> Upgrade</button>
-        </form>
-        <button class="btn-panel" style="width:100%;justify-content:center;color:#f87171;" onclick="openStoreDelete()"><i class="fas fa-trash"></i> Delete Store</button>
-    </div>
-</div>
-
 <div id="nxDeleteModal" style="display:none;position:fixed;inset:0;z-index:9995;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px;">
     <div style="width:100%;max-width:400px;background:#0d1b3e;border:1px solid rgba(239,68,68,.35);border-radius:18px;padding:1.6rem;">
         <h3 style="margin:0 0 6px;font-size:17px;font-weight:800;color:#f87171;"><i class="fas fa-triangle-exclamation"></i> Delete Store?</h3>
@@ -320,7 +361,6 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
 </div>
 <script>
 var NXD = null;
-var NXD_EXPIRY = <?= json_encode($myPlan['until'] ?? 0) ?>;
 (function(){
 var modal=document.getElementById('nxStoreModal');
 var openBtn=document.getElementById('nxNewStoreBtn');
@@ -414,37 +454,11 @@ function startProgress(job){
       var st=d.status;
       if(st==='pending'){nxPct(12);msg.textContent='Queued…';}
       else if(st==='claimed'){nxPct(45);setStep('queue','done');setStep('db','run');setStep('build','run');msg.textContent='Building database and container…';}
-      else if(st==='done'){clearInterval(progTimer);clearInterval(progTick);nxPct(100);setStep('queue','done');setStep('db','done');setStep('build','done');setStep('done','done');msg.textContent='Ready!';var l=document.getElementById('nxProgLink');l.style.display='block';document.getElementById('nxProgA').href='https://'+d.domain;}
+      else if(st==='done'){clearInterval(progTimer);clearInterval(progTick);nxPct(100);setStep('queue','done');setStep('db','done');setStep('build','done');setStep('done','done');msg.textContent='Ready! Reloading…';setTimeout(function(){location.reload();},2200);}
       else if(st==='failed'){clearInterval(progTimer);clearInterval(progTick);msg.textContent='Failed: '+(d.message||'error');}
     }).catch(function(){});
   },1500);
 }
-window.openStoreDetail=function(r){
-  NXD=r;
-  document.getElementById('nxdDomain').textContent=r.domain||'-';
-  document.getElementById('nxdPlan').textContent=(r.plan||'-')+' plan';
-  document.getElementById('nxdRevenue').textContent=r.revenue_fmt||Number(r.revenue||0).toFixed(2);
-  document.getElementById('nxdProducts').textContent=r.products||0;
-  document.getElementById('nxdUsers').textContent=r.users||0;
-  var exp='Free forever';
-  if((r.plan||'free')!=='free'){
-    if(NXD_EXPIRY>0){var dt=new Date(NXD_EXPIRY*1000);exp=dt.toLocaleDateString();}
-    else{exp='Unknown';}
-  }
-  document.getElementById('nxdExpiry').textContent=exp;
-  document.getElementById('nxdUpSlug').value=r.domain?r.domain.split('.')[0]:'';
-  var th=document.getElementById('nxdThemes');th.innerHTML='';
-  var allowed=r.plan==='starter'?['Default','Azure']:(r.plan==='free'?['Default']:['Default','Azure','Ember']);
-  ['Default','Azure','Ember'].forEach(function(t){
-    var ok=allowed.indexOf(t)!==-1;
-    var d=document.createElement('div');
-    d.style.cssText='padding:8px 14px;border-radius:999px;font-size:12px;font-weight:800;'+(ok?'background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.35);':'background:rgba(255,255,255,.04);color:#64748b;border:1px solid var(--border);');
-    d.textContent=(ok?'✓ ':'🔒 ')+t;
-    th.appendChild(d);
-  });
-  var dm=document.getElementById('nxDetailModal');dm.classList.remove('nx-modal-show');void dm.offsetWidth;dm.style.display='flex';dm.classList.add('nx-modal-show');
-};
-window.closeStoreDetail=function(){document.getElementById('nxDetailModal').style.display='none';};
 window.openStoreDelete=function(){
   if(!NXD)return;
   document.getElementById('nxdDelName').textContent=NXD.domain||'';
@@ -454,6 +468,51 @@ window.openStoreDelete=function(){
 };
 var delCancel=document.getElementById('nxDelCancel');
 if(delCancel){delCancel.addEventListener('click',function(){document.getElementById('nxDeleteModal').style.display='none';});}
+window.nxDeleteFor=function(id,domain){NXD={id:id,domain:domain};openStoreDelete();};
+window.nxQuickCreate=function(nm,sl,tok){
+  openM();
+  createBtn.disabled=true;
+  createBtn.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Creating…';
+  nxResetProg();
+  progT0=Date.now();
+  clearInterval(progTick);
+  progTick=setInterval(function(){document.getElementById('nxProgSec').textContent=Math.floor((Date.now()-progT0)/1000)+'s';},500);
+  document.getElementById('nxProgStore').textContent=(nm?nm+' · ':'')+sl+'.vexaris.net';
+  nxPct(5);
+  document.getElementById('nxSmStep1').style.display='none';
+  document.getElementById('nxSmStep2').style.display='block';
+  setStep('queue','run');
+  document.getElementById('nxProgMsg').textContent='Sending request…';
+  document.getElementById('nxProgLink').style.display='none';
+  var fd=new FormData();
+  fd.append('action','create-store');
+  fd.append('store_name',nm);
+  fd.append('slug',sl);
+  fd.append('cf-turnstile-response',tok);
+  fetch('/dashboard/stores',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
+    if(d&&d.ok&&d.job_id){startProgress(d.job_id);}else{backToForm((d&&d.msg)||'Failed');}
+  }).catch(function(){backToForm('Failed');});
+};
+var nxQTimer=null,nxQOk=false;
+var qSlug=document.getElementById('nxQSlug'),qMsg=document.getElementById('nxQMsg'),qBtn=document.getElementById('nxQCreate');
+function qSetMsg(t,ok){if(!qMsg)return;qMsg.textContent=t||'';qMsg.style.color=ok?'#4ade80':'#f87171';if(qBtn)qBtn.disabled=!ok;nxQOk=!!ok;}
+if(qSlug){qSlug.addEventListener('input',function(){
+  clearTimeout(nxQTimer);qSetMsg('',false);
+  var v=qSlug.value.toLowerCase().replace(/[^a-z0-9\-]/g,'');qSlug.value=v;
+  if(v.length<3){return;}
+  nxQTimer=setTimeout(function(){
+    qSetMsg('Checking…',false);
+    fetch('/dashboard/stores?check=1&slug='+encodeURIComponent(v)).then(function(r){return r.json()}).then(function(d){
+      if(d&&d.available){qSetMsg('✓ '+d.domain+' is available',true);}else{qSetMsg('✕ '+(d.msg||'taken'),false);}
+    }).catch(function(){qSetMsg('Check failed, retry.',false);});
+  },450);
+});}
+if(qBtn){qBtn.addEventListener('click',function(){
+  if(!nxQOk||!qSlug)return;
+  var nmEl=document.getElementById('nxQName');
+  var tEl=document.querySelector('#nxTsQWrap [name="cf-turnstile-response"]');
+  window.nxQuickCreate(nmEl?nmEl.value:'',qSlug.value,tEl?tEl.value:'');
+});}
 var delGo=document.getElementById('nxDelGo');
 if(delGo){delGo.addEventListener('click',function(){
   if(!NXD)return;
