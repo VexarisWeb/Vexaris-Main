@@ -201,19 +201,11 @@ function nx_fmt_bytes($b) {
 </div>
 
 <?php if (!$store): ?>
-<div class="panel-card"><div class="panel-card__body" style="max-width:520px;">
-    <h3 style="margin:0 0 4px;font-size:18px;font-weight:800;"><i class="fas fa-store" style="color:#ff7a1a;margin-right:8px;"></i>Create Your Store</h3>
-    <p style="font-size:13px;color:#9aa3ac;margin:0 0 18px;">Your plan includes 1 store on its own subdomain.</p>
-    <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Store Name</label>
-    <input id="nxQName" type="text" maxlength="80" placeholder="My Awesome Store" style="width:100%;box-sizing:border-box;background:var(--bg-surface,#0f1422);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px;padding:11px 14px;color:var(--text,#e8eaf6);font-size:14px;outline:none;margin-bottom:14px;">
-    <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Subdomain</label>
-    <div style="display:flex;gap:0;margin-bottom:6px;">
-        <input id="nxQSlug" type="text" maxlength="40" placeholder="mystore" style="flex:1;min-width:0;box-sizing:border-box;background:var(--bg-surface,#0f1422);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px 0 0 10px;padding:11px 14px;color:var(--text,#e8eaf6);font-size:14px;outline:none;border-right:none;">
-        <span style="background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:0 10px 10px 0;padding:11px 14px;font-size:14px;color:#9aa3ac;white-space:nowrap;">.vexaris.net</span>
-    </div>
-    <div id="nxQMsg" style="font-size:12px;min-height:18px;margin-bottom:10px;"></div>
-    <div id="nxTsQWrap" style="margin-bottom:14px;"><?php require_once __DIR__ . '/../core/turnstile.php'; if (function_exists('turnstile_widget')) { echo turnstile_widget('nxTsQ'); echo turnstile_script(); } ?></div>
-    <button class="btn-panel btn-cyan" id="nxQCreate" style="width:100%;justify-content:center;" disabled><i class="fas fa-rocket"></i> Create Store</button>
+<div class="panel-card"><div class="panel-card__body" style="text-align:center;padding:3rem 1.5rem;">
+    <div style="width:72px;height:72px;margin:0 auto 1.1rem;background:linear-gradient(135deg,rgba(255,122,26,.2),rgba(255,60,17,.1));border:1px solid rgba(255,122,26,.35);border-radius:22px;display:flex;align-items:center;justify-content:center;color:#ff7a1a;font-size:28px;"><i class="fas fa-store"></i></div>
+    <h3 style="margin:0 0 6px;font-size:19px;font-weight:800;">No store yet</h3>
+    <p style="font-size:13px;color:#9aa3ac;margin:0 0 1.5rem;">Your plan includes 1 store on its own subdomain.<br>Create it in seconds.</p>
+    <button class="btn-panel btn-cyan" id="nxNewStoreBtn" style="font-size:15px;padding:13px 34px;"><i class="fas fa-plus"></i> Create My Store</button>
 </div></div>
 <?php else:
 $sp = strtolower($store['plan'] ?? 'free');
@@ -469,50 +461,7 @@ window.openStoreDelete=function(){
 var delCancel=document.getElementById('nxDelCancel');
 if(delCancel){delCancel.addEventListener('click',function(){document.getElementById('nxDeleteModal').style.display='none';});}
 window.nxDeleteFor=function(id,domain){NXD={id:id,domain:domain};openStoreDelete();};
-window.nxQuickCreate=function(nm,sl,tok){
-  openM();
-  createBtn.disabled=true;
-  createBtn.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Creating…';
-  nxResetProg();
-  progT0=Date.now();
-  clearInterval(progTick);
-  progTick=setInterval(function(){document.getElementById('nxProgSec').textContent=Math.floor((Date.now()-progT0)/1000)+'s';},500);
-  document.getElementById('nxProgStore').textContent=(nm?nm+' · ':'')+sl+'.vexaris.net';
-  nxPct(5);
-  document.getElementById('nxSmStep1').style.display='none';
-  document.getElementById('nxSmStep2').style.display='block';
-  setStep('queue','run');
-  document.getElementById('nxProgMsg').textContent='Sending request…';
-  document.getElementById('nxProgLink').style.display='none';
-  var fd=new FormData();
-  fd.append('action','create-store');
-  fd.append('store_name',nm);
-  fd.append('slug',sl);
-  fd.append('cf-turnstile-response',tok);
-  fetch('/dashboard/stores',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
-    if(d&&d.ok&&d.job_id){startProgress(d.job_id);}else{backToForm((d&&d.msg)||'Failed');}
-  }).catch(function(){backToForm('Failed');});
-};
-var nxQTimer=null,nxQOk=false;
-var qSlug=document.getElementById('nxQSlug'),qMsg=document.getElementById('nxQMsg'),qBtn=document.getElementById('nxQCreate');
-function qSetMsg(t,ok){if(!qMsg)return;qMsg.textContent=t||'';qMsg.style.color=ok?'#4ade80':'#f87171';if(qBtn)qBtn.disabled=!ok;nxQOk=!!ok;}
-if(qSlug){qSlug.addEventListener('input',function(){
-  clearTimeout(nxQTimer);qSetMsg('',false);
-  var v=qSlug.value.toLowerCase().replace(/[^a-z0-9\-]/g,'');qSlug.value=v;
-  if(v.length<3){return;}
-  nxQTimer=setTimeout(function(){
-    qSetMsg('Checking…',false);
-    fetch('/dashboard/stores?check=1&slug='+encodeURIComponent(v)).then(function(r){return r.json()}).then(function(d){
-      if(d&&d.available){qSetMsg('✓ '+d.domain+' is available',true);}else{qSetMsg('✕ '+(d.msg||'taken'),false);}
-    }).catch(function(){qSetMsg('Check failed, retry.',false);});
-  },450);
-});}
-if(qBtn){qBtn.addEventListener('click',function(){
-  if(!nxQOk||!qSlug)return;
-  var nmEl=document.getElementById('nxQName');
-  var tEl=document.querySelector('#nxTsQWrap [name="cf-turnstile-response"]');
-  window.nxQuickCreate(nmEl?nmEl.value:'',qSlug.value,tEl?tEl.value:'');
-});}
+
 var delGo=document.getElementById('nxDelGo');
 if(delGo){delGo.addEventListener('click',function(){
   if(!NXD)return;
