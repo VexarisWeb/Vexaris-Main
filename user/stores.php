@@ -234,7 +234,7 @@ $planThemes = ['free' => ['Default'], 'starter' => ['Default', 'Azure'], 'profes
             </div>
         </div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:1rem;">Plan expires: <strong id="nxdExpiry" style="color:var(--text);">-</strong></div>
-        <div style="font-size:13px;font-weight:800;margin-bottom:8px;"><i class="fas fa-palette"></i> My Themes</div>
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px;"><i class="fas fa-paintbrush"></i> My Themes</div>
         <div id="nxdThemes" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.2rem;"></div>
         <div style="font-size:13px;font-weight:800;margin-bottom:8px;"><i class="fas fa-arrow-up"></i> Upgrade Plan</div>
         <form method="POST" action="/api/plan-checkout" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.2rem;">

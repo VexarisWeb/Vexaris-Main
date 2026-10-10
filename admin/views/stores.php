@@ -42,7 +42,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action']
 }
 $rows = [];
 try {
-    $rows = $db->query("SELECT id, user_id, slug, domain, plan, owner, users, revenue, currency, abuse_score, abuse_detail, status, reported_at, created_at FROM hosted_stores ORDER BY id DESC LIMIT 200")->fetchAll();
+    $rows = $db->query("SELECT h.id, h.user_id, h.slug, h.domain, h.plan, h.owner, h.users, h.revenue, h.currency, h.abuse_score, h.abuse_detail, h.status, h.reported_at, h.created_at, u.username AS uname FROM hosted_stores h LEFT JOIN users u ON u.id=h.user_id ORDER BY h.id DESC LIMIT 200")->fetchAll();
 } catch (Exception $e) {}
 $totalRev = 0.0;
 $totalUsers = 0;
@@ -67,6 +67,7 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
                     <th>Domain</th>
                     <th>Plan</th>
                     <th>Owner</th>
+                    <th>Created By</th>
                     <th style="width:90px">Users</th>
                     <th style="width:120px">Revenue</th>
                     <th style="width:100px">Status</th>
@@ -76,7 +77,7 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
             </thead>
             <tbody>
                 <?php if (!$rows): ?>
-                <tr><td colspan="8" style="text-align:center;padding:2.5rem" class="text-muted">Henüz mağaza yok.</td></tr>
+                <tr><td colspan="10" style="text-align:center;padding:2.5rem" class="text-muted">Henüz mağaza yok.</td></tr>
                 <?php else: foreach ($rows as $i => $r): ?>
                 <tr>
                     <td><?= (int)$r['id'] ?></td>
@@ -95,6 +96,7 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
                         </form>
                     </td>
                     <td class="text-muted" style="font-size:13px;"><?= htmlspecialchars($r['owner']) ?></td>
+                    <td style="font-size:13px;"><?= htmlspecialchars($r['uname'] ?? '-') ?></td>
                     <td><?= (int)$r['users'] ?></td>
                     <td><?= htmlspecialchars(store_money((float)$r['revenue'], (string)($r['currency'] ?? 'TRY'))) ?></td>
                     <td><?= htmlspecialchars($r['status']) ?></td>

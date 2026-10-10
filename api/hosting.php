@@ -128,6 +128,22 @@ try {
         }
         if ($action === 'suspend') {
             $pdo->prepare("UPDATE licenses SET status='suspended' WHERE id=?")->execute([(int)$row['id']]);
+            if ((string)($_POST['notify'] ?? '') === 'abuse') {
+                $st = $pdo->prepare("SELECT customer_name FROM licenses WHERE id=? LIMIT 1");
+                $st->execute([(int)$row['id']]);
+                $owner = (string)$st->fetchColumn();
+                if ($owner !== '' && filter_var($owner, FILTER_VALIDATE_EMAIL)) {
+                    $score = max(0, (int)($_POST['score'] ?? 0));
+                    hosting_mail($pdo, $owner, 'Your store has been suspended — Vexaris',
+                        '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#0d1b3e;border-radius:16px;overflow:hidden;">'
+                        . '<div style="padding:28px;text-align:center;background:linear-gradient(135deg,#8a1a1a,#3a0d0d);color:#fff;"><h1 style="margin:0;font-size:22px;">Store suspended</h1></div>'
+                        . '<div style="padding:26px;color:#e8eaf6;font-size:14px;line-height:1.7;">'
+                        . '<p style="margin:0 0 12px;">Your store <strong>' . htmlspecialchars($domain) . '</strong> was automatically suspended for prohibited content (score ' . $score . ').</p>'
+                        . '<p style="margin:0;color:#9aa3ac;font-size:13px;">If you believe this is a mistake, reply to this email to appeal. Contact: abuse@vexaris.net</p>'
+                        . '</div></div>',
+                        ['email' => 'abuse@vexaris.net', 'name' => 'Vexaris Abuse']);
+                }
+            }
         } else {
             $pdo->prepare("UPDATE licenses SET status='active', suspended_until=NULL WHERE id=?")->execute([(int)$row['id']]);
         }
@@ -269,11 +285,11 @@ function hosting_features(string $plan): array {
     return $f;
 }
 
-function hosting_mail(?PDO $pdo, string $to, string $subject, string $html): void {
+function hosting_mail(?PDO $pdo, string $to, string $subject, string $html, array $from = []): void {
     if (!$pdo || $to === '') return;
     try {
         require_once __DIR__ . '/../core/mail.php';
-        if (function_exists('mail_send')) mail_send($pdo, $to, $subject, $html);
+        if (function_exists('mail_send')) mail_send($pdo, $to, $subject, $html, [], $from);
     } catch (Exception $e) {}
 }
 
