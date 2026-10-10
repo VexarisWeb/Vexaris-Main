@@ -131,10 +131,23 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
             <div>Last report: <span id="spReported" style="color:var(--text);"></span></div>
         </div>
         <a id="spVisit" href="#" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%;justify-content:center;"><i class="fas fa-arrow-up-right-from-square"></i> Visit Store</a>
+        <button id="spPanel" onclick="goStorePanel()" class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:10px;"><i class="fas fa-right-to-bracket"></i> Panele Git</button>
     </div>
 </div>
 <script>
+var spSlug='';
+function goStorePanel(){
+  if(!spSlug)return;
+  var b=document.getElementById('spPanel');b.disabled=true;
+  var fd=new FormData();fd.append('action','issue');fd.append('slug',spSlug);
+  var h={};try{if(typeof VX_CSRF!=='undefined')h['X-CSRF-Token']=VX_CSRF;}catch(e){}
+  fetch('/api/admin-token.php',{method:'POST',headers:h,body:fd}).then(function(r){return r.json()}).then(function(d){
+    b.disabled=false;
+    if(d&&d.ok&&d.url){window.open(d.url,'_blank','noopener');}else{alert((d&&d.msg)||'Failed');}
+  }).catch(function(){b.disabled=false;alert('Failed');});
+}
 function openStorePopup(r){
+  spSlug=r.slug||'';
   document.getElementById('spDomain').textContent=r.domain||'-';
   document.getElementById('spPlan').textContent=(r.plan||'-')+' plan';
   document.getElementById('spUsers').textContent=r.users||0;

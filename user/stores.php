@@ -46,6 +46,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st = $pdo->prepare("SELECT id FROM users WHERE username=? LIMIT 1");
         $st->execute([$slug]);
         if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'This subdomain is reserved.']);
+        $isAdmin = (int)($user['is_admin'] ?? 0) === 1;
         $pdo->beginTransaction();
         $st = $pdo->prepare("SELECT COUNT(*) FROM hosted_stores WHERE (user_id=? OR owner=?) AND plan='free' AND status='active' FOR UPDATE");
         $st->execute([$uid, $uemail]);
@@ -53,9 +54,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st = $pdo->prepare("SELECT COUNT(*) FROM hosting_jobs WHERE user_id=? AND plan='free' AND status IN ('pending','claimed') FOR UPDATE");
         $st->execute([$uid]);
         $have += (int)$st->fetchColumn();
-        if ($have >= 1) {
+        if ($have >= 1 && !$isAdmin) {
             $pdo->rollBack();
             stores_json(['ok' => false, 'msg' => 'Free plan includes 1 store. Upgrade for more.']);
+        }
+        if (!$isAdmin) {
+            $st = $pdo->prepare("SELECT COUNT(*) FROM hosting_jobs WHERE user_id=? AND plan='free' AND kind='provision' AND status='done'");
+            $st->execute([$uid]);
+            if ((int)$st->fetchColumn() >= 2) {
+                $pdo->rollBack();
+                stores_json(['ok' => false, 'msg' => 'Free store limit reached (2 lifetime). Upgrade for more.']);
+            }
         }
         $st = $pdo->prepare("SELECT id FROM hosted_stores WHERE slug=? LIMIT 1 FOR UPDATE");
         $st->execute([$slug]);
@@ -63,9 +72,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1 FOR UPDATE");
         $st->execute([$slug]);
         if ($st->fetch()) { $pdo->rollBack(); stores_json(['ok' => false, 'msg' => 'Subdomain taken.']); }
+        $st = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
+        $st->execute([$uid]);
+        $ohash = (string)$st->fetchColumn();
+        if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $ohash)) $ohash = '';
         try {
-            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,?, 'free',?,?,'en','provision','pending')");
-            $ins->execute([$uid, $slug, $uemail, $name]);
+            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?, 'free',?,?,'en','provision','pending',?)");
+            $ins->execute([$uid, $slug, $uemail, $name, $ohash]);
             $jid = (int)$pdo->lastInsertId();
             $pdo->commit();
         } catch (Exception $e2) {

@@ -174,16 +174,19 @@ try {
                 try {
                     $upSlug = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim((string)($meta['store_slug'] ?? ''))));
                     if ($upSlug !== '' && strlen($upSlug) >= 3 && strlen($upSlug) <= 40) {
-                        $uq2 = $pdo->prepare("SELECT email FROM users WHERE id=? LIMIT 1");
+                        $uq2 = $pdo->prepare("SELECT email, password FROM users WHERE id=? LIMIT 1");
                         $uq2->execute([$uid]);
-                        $uemail = strtolower(trim((string)$uq2->fetchColumn()));
+                        $urow = $uq2->fetch();
+                        $uemail = strtolower(trim((string)($urow['email'] ?? '')));
+                        $uhash = (string)($urow['password'] ?? '');
+                        if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $uhash)) $uhash = '';
                         $hs = $pdo->prepare("SELECT slug, owner, user_id FROM hosted_stores WHERE slug=? LIMIT 1");
                         $hs->execute([$upSlug]);
                         $hrow = $hs->fetch();
                         $owns = $hrow && ((int)($hrow['user_id'] ?? 0) === $uid || ($uemail !== '' && strtolower((string)($hrow['owner'] ?? '')) === $uemail));
                         if ($owns) {
-                            $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,?,?, ?,?, 'en','provision','pending')")
-                                ->execute([$uid, $upSlug, $subPlan, (string)($hrow['owner'] ?? $uemail), (string)$upSlug]);
+                            $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?, ?,?, 'en','provision','pending',?)")
+                                ->execute([$uid, $upSlug, $subPlan, (string)($hrow['owner'] ?? $uemail), (string)$upSlug, $uhash]);
                         }
                     }
                 } catch (Throwable $e) {

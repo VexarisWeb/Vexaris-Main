@@ -171,7 +171,7 @@ try {
         exit;
     }
     if ($action === 'jobs') {
-        $st = $pdo->prepare("SELECT id, slug, plan, owner, site_name, lang, kind FROM hosting_jobs WHERE status='pending' OR (status='claimed' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)) ORDER BY id ASC LIMIT 5");
+        $st = $pdo->prepare("SELECT id, slug, plan, owner, site_name, lang, kind, owner_hash FROM hosting_jobs WHERE status='pending' OR (status='claimed' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)) ORDER BY id ASC LIMIT 5");
         $st->execute();
         $rows = $st->fetchAll();
         $ids = [];
@@ -219,7 +219,13 @@ try {
             $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, owner, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()")
                 ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.net', $jobPlan, $jobOwner, $users, $revenue, $products, $currency]);
             if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
-                hosting_mail($pdo, $jobOwner, 'Your store is ready — Vexaris', hosting_created_html($jobSlug, $jobPlan));
+                $amode = (string)($_POST['admin_mode'] ?? '');
+                if ($amode !== 'hash' && $amode !== 'generated') $amode = 'hash';
+                $apass = mb_substr(trim((string)($_POST['admin_pass'] ?? '')), 0, 80);
+                if ($amode === 'generated' && (strlen($apass) < 8 || $apass === 'VEXARIS-PASS')) $apass = '';
+                try {
+                    hosting_mail($pdo, $jobOwner, 'Your store is ready — Vexaris', hosting_created_html($jobSlug, $jobPlan, $amode, $apass));
+                } catch (Exception $e2) {}
             }
         }
         echo json_encode(['ok' => true, 'msg' => 'recorded']);
@@ -313,13 +319,19 @@ function hosting_mail(?PDO $pdo, string $to, string $subject, string $html, arra
     } catch (Exception $e) {}
 }
 
-function hosting_created_html(string $slug, string $plan): string {
+function hosting_created_html(string $slug, string $plan, string $mode = 'hash', string $pass = ''): string {
     $url = 'https://' . $slug . '.vexaris.net';
+    $login = $url . '/login';
+    $cred = $mode === 'generated' && $pass !== ''
+        ? '<p style="margin:0 0 6px;">Store admin login:</p><p style="margin:0 0 18px;background:#131f45;border-radius:10px;padding:12px 14px;">Username: <strong>admin</strong><br>Password: <strong>' . htmlspecialchars($pass) . '</strong></p>'
+        : '<p style="margin:0 0 18px;">Store admin login — username <strong>admin</strong>, password is your Vexaris password.</p>';
     return '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#0d1b3e;border-radius:16px;overflow:hidden;">'
         . '<div style="padding:28px;text-align:center;background:linear-gradient(135deg,#ff7a1a,#ff3c11);color:#fff;"><h1 style="margin:0;font-size:22px;">Your store is ready!</h1></div>'
         . '<div style="padding:26px;color:#e8eaf6;font-size:14px;line-height:1.7;">'
         . '<p style="margin:0 0 12px;">Your <strong>' . htmlspecialchars(ucfirst($plan)) . '</strong> store is live:</p>'
         . '<p style="margin:0 0 18px;"><a href="' . htmlspecialchars($url) . '" style="color:#8cb8ff;font-weight:700;">' . htmlspecialchars($slug . '.vexaris.net') . '</a></p>'
+        . $cred
+        . '<p style="margin:0 0 18px;"><a href="' . htmlspecialchars($login) . '" style="display:inline-block;background:#ff7a1a;color:#fff;font-weight:700;padding:10px 22px;border-radius:10px;text-decoration:none;">Open Store Login</a></p>'
         . '<p style="margin:0;color:#9aa3ac;font-size:13px;">Manage it anytime from your dashboard under My Stores.</p>'
         . '</div></div>';
 }

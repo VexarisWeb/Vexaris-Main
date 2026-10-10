@@ -268,6 +268,16 @@ function run_migrations(): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         ensure_column($pdo, 'licenses', 'user_id', '`user_id` INT UNSIGNED NULL');
         ensure_column($pdo, 'hosting_jobs', 'kind', "`kind` VARCHAR(20) NOT NULL DEFAULT 'provision'");
+        ensure_column($pdo, 'hosting_jobs', 'owner_hash', "`owner_hash` VARCHAR(255) NOT NULL DEFAULT ''");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS store_tokens (
+            id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            token      VARCHAR(64) UNIQUE NOT NULL,
+            slug       VARCHAR(40) NOT NULL,
+            admin_id   INT UNSIGNED NOT NULL DEFAULT 0,
+            used       TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_st_slug (slug)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         ensure_column($pdo, 'hosted_stores', 'products', '`products` INT NOT NULL DEFAULT 0');
         ensure_column($pdo, 'hosted_stores', 'currency', "`currency` VARCHAR(5) NOT NULL DEFAULT 'TRY'");
         ensure_column($pdo, 'hosted_stores', 'abuse_score', '`abuse_score` INT NOT NULL DEFAULT 0');
