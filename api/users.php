@@ -114,6 +114,10 @@ if ($id <= 0) {
 // Kendini silemesin / yetkisini alamasın
 $selfId = (int)(current_user()['id'] ?? 0);
 $myRole = user_role();
+$sysOwnerId = 0;
+try { $sysOwnerId = (int)$pdo->query("SELECT id FROM users WHERE is_admin=1 ORDER BY id ASC LIMIT 1")->fetchColumn(); } catch (Exception $e) {}
+$isSysOwner = function (int $uid) use ($sysOwnerId): bool { return $sysOwnerId > 0 && $uid === $sysOwnerId; };
+$denyOwnerMsg = 'The system owner account is protected.';
 
 switch ($action) {
 
@@ -125,6 +129,10 @@ switch ($action) {
         }
         if ($id === $selfId) {
             echo json_encode(['ok' => false, 'msg' => 'Kendini banlayamazsın.']);
+            exit;
+        }
+        if ($isSysOwner($id)) {
+            echo json_encode(['ok' => false, 'msg' => $denyOwnerMsg]);
             exit;
         }
         try {
@@ -186,6 +194,10 @@ switch ($action) {
             echo json_encode(['ok' => false, 'msg' => 'Kendi rolünü değiştiremezsin.']);
             exit;
         }
+        if ($isSysOwner($id)) {
+            echo json_encode(['ok' => false, 'msg' => $denyOwnerMsg]);
+            exit;
+        }
         $newRole = trim($_POST['role'] ?? '');
         if (!in_array($newRole, ROLES, true)) {
             echo json_encode(['ok' => false, 'msg' => 'Geçersiz rol.']);
@@ -239,6 +251,10 @@ switch ($action) {
     case 'delete':
         if ($id === $selfId) {
             echo json_encode(['ok' => false, 'msg' => 'Kendi hesabını silemezsin.']);
+            exit;
+        }
+        if ($isSysOwner($id)) {
+            echo json_encode(['ok' => false, 'msg' => $denyOwnerMsg]);
             exit;
         }
         try {
