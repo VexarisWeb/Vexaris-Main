@@ -1,12 +1,16 @@
 <?php
 $activePage = 'stores';
-require_once __DIR__ . '/_inc/header.php';
+require_once __DIR__ . '/../core/db.php';
+boot_session();
+require_login();
+$user = current_user();
 
 $uid = (int)$user['id'];
 $pdo = db();
 $uemail = strtolower(trim((string)($user['email'] ?? '')));
 
 function stores_json(array $a): void {
+    while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($a, JSON_UNESCAPED_UNICODE);
     exit;
@@ -123,6 +127,8 @@ if (isset($_GET['check_job'])) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
     }
 }
+
+require_once __DIR__ . '/_inc/header.php';
 
 $stores = [];
 try {
