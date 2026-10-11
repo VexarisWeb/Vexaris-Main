@@ -10,7 +10,6 @@ $urls = [
     ['loc' => $base . '/pricing', 'freq' => 'weekly', 'pr' => '0.9'],
     ['loc' => $base . '/blog', 'freq' => 'daily', 'pr' => '0.8'],
     ['loc' => $base . '/license-check', 'freq' => 'monthly', 'pr' => '0.7'],
-    ['loc' => $base . '/whois', 'freq' => 'weekly', 'pr' => '0.7'],
     ['loc' => $base . '/login', 'freq' => 'monthly', 'pr' => '0.3'],
     ['loc' => $base . '/register', 'freq' => 'monthly', 'pr' => '0.3'],
     ['loc' => $base . '/privacy-policy', 'freq' => 'yearly', 'pr' => '0.3'],
