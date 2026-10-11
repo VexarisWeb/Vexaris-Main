@@ -158,6 +158,56 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
     }
 }
 
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? '') === 'custom-domain')) {
+    csrf_check();
+    $sid = (int)($_POST['store_id'] ?? 0);
+    try {
+        $st = $pdo->prepare("SELECT id, slug, plan, custom_domain FROM hosted_stores WHERE id=? AND (user_id=? OR owner=?) AND status='active' LIMIT 1");
+        $st->execute([$sid, $uid, $uemail]);
+        $row = $st->fetch();
+        if (!$row) stores_json(['ok' => false, 'msg' => 'Store not found.']);
+        $slug = (string)$row['slug'];
+        $sp = strtolower(trim((string)($row['plan'] ?? 'free')));
+        // SIKI KAPI: free plan custom domain ASLA baglayamaz (istemci degil, STORE plani gecerlidir).
+        if (!in_array($sp, ['starter', 'professional', 'enterprise'], true)) {
+            http_response_code(403);
+            stores_json(['ok' => false, 'msg' => 'Custom domains require a paid plan (Starter, Professional or Enterprise).']);
+        }
+        $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
+        $st->execute([$slug]);
+        if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'A job is already queued for this store.']);
+        $dom = strtolower(trim((string)($_POST['domain'] ?? '')));
+        $dom = preg_replace('#^https?://#', '', $dom);
+        $dom = trim($dom, " \t\n\r\0\x0B/.");
+        if (strpos($dom, ':') !== false) $dom = (string)explode(':', $dom, 2)[0];
+        if ($dom === '') {
+            // Kaldirma: eslesme worker tarafinda slug uzerinden cozulur.
+            $pdo->prepare("UPDATE hosted_stores SET custom_domain='', custom_status='pending' WHERE id=?")->execute([$sid]);
+        } else {
+            if (strlen($dom) > 190 || !filter_var($dom, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) stores_json(['ok' => false, 'msg' => 'Invalid domain name.']);
+            if (strpos($dom, '.') === false) stores_json(['ok' => false, 'msg' => 'Invalid domain name.']);
+            if (filter_var($dom, FILTER_VALIDATE_IP)) stores_json(['ok' => false, 'msg' => 'IP addresses are not allowed.']);
+            if (substr($dom, -13) === '.vexaris.net' || $dom === 'vexaris.net') stores_json(['ok' => false, 'msg' => 'Vexaris subdomains use the subdomain flow.']);
+            $st = $pdo->prepare("SELECT slug FROM hosted_stores WHERE custom_domain=? AND slug<>? LIMIT 1");
+            $st->execute([$dom, $slug]);
+            if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'This domain is already connected to another store.']);
+            $st = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
+            $st->execute(['%"' . $dom . '"%']);
+            if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'This domain is already licensed elsewhere.']);
+            $pdo->prepare("UPDATE hosted_stores SET custom_domain=?, custom_status='pending' WHERE id=?")->execute([$dom, $sid]);
+        }
+        $st = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
+        $st->execute([$uid]);
+        $ohash = (string)$st->fetchColumn();
+        if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $ohash)) $ohash = '';
+        $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?, ?, ?,'en','domain','pending',?)");
+        $ins->execute([$uid, $slug, $sp, $uemail, mb_substr($dom, 0, 190), $ohash]);
+        stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId(), 'domain' => $dom]);
+    } catch (Exception $e) {
+        stores_json(['ok' => false, 'msg' => 'Server error.']);
+    }
+}
+
 if (isset($_GET['check'])) {
     $slug = strtolower(trim((string)($_GET['slug'] ?? '')));
     $slug = preg_replace('/[^a-z0-9\-]/', '', $slug);
@@ -200,7 +250,7 @@ require_once __DIR__ . '/_inc/header.php';
 
 $store = null;
 try {
-    $st = $pdo->prepare("SELECT id, slug, domain, plan, site_name, users, products, revenue, currency, traffic_bytes, traffic_updated, app_version, status, reported_at, created_at FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id DESC LIMIT 1");
+    $st = $pdo->prepare("SELECT id, slug, domain, plan, site_name, users, products, revenue, currency, traffic_bytes, traffic_updated, app_version, status, reported_at, created_at, custom_domain, custom_status FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id DESC LIMIT 1");
     $st->execute([$uid, $uemail]);
     $store = $st->fetch() ?: null;
 } catch (Exception $e) {}
@@ -306,20 +356,36 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
         <?php endforeach; ?>
     </div>
     <div style="font-size:13px;font-weight:800;margin-bottom:8px;"><i class="fas fa-arrow-up"></i> Upgrade Plan</div>
-    <form method="POST" action="/api/plan-checkout" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.2rem;">
-        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
-        <input type="hidden" name="store_slug" value="<?= htmlspecialchars((string)$store['slug']) ?>">
-        <select name="plan" style="flex:1;min-width:140px;background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px;color:var(--text,#e8eaf6);padding:10px 12px;font-size:13px;outline:none;">
-            <option value="starter">Starter</option>
-            <option value="professional">Professional</option>
-            <option value="enterprise">Enterprise</option>
-        </select>
-        <select name="cycle" style="background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px;color:var(--text,#e8eaf6);padding:10px 12px;font-size:13px;outline:none;">
-            <option value="monthly">Monthly</option>
-            <option value="yearly">Yearly −20%</option>
-        </select>
-        <button type="submit" class="btn-panel btn-cyan"><i class="fas fa-credit-card"></i> Upgrade</button>
-    </form>
+    <a class="btn-panel" style="display:flex;justify-content:center;align-items:center;gap:8px;width:100%;box-sizing:border-box;background:linear-gradient(135deg,rgba(250,204,21,.18),rgba(255,122,26,.14));border:1px solid rgba(250,204,21,.5);color:#fde68a;font-weight:800;font-size:14px;padding:12px;border-radius:12px;text-decoration:none;margin-bottom:1.2rem;" href="https://vexaris.net/pricing"><i class="fas fa-crown"></i> Upgrade Plan</a>
+    <?php
+    $cdom = trim((string)($store['custom_domain'] ?? ''));
+    $cstat = strtolower(trim((string)($store['custom_status'] ?? '')));
+    $cPaid = in_array($sp, ['starter', 'professional', 'enterprise'], true);
+    $cBadge = $cstat === 'active' ? '<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(34,197,94,.15);color:#4ade80;">LIVE</span>'
+        : ($cstat === 'pending' ? '<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(250,204,21,.15);color:#facc15;">PENDING</span>'
+        : ($cstat === 'failed' ? '<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(239,68,68,.15);color:#f87171;">FAILED</span>'
+        : ($cstat === 'revoked' ? '<span style="font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.07);color:#9aa3ac;">REVOKED</span>' : '')));
+    ?>
+    <div style="font-size:13px;font-weight:800;margin-bottom:8px;"><i class="fas fa-globe" style="color:#facc15;"></i> Custom Domain <i class="fas fa-crown" title="Premium feature" style="color:#facc15;font-size:11px;"></i></div>
+    <?php if ($cdom !== ''): ?>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:13px;">
+        <i class="fas fa-link" style="color:#8cb8ff;"></i>
+        <a href="https://<?= htmlspecialchars($cdom) ?>" target="_blank" rel="noopener" style="color:#8cb8ff;font-weight:700;text-decoration:none;"><?= htmlspecialchars($cdom) ?></a>
+        <?= $cBadge ?>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;margin-bottom:10px;color:#9aa3ac;">
+        <?php if ($cstat === 'active'): ?>
+        <span><i class="fas fa-lock" style="color:#4ade80;"></i> SSL Active · <span style="color:#4ade80;">Let's Encrypt</span></span>
+        <?php elseif ($cstat === 'pending'): ?>
+        <span class="nx-pulse"><i class="fas fa-lock" style="color:#facc15;"></i> SSL Issuing…</span>
+        <?php elseif ($cstat === 'failed'): ?>
+        <span><i class="fas fa-triangle-exclamation" style="color:#f87171;"></i> SSL Failed — check DNS records and save again</span>
+        <?php elseif ($cstat === 'revoked'): ?>
+        <span><i class="fas fa-lock" style="color:#64748b;"></i> SSL Revoked</span>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <button class="btn-panel" id="nxDomainBtn" style="display:flex;width:100%;box-sizing:border-box;justify-content:center;align-items:center;gap:8px;font-weight:800;font-size:14px;padding:12px;border-radius:12px;margin-bottom:1.2rem;background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.4);color:#fde68a;cursor:pointer;" data-paid="<?= $cPaid ? '1' : '0' ?>" data-sid="<?= (int)$store['id'] ?>" data-domain="<?= htmlspecialchars($cdom, ENT_QUOTES) ?>" data-status="<?= htmlspecialchars($cstat, ENT_QUOTES) ?>" data-slug="<?= htmlspecialchars((string)$store['domain']) ?>"><i class="fas fa-globe"></i> Custom Domain <i class="fas fa-crown" style="font-size:11px;"></i></button>
     <div style="display:flex;gap:8px;margin-bottom:1.2rem;">
         <button class="btn-panel" style="flex:1;justify-content:center;opacity:1;background:rgba(255,122,26,.16);border:1px solid rgba(255,122,26,.55);color:#ffb37a;" onclick="nxAdminLogin()"><i class="fas fa-gauge"></i> Admin</button>
         <a class="btn-panel btn-cyan" style="flex:1;justify-content:center;" href="https://<?= htmlspecialchars($store['domain']) ?>" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i> Visit</a>
@@ -328,7 +394,7 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
 </div></div>
 <?php endif; ?>
 
-<style>@keyframes nxPop{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}@keyframes nxFade{from{opacity:0;}to{opacity:1;}}.nx-modal-show{animation:nxFade .18s ease;}.nx-modal-show>div{animation:nxPop .22s cubic-bezier(.22,1,.36,1);}.nx-spin{animation:nxRot 1s linear infinite;}@keyframes nxRot{to{transform:rotate(360deg);}}</style>
+<style>@keyframes nxPop{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}@keyframes nxFade{from{opacity:0;}to{opacity:1;}}.nx-modal-show{animation:nxFade .18s ease;}.nx-modal-show>div{animation:nxPop .22s cubic-bezier(.22,1,.36,1);}.nx-spin{animation:nxRot 1s linear infinite;}@keyframes nxRot{to{transform:rotate(360deg);}}@keyframes nxPulse{0%,100%{opacity:1;}50%{opacity:.45;}}.nx-pulse{animation:nxPulse 1.6s ease-in-out infinite;}</style>
 <div id="nxStoreModal" style="display:none;position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px;">
     <div style="width:100%;max-width:460px;background:var(--bg-card,#131929);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:18px;padding:26px;">
         <div id="nxSmStep1">
@@ -384,6 +450,50 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
         <div style="display:flex;gap:10px;">
             <button class="btn-panel" id="nxDelCancel" style="flex:1;">Cancel</button>
             <button class="btn-panel" id="nxDelGo" style="flex:1;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171;">Delete Forever</button>
+        </div>
+    </div>
+</div>
+
+<div id="nxDomFreeModal" style="display:none;position:fixed;inset:0;z-index:9995;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px;">
+    <div style="width:100%;max-width:420px;background:#131929;border:1px solid rgba(250,204,21,.4);border-radius:18px;padding:1.7rem;text-align:center;">
+        <div style="width:64px;height:64px;margin:0 auto 1rem;background:linear-gradient(135deg,rgba(250,204,21,.25),rgba(255,122,26,.12));border:1px solid rgba(250,204,21,.5);border-radius:20px;display:flex;align-items:center;justify-content:center;color:#facc15;font-size:26px;"><i class="fas fa-crown"></i></div>
+        <h3 style="margin:0 0 6px;font-size:18px;font-weight:800;">Custom Domains are Premium</h3>
+        <p style="font-size:13px;color:#9aa3ac;margin:0 0 18px;line-height:1.6;">Connect your own domain (e.g. <strong style="color:#e8eaf6;">shop.yourbrand.com</strong>) with automatic SSL.<br>Available on <strong style="color:#fde68a;">Starter, Professional</strong> and <strong style="color:#fde68a;">Enterprise</strong> plans.</p>
+        <div style="display:flex;gap:10px;">
+            <button class="btn-panel" id="nxDomFreeClose" style="flex:1;">Close</button>
+            <a class="btn-panel" style="flex:2;text-decoration:none;justify-content:center;background:linear-gradient(135deg,rgba(250,204,21,.2),rgba(255,122,26,.15));border:1px solid rgba(250,204,21,.55);color:#fde68a;font-weight:800;" href="https://vexaris.net/pricing"><i class="fas fa-crown"></i> View Plans</a>
+        </div>
+    </div>
+</div>
+
+<div id="nxDomModal" style="display:none;position:fixed;inset:0;z-index:9995;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px;">
+    <div style="width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:#131929;border:1px solid rgba(250,204,21,.4);border-radius:18px;padding:1.6rem;">
+        <h3 style="margin:0 0 4px;font-size:18px;font-weight:800;"><i class="fas fa-globe" style="color:#facc15;"></i> Custom Domain <i class="fas fa-crown" style="color:#facc15;font-size:13px;"></i></h3>
+        <p style="font-size:13px;color:#9aa3ac;margin:0 0 16px;">Point your domain to this store. SSL certificate is issued automatically.</p>
+        <div id="nxDomCur" style="font-size:13px;margin-bottom:14px;"></div>
+        <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Domain name</label>
+        <input id="nxDomInput" type="text" maxlength="190" placeholder="shop.example.com" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:#0f1422;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:#e8eaf6;font-size:14px;outline:none;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:800;color:#9aa3ac;margin-bottom:8px;">DNS records — add ONE of these at your registrar:</div>
+        <div style="background:#0f1422;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:12.5px;">
+                <span style="font-weight:900;color:#2bd4ff;width:52px;flex:none;">A</span>
+                <span style="color:#64748b;flex:none;">@</span>
+                <code id="nxDomARec" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;color:#e8eaf6;font-size:12.5px;">45.141.202.76</code>
+                <button class="btn-panel" style="padding:6px 10px;font-size:11px;flex:none;" onclick="nxCopyDom('nxDomARec',this)"><i class="fas fa-copy"></i></button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:12.5px;">
+                <span style="font-weight:900;color:#2bd4ff;width:52px;flex:none;">CNAME</span>
+                <span style="color:#64748b;flex:none;">host</span>
+                <code id="nxDomCRec" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;color:#e8eaf6;font-size:12.5px;"></code>
+                <button class="btn-panel" style="padding:6px 10px;font-size:11px;flex:none;" onclick="nxCopyDom('nxDomCRec',this)"><i class="fas fa-copy"></i></button>
+            </div>
+        </div>
+        <p style="font-size:11.5px;color:#64748b;margin:0 0 14px;line-height:1.6;">Use the A record for apex domains (example.com) or the CNAME for subdomains (shop.example.com). DNS changes can take a few minutes.</p>
+        <div id="nxDomMsg" style="font-size:12px;min-height:18px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:10px;">
+            <button class="btn-panel" id="nxDomCancel" style="flex:1;">Cancel</button>
+            <button class="btn-panel" id="nxDomRemove" style="flex:1;color:#f87171;">Remove</button>
+            <button class="btn-panel btn-cyan" id="nxDomSave" style="flex:2;font-weight:800;">Save Domain</button>
         </div>
     </div>
 </div>
@@ -522,6 +632,65 @@ window.nxStartUpdate=function(sid){
     }
   }).catch(function(){if(b){b.disabled=false;}alert('Failed');});
 };
+window.nxCopyDom=function(id,btn){
+  var el=document.getElementById(id);if(!el)return;
+  var t=el.textContent||'';
+  function done(){if(btn){var o=btn.innerHTML;btn.innerHTML='<i class="fas fa-check"></i>';setTimeout(function(){btn.innerHTML=o;},1200);}}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done).catch(function(){fallback();});}
+  else fallback();
+  function fallback(){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}ta.remove();}
+};
+function nxShowDom(id){var m=document.getElementById(id);if(!m)return;m.classList.remove('nx-modal-show');void m.offsetWidth;m.style.display='flex';m.classList.add('nx-modal-show');}
+function nxHideDom(id){var m=document.getElementById(id);if(m)m.style.display='none';}
+var domBtn=document.getElementById('nxDomainBtn');
+if(domBtn){domBtn.addEventListener('click',function(){
+  if(domBtn.getAttribute('data-paid')!=='1'){nxShowDom('nxDomFreeModal');return;}
+  var cur=domBtn.getAttribute('data-domain')||'',st=domBtn.getAttribute('data-status')||'';
+  document.getElementById('nxDomInput').value=cur;
+  document.getElementById('nxDomCRec').textContent=domBtn.getAttribute('data-slug')||'';
+  var badge=st==='active' ? '<span style="color:#4ade80;font-weight:800;">● LIVE</span>'
+    : (st==='pending' ? '<span style="color:#facc15;font-weight:800;">● DNS check pending — save again after records propagate</span>'
+    : (st==='failed' ? '<span style="color:#f87171;font-weight:800;">● FAILED — check DNS records and save again</span>'
+    : (st==='revoked' ? '<span style="color:#9aa3ac;font-weight:800;">● REVOKED</span>' : '<span style="color:#64748b;">No custom domain yet</span>')));
+  document.getElementById('nxDomCur').innerHTML=(cur?('Current: <strong>'+cur.replace(/</g,'&lt;')+'</strong> — '):'')+badge;
+  document.getElementById('nxDomMsg').textContent='';
+  nxShowDom('nxDomModal');
+});}
+var dfc=document.getElementById('nxDomFreeClose');
+if(dfc){dfc.addEventListener('click',function(){nxHideDom('nxDomFreeModal');});}
+var dfm=document.getElementById('nxDomFreeModal');
+if(dfm){dfm.addEventListener('click',function(e){if(e.target===dfm)nxHideDom('nxDomFreeModal');});}
+var dc=document.getElementById('nxDomCancel');
+if(dc){dc.addEventListener('click',function(){nxHideDom('nxDomModal');});}
+var dm=document.getElementById('nxDomModal');
+if(dm){dm.addEventListener('click',function(e){if(e.target===dm)nxHideDom('nxDomModal');});}
+function nxDomPost(domain,btn,label){
+  var m=document.getElementById('nxDomMsg');m.textContent='Saving…';m.style.color='#9aa3ac';
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> '+(label||'Saving…');}
+  var fd=new FormData();fd.append('action','custom-domain');fd.append('store_id',domBtn.getAttribute('data-sid'));fd.append('domain',domain);
+  fetch('/dashboard/stores',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
+    if(d&&d.ok&&d.job_id){m.textContent='Queued — issuing SSL, live status shortly…';m.style.color='#facc15';nxDomPoll(d.job_id,m,btn,label);}
+    else{m.textContent=(d&&d.msg)||'Failed';m.style.color='#f87171';if(btn){btn.disabled=false;btn.innerHTML=label||'Save Domain';}}
+  }).catch(function(){m.textContent='Failed';m.style.color='#f87171';if(btn){btn.disabled=false;}});
+}
+var nxDomTries=0;
+function nxDomPoll(job,m,btn,label){
+  nxDomTries=0;
+  var t=setInterval(function(){
+    nxDomTries++;
+    fetch('/dashboard/stores?check_job='+job).then(function(r){return r.json()}).then(function(d){
+      if(!d||!d.ok)return;
+      if(d.status==='done'){clearInterval(t);m.textContent='Done! Reloading…';m.style.color='#4ade80';setTimeout(function(){location.reload();},1500);}
+      else if(d.status==='failed'){clearInterval(t);m.textContent='Failed: '+(d.message||'error');m.style.color='#f87171';if(btn){btn.disabled=false;btn.innerHTML=label||'Save Domain';}}
+      else if(nxDomTries>60){clearInterval(t);m.textContent='Still working — reload this page in a minute.';m.style.color='#facc15';}
+      else{m.textContent='Working… ('+d.status+') — issuing SSL, please wait.';m.style.color='#facc15';}
+    }).catch(function(){});
+  },5000);
+}
+var ds=document.getElementById('nxDomSave');
+if(ds){ds.addEventListener('click',function(){nxDomPost(document.getElementById('nxDomInput').value,ds,'Save Domain');});}
+var dr=document.getElementById('nxDomRemove');
+if(dr){dr.addEventListener('click',function(){if(!confirm('Remove the custom domain?'))return;nxDomPost('',dr,'Remove');});}
 window.nxAdminLogin=function(){
   if(!NX_SLUG)return;
   var fd=new FormData();fd.append('action','issue-owner');fd.append('slug',NX_SLUG);

@@ -292,6 +292,14 @@ function run_migrations(): void {
         ensure_column($pdo, 'hosted_stores', 'currency', "`currency` VARCHAR(5) NOT NULL DEFAULT 'TRY'");
         ensure_column($pdo, 'hosted_stores', 'abuse_score', '`abuse_score` INT NOT NULL DEFAULT 0');
         ensure_column($pdo, 'hosted_stores', 'abuse_detail', '`abuse_detail` VARCHAR(255) NOT NULL DEFAULT ' . "''");
+        ensure_column($pdo, 'hosted_stores', 'custom_domain', "`custom_domain` VARCHAR(190) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosted_stores', 'custom_status', "`custom_status` VARCHAR(20) NOT NULL DEFAULT ''");
+        try {
+            $sjLen = $pdo->query("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'hosting_jobs' AND COLUMN_NAME = 'site_name'")->fetchColumn();
+            if ($sjLen !== false && (int)$sjLen < 190) {
+                $pdo->exec("ALTER TABLE `hosting_jobs` MODIFY COLUMN `site_name` VARCHAR(190) NOT NULL DEFAULT 'en'");
+            }
+        } catch (Exception $e) {}
         try {
             $hasIdx = $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'licenses' AND INDEX_NAME = 'idx_lic_user'")->fetchColumn();
             if (!(int)$hasIdx) $pdo->exec("ALTER TABLE `licenses` ADD KEY `idx_lic_user` (`user_id`)");

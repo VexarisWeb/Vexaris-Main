@@ -205,6 +205,11 @@ try {
         $jobOwner = (string)($job['owner'] ?? '');
         $jobSlug = (string)($job['slug'] ?? '');
         $jobPlan = (string)($job['plan'] ?? 'free');
+        if (!$ok && $jobKind === 'domain') {
+            try {
+                $pdo->prepare("UPDATE hosted_stores SET custom_status='failed' WHERE slug=?")->execute([$jobSlug]);
+            } catch (Exception $e2) {}
+        }
         if ($ok && $jobKind === 'delete') {
             try {
                 $pdo->prepare("DELETE FROM hosted_stores WHERE slug=?")->execute([$jobSlug]);
@@ -220,6 +225,18 @@ try {
             try {
                 $pdo->prepare("UPDATE hosted_stores SET app_version=? WHERE slug=?")->execute([$averDone, $jobSlug]);
             } catch (Exception $e2) {}
+            if ($jobKind === 'domain') {
+                $ddom = strtolower(trim((string)($job['site_name'] ?? '')));
+                try {
+                    if ($ddom === '') {
+                        $pdo->prepare("UPDATE hosted_stores SET custom_domain='', custom_status='' WHERE slug=?")->execute([$jobSlug]);
+                    } else {
+                        $pdo->prepare("UPDATE hosted_stores SET custom_domain=?, custom_status='active' WHERE slug=?")->execute([$ddom, $jobSlug]);
+                    }
+                } catch (Exception $e2) {}
+                echo json_encode(['ok' => true, 'msg' => 'recorded']);
+                exit;
+            }
             if ($jobKind !== 'provision') {
                 echo json_encode(['ok' => true, 'msg' => 'recorded']);
                 exit;
@@ -237,6 +254,65 @@ try {
                 } catch (Exception $e2) {}
             }
         }
+        echo json_encode(['ok' => true, 'msg' => 'recorded']);
+        exit;
+    }
+    if ($action === 'license-domain') {
+        $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim((string)($_POST['slug'] ?? ''))));
+        $dom = strtolower(trim((string)($_POST['custom'] ?? '')));
+        $op = strtolower(trim((string)($_POST['op'] ?? 'add')));
+        if ($slug === '' || ($dom === '' && $op === 'add')) {
+            echo json_encode(['ok' => false, 'msg' => 'bad params']);
+            exit;
+        }
+        if ($dom !== '' && !filter_var($dom, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+            echo json_encode(['ok' => false, 'msg' => 'bad domain']);
+            exit;
+        }
+        try {
+            $st = $pdo->prepare("SELECT id, allowed_domains FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
+            $st->execute(['%"' . $slug . '.vexaris.net"%']);
+            $lic = $st->fetch();
+            if (!$lic) {
+                echo json_encode(['ok' => false, 'msg' => 'license not found']);
+                exit;
+            }
+            $domains = json_decode((string)($lic['allowed_domains'] ?? ''), true);
+            if (!is_array($domains)) $domains = [];
+            if ($op === 'remove') {
+                if ($dom === '') {
+                    echo json_encode(['ok' => false, 'msg' => 'bad params']);
+                    exit;
+                }
+                $domains = array_values(array_filter($domains, fn($x) => strtolower(trim((string)$x)) !== $dom));
+            } else {
+                if (!in_array($dom, $domains, true)) {
+                    if (count($domains) >= 10) {
+                        echo json_encode(['ok' => false, 'msg' => 'domain limit']);
+                        exit;
+                    }
+                    $domains[] = $dom;
+                }
+            }
+            $pdo->prepare("UPDATE licenses SET allowed_domains=? WHERE id=?")->execute([json_encode(array_values($domains)), (int)$lic['id']]);
+        } catch (Exception $e) {
+            echo json_encode(['ok' => false, 'msg' => 'server error']);
+            exit;
+        }
+        echo json_encode(['ok' => true, 'msg' => 'license updated']);
+        exit;
+    }
+    if ($action === 'domain-revoked') {
+        $slug = preg_replace('/[^a-z0-9\-.]/', '', strtolower(trim((string)($_POST['slug'] ?? ($_POST['domain'] ?? '')))));
+        $slug = preg_replace('/\.vexaris\.net$/', '', $slug);
+        $slug = preg_replace('/[^a-z0-9\-]/', '', $slug);
+        if ($slug === '') {
+            echo json_encode(['ok' => false, 'msg' => 'bad slug']);
+            exit;
+        }
+        try {
+            $pdo->prepare("UPDATE hosted_stores SET custom_status='revoked' WHERE slug=?")->execute([$slug]);
+        } catch (Exception $e) {}
         echo json_encode(['ok' => true, 'msg' => 'recorded']);
         exit;
     }
