@@ -48,6 +48,11 @@ $FEATS = [
   ['icon'=>'users','title'=>'Social Login','desc'=>'Customers sign in with Google, Discord, GitHub or Microsoft and manage linked accounts.','keys'=>'oauth social login google discord github microsoft account'],
   ['icon'=>'spark','title'=>'AI Store Assistant','desc'=>'Built-in AI chat in the admin panel for content, settings and daily store tasks.','keys'=>'ai assistant artificial intelligence chat admin'],
   ['icon'=>'globe','title'=>'Two Languages (TR/EN)','desc'=>'Full Turkish and English storefront, legal pages and panel content with automatic fallback.','keys'=>'language turkish english translation i18n bilingual'],
+  ['icon'=>'coin','title'=>'Multi-Currency','desc'=>'Automatic rates with central-bank fallback, stale-rate warnings and limits shown in store currency.','keys'=>'currency exchange rate money lira dollar euro fx'],
+  ['icon'=>'layout','title'=>'Custom Pages','desc'=>'Unlimited custom pages with rich HTML content, slugs and menu placement.','keys'=>'custom page slug content static'],
+  ['icon'=>'code','title'=>'Custom CSS','desc'=>'Site-wide custom styling from the panel with instant effect and no file edits.','keys'=>'css custom style design code stylesheet'],
+  ['icon'=>'menu','title'=>'Header Editor','desc'=>'Logo, navigation menus with dropdown children and announcement bar, per language.','keys'=>'header menu navigation logo dropdown announcement'],
+  ['icon'=>'menu','title'=>'Footer Editor','desc'=>'Footer columns and link groups with icons and live preview, per language.','keys'=>'footer links columns icons bottom'],
 ];
 
 function feat_search($f) {

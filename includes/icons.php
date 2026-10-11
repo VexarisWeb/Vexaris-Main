@@ -41,6 +41,9 @@ function vex_icon($name, $cls = 'w-5 h-5') {
     case 'spark': return vex_svg($cls, '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>');
     case 'file': return vex_svg($cls, '<path d="M6 2.8h7L19 9v12.2H6Z"/><path d="M13 2.8V9h6M9 13h6M9 16.5h6"/>');
     case 'tag': return vex_svg($cls, '<path d="M3 11V4a1 1 0 0 1 1-1h7l10 10-8 8Z"/><path d="M7.5 7.5h.01"/>');
+    case 'code': return vex_svg($cls, '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/>');
+    case 'menu': return vex_svg($cls, '<path d="M4 7h16M4 12h16M4 17h10"/>');
+    case 'layout': return vex_svg($cls, '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M9.5 9.5V20"/>');
     default: return vex_svg($cls, '<circle cx="12" cy="12" r="9"/>');
   }
 }
