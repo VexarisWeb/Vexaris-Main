@@ -31,7 +31,7 @@ function legal_defaults(): array {
     <a href="#k6">6. User Obligations and Prohibitions</a>
     <a href="#k7">7. Suspension and Termination of Service</a>
     <a href="#k8">8. Limits of Liability</a>
-    <a href="#k9">9. Garanti Verilmemesi</a>
+    <a href="#k9">9. No Warranty</a>
     <a href="#k10">10. Third Party Links</a>
     <a href="#k11">11. Governing Law and Competent Courts</a>
     <a href="#k12">12. Dispute Resolution</a>
@@ -42,6 +42,9 @@ function legal_defaults(): array {
     <a href="#k17">17. Content and Domain Responsibility</a>
     <a href="#k18">18. Law Applicable to SaaS Services</a>
     <a href="#k19">19. Access Blocking and Termination in Official Requests</a>
+    <a href="#k20">20. Plans, Subscriptions and Billing</a>
+    <a href="#k21">21. Acceptable Use and Fair Quotas</a>
+    <a href="#k22">22. Age Requirement and Account Singularity</a>
 </div>
 
 <div class="legal__sect" id="k1">
@@ -110,9 +113,10 @@ function legal_defaults(): array {
 </div>
 
 <div class="legal__sect" id="k9">
-    <h2>9. Garanti Verilmemesi</h2>
-    <p>The Site and all products, services and content offered through the Site<strong>&quot;as is&quot;</strong> ve <strong>&quot;as it exists&quot;</strong>is offered. Vexaris makes no warranties, express or implied, regarding the fitness for a particular purpose, merchantability, quality, accuracy and reliability of these products and services.</p>
-    <p>The user is obliged to evaluate the suitability of products and services for his or her needs before using them. Vexaris cannot be held responsible for any damages that may occur as a result of incorrect or incorrect use.</p>
+    <h2>9. No Warranty</h2>
+    <p>The Site and all products, services and content offered through the Site are offered <strong>&quot;as is&quot;</strong> and <strong>&quot;as available&quot;</strong>. Vexaris makes no warranties, express or implied, regarding fitness for a particular purpose, merchantability, quality, accuracy and reliability of these products and services.</p>
+    <p>The User is obliged to evaluate the suitability of products and services for his or her needs before using them. Vexaris cannot be held responsible for any damages that may occur as a result of incorrect use.</p>
+    <p>Outputs produced by the built-in AI assistant are generated automatically, may be inaccurate or incomplete, and do not constitute professional advice. The User is solely responsible for reviewing AI-generated content before publishing or relying on it.</p>
 </div>
 
 <div class="legal__sect" id="k10">
@@ -148,19 +152,20 @@ function legal_defaults(): array {
 
 <div class="legal__sect" id="k15">
     <h2>15. Communication</h2>
-    <p>Your questions, comments and requests regarding these Terms<strong>info@vexaris.net</strong>at or on the Site<a href="mailto:destek@vexaris.net">contact form</a>You can send it via .</p>
+    <p>For your questions, comments and requests regarding these Terms, you can reach us at <strong>info@vexaris.net</strong> or via the <a href="mailto:destek@vexaris.net">contact form</a> on the Site.</p>
 </div>
 
 <div class="legal__sect" id="k16">
     <h2>16. Service Description (SaaS Infrastructure)</h2>
-    <p>Vexaris is not a hosting company. Vexaris is automatically running infrastructure/SaaS software developed to enable users to manage their own content and sell digital products.</p>
-    <p>Vexaris provides the User with software functions such as store infrastructure, management panel, payment integrations, licensing, delivery automation and support tools. The nature of the service offered is software service, and it does not include commitment to server rental or hosting service in the classical sense.</p>
-    <p>SaaS infrastructure servers are hosted abroad. Self-host setup is not public; Available only upon special request and with Vexaris approval.</p>
+    <p>Vexaris is software-as-a-service infrastructure that lets users run their own stores and sell digital products: store hosting on Vexaris subdomains, management panel, payment integrations, licensing, delivery automation, custom domains and support tools.</p>
+    <p>Depending on the plan, the service includes an isolated store environment with monthly traffic quota, version updates, traffic statistics and optional custom-domain connection with automatic SSL. The nature of the service is a software service; server resources are shared and managed by Vexaris, and no dedicated-server commitment is given unless expressly agreed.</p>
+    <p>SaaS infrastructure servers are hosted abroad. No uptime percentage is guaranteed; maintenance windows and version updates may cause short interruptions, which are announced in advance whenever possible.</p>
 </div>
 
 <div class="legal__sect" id="k17">
     <h2>17. Content and Domain Responsibility</h2>
-    <p>The User who is the owner of the relevant domain name is solely responsible for all kinds of texts, images, products, digital content and publications published through the custom domain names (Custom Domain) that the users connect to the system.</p>
+    <p>The User who is the owner of the relevant store or domain name is solely responsible for all kinds of texts, images, products, digital content and publications published through Vexaris subdomains and through the custom domain names (Custom Domain) that the users connect to the system.</p>
+    <p>Custom domains are available only on paid plans. Connection requires pointing DNS records (A or CNAME) to the Vexaris infrastructure and passing automatic verification; the SSL certificate is issued automatically after verification. The User is responsible for keeping DNS records correct for as long as the domain is connected.</p>
     <p>In case of detection of copyright violations, unauthorized content use, illegal product sales or illegal activities, the relevant User&#039;s account will be closed immediately without any excuse. No refunds will be made for accounts closed within this scope.</p>
 </div>
 
@@ -176,13 +181,34 @@ function legal_defaults(): array {
     <p>The User cannot claim any refund, compensation or rights from Vexaris due to the suspension operations carried out in this context. Logs and records required within the scope of legal obligations can be shared with the competent authorities in accordance with the legislation.</p>
 </div>
 
+<div class="legal__sect" id="k20">
+    <h2>20. Plans, Subscriptions and Billing</h2>
+    <p>Vexaris offers Free, Starter, Professional and Enterprise plans. Plan features, traffic quotas, theme sets and custom-domain rights are published on the pricing page, which forms an integral part of these Terms.</p>
+    <p>Paid plans are billed in advance on a monthly or yearly cycle through the payment provider (Whop). The subscription renews automatically at the end of each cycle until cancelled. The User may cancel at any time from the panel; the service remains active until the end of the paid period. Cancellation does not create a right to a partial (pro-rata) refund.</p>
+    <p>Upgrades take effect immediately with the new limits; downgrades take effect at the end of the current cycle, or immediately where technically required — in which case plan-bound features (such as custom domains) may be disconnected without compensation.</p>
+    <p>One-time product purchases (scripts, licenses) are delivered instantly to the Buyer&#039;s panel. Refunds for delivered digital goods follow the withdrawal exception in the Distance Selling Agreement; refunds for undelivered or defective goods are issued to the original payment channel within 14 days.</p>
+</div>
+
+<div class="legal__sect" id="k21">
+    <h2>21. Acceptable Use and Fair Quotas</h2>
+    <p>Each plan includes a monthly traffic quota. When the quota is exceeded, the store may be throttled or suspended until the next cycle; quota status is visible in the panel at all times.</p>
+    <p>The following are forbidden on stores and subdomains: spam or phishing content, malware distribution, copyright-infringing sales, automated scraping or credential-stuffing infrastructure, crypto-mining, and any use that degrades the shared infrastructure for others. Detected violations lead to immediate suspension without refund, following an automated scan and, where possible, prior warning.</p>
+    <p>Version updates are applied from the panel with a short downtime window (about 1 minute). The User is responsible for keeping a backup of uploaded content before updating.</p>
+</div>
+
+<div class="legal__sect" id="k22">
+    <h2>22. Age Requirement and Account Singularity</h2>
+    <p>The Site may only be used by persons who have reached the age of 18 or who have full legal capacity under applicable law. Accounts opened by persons below this threshold are closed without notice.</p>
+    <p>One natural person may hold one account (one-account-per-person policy). Opening multiple accounts from the same person or device — including through similar e-mail addresses — is detected automatically and leads to suspension of duplicate accounts. Shared networks (dormitories, offices) are evaluated with care: only device-level matches trigger automatic action.</p>
+</div>
+
 <p class="legal__updated">These Terms of Use may be changed unilaterally by Vexaris. The current version is always published on the Site.</p>
 HTML;
 
     $d['privacy-policy'] = <<<'HTML'
 <div class="legal__toc">
     <p>Contents</p>
-    <a href="#g1">1. Veri Sorumlusu</a>
+    <a href="#g1">1. Data Controller</a>
     <a href="#g2">2. Processed Personal Data</a>
     <a href="#g3">3. Purposes of Processing Personal Data</a>
     <a href="#g4">4. Conditions of Processing of Personal Data and Legal Reasons</a>
@@ -201,7 +227,7 @@ HTML;
 </div>
 
 <div class="legal__sect" id="g1">
-    <h2>1. Veri Sorumlusu</h2>
+    <h2>1. Data Controller</h2>
     <p>Vexaris is the data controller in terms of personal data processing activities carried out through the website (&quot;Site&quot;) accessed under the domain name www.vexaris.net. All natural persons who visit, review, use or interact with the Site (&quot;Relevant Person&quot;) are considered within the scope of this Privacy Policy.</p>
     <p>This Privacy Policy; It regulates the procedures and principles regarding the processing of all personal data shared by the Relevant Person through the Site or obtained automatically during the use of the Site. Unless otherwise stated in the Policy, all transactions made on the Site are subject to this Policy.</p>
 </div>
@@ -210,11 +236,14 @@ HTML;
     <h2>2. Processed Personal Data</h2>
     <p>Your personal data categorized below may be processed on the site:</p>
     <ul>
-        <li><strong>Kimlik Bilgileri:</strong>Name, surname, username.</li>
+        <li><strong>Identity Information:</strong>Name, surname, username.</li>
         <li><strong>Contact Information:</strong>Email address, telephone number, residence/delivery address.</li>
         <li><strong>Membership and Account Information:</strong>Username, password (hashed), account preferences, membership date.</li>
         <li><strong>Transaction Security Information:</strong>IP address, session information, login and logout times, device and browser information used.</li>
-        <li><strong>Finansal Bilgiler:</strong>Invoice information and payment information regarding purchases (without prejudice to special legal regulations).</li>
+        <li><strong>Device Identification:</strong>Browser fingerprint and persistent device identifier used solely to detect duplicate accounts and prevent fraud.</li>
+        <li><strong>Social Login Data:</strong>Where you sign in via Google, Discord, GitHub or Microsoft, the basic profile data (name, e-mail, avatar) shared by that provider.</li>
+        <li><strong>Traffic and Service Logs:</strong>Bandwidth usage, request timestamps and error logs required to operate quotas, billing and security.</li>
+        <li><strong>Financial Information:</strong>Invoice information and payment information regarding purchases (without prejudice to special legal regulations).</li>
         <li><strong>Legal Transaction Information:</strong>Information regarding legal requests, complaints, and processes carried out with judicial and administrative authorities.</li>
         <li><strong>Request/Complaint Management Information:</strong>Information you submit through contact forms and support requests.</li>
     </ul>
@@ -263,7 +292,8 @@ HTML;
     <ul>
         <li>Business partners and suppliers for the purpose of providing services,</li>
         <li>Software hosting and server service providers,</li>
-        <li>Payment institutions and banks (within the scope of purchasing transactions),</li>
+        <li>Payment institutions and banks, including the subscription billing provider (within the scope of purchasing transactions),</li>
+        <li>OAuth identity providers, limited to the data required to verify your sign-in,</li>
         <li>Authorized public institutions, administrative authorities and courts (in cases of legal obligation),</li>
         <li>Companies providing audit, legal and consultancy services.</li>
     </ul>
@@ -272,7 +302,7 @@ HTML;
 
 <div class="legal__sect" id="g7">
     <h2>7. Storage and Deletion of Personal Data</h2>
-    <p>Your personal data; It is stored for the period necessary for the purposes of processing and within the framework of the retention periods stipulated in the legal legislation. If the storage period expires or the purpose of processing no longer exists, your data will be deleted, destroyed or anonymized.</p>
+    <p>Your personal data; It is stored for the period necessary for the purposes of processing and within the framework of the retention periods stipulated in the legal legislation. Session records are kept for up to 180 days, traffic and accounting logs for up to 35 days, and device identifiers for up to 2 years for fraud prevention. If the storage period expires or the purpose of processing no longer exists, your data will be deleted, destroyed or anonymized.</p>
     <p>The periods determined within the scope of legal retention obligations (tax, trade, accounting legislation, etc.) are subject to the provisions of the relevant legislation.</p>
 </div>
 
@@ -306,7 +336,7 @@ HTML;
 
 <div class="legal__sect" id="g11">
     <h2>11. Application Methods</h2>
-    <p>You can submit your applications regarding your rights listed above in writing or by other methods determined by the Board in accordance with Article 13 of the KVKK.<strong>info@vexaris.net</strong>address or on the Site.<a href="mailto:destek@vexaris.net">contact form</a>You can send it via .</p>
+    <p>You can submit your applications regarding your rights listed above in writing or by other methods determined by the Board in accordance with Article 13 of the KVKK, to the address <strong>info@vexaris.net</strong> or via the <a href="mailto:destek@vexaris.net">contact form</a> on the Site.</p>
     <p>Your application will be finalized free of charge within thirty (30) days at the latest, depending on the nature of the request. If the application incurs processing costs, a fee may be charged based on the tariff determined by the Board. Your application must be clear and understandable and include your identity and authority information.</p>
 </div>
 
@@ -410,7 +440,7 @@ HTML;
 <div class="legal__sect" id="c5">
     <h2>5. Cookie Management and User Controls</h2>
     <p>In accordance with Article 5 of the Personal Data Protection Law No. 6698, a separate express consent is not required for cookies whose processing is mandatory to provide the service, and the legal basis for the use of these cookies is based on the legal reason that &quot;it is necessary to process personal data of the parties to the contract, provided that it is directly related to the establishment or performance of a contract&quot;.</p>
-    <p>Cookies other than mandatory cookies (functional, performance and marketing) are used only with your explicit consent. In the cookie notice displayed on your first visit to the Site<strong>"Kabul Et"</strong>You can approve all of them with<strong>"Reddet"</strong>You can continue with only mandatory cookies or<strong>&quot;Other Options&quot;</strong>You can choose based on category. The pre-checked box is not used; The choice is entirely yours.</p>
+    <p>Cookies other than mandatory cookies (functional, performance and marketing) are used only with your explicit consent. In the cookie notice displayed on your first visit to the Site you can approve all of them, continue with only mandatory cookies, or choose based on category. The pre-checked box is not used; The choice is entirely yours.</p>
     <p>You can change your cookie preferences at any time in one of the following ways:</p>
     <ul>
         <li>You can block, delete or reject third-party cookies through your browser&#039;s settings menu,</li>
@@ -440,6 +470,8 @@ HTML;
         <li><strong>vexaris_sess:</strong>Session cookie (first-party, mandatory, HttpOnly). Resumes your login session; It expires when the browser is closed or after 180 days.</li>
         <li><strong>remember_token:</strong>&quot;Remember me&quot; cookie (first-party, mandatory). It is created only if you check it; Valid for 180 days, stored with hash.</li>
         <li><strong>vex-cookie-consent-v2:</strong>Your cookie preferences (browser local storage, technically not cookies). Stored for 1 year; If you choose to reject, only the &quot;all off&quot; information is kept.</li>
+        <li><strong>vex_did:</strong>Persistent device identifier (first-party, fraud prevention). Used solely to detect duplicate accounts; valid for 2 years, HttpOnly.</li>
+        <li><strong>OAuth sign-in state:</strong>Short-lived session values used during Google/Discord/GitHub/Microsoft sign-in (first-party, mandatory). Discarded within minutes after login completes.</li>
         <li><strong>__cf_bm / cf_clearance:</strong>Cloudflare bot and security verification (third party, mandatory). Lives in the order of minutes-days for session/bot score.</li>
         <li><strong>_ga and its derivatives:</strong>Google Analytics (third party, analytics). It will only be loaded if you consent and the measurement ID is defined; IP is anonymized.</li>
     </ul>
@@ -469,6 +501,7 @@ HTML;
     <a href="#m5">5. Right of Withdrawal and Digital Exemption</a>
     <a href="#m6">6. Return and Cancellation Conditions</a>
     <a href="#m7">7. Dispute and Competent Authorities</a>
+    <a href="#m8">8. Subscriptions and Recurring Payments</a>
 </div>
 
 <div class="legal__sect" id="m1">
@@ -491,7 +524,7 @@ HTML;
 
 <div class="legal__sect" id="m4">
     <h2>4. Payment and Invoicing</h2>
-    <p>Payments; It is received through the payment infrastructures offered on the Site, including Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, Paywant and Whop. Card and account information is not stored on Vexaris servers; Collection is made with the assurance of the relevant payment institution.</p>
+    <p>Payments; It is received through the payment infrastructures offered on the Site, including Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, Paywant, Whop, Paddle, Lemon Squeezy and DodoPayments, as well as subscription billing through Whop. Card and account information is not stored on Vexaris servers; Collection is made with the assurance of the relevant payment institution.</p>
     <p>The order price is charged on the total amount including taxes and invoicing is carried out in accordance with the applicable tax legislation.</p>
 </div>
 
@@ -512,7 +545,14 @@ HTML;
 <div class="legal__sect" id="m7">
     <h2>7. Dispute and Competent Authorities</h2>
     <p>In disputes arising from this Agreement, Consumer Arbitration Committees and Consumer Courts in the Buyer&#x27;s place of residence are authorized within the monetary limits. The parties may consider pre-litigation conciliation and mediation.</p>
-    <p>Your complaints and requests<strong>info@vexaris.net</strong>You can submit a support request at or via the support request on the Site.</p>
+    <p>For your complaints and requests, you can reach us at <strong>info@vexaris.net</strong> or via the support request on the Site.</p>
+</div>
+
+<div class="legal__sect" id="m8">
+    <h2>8. Subscriptions and Recurring Payments</h2>
+    <p>Plans billed on a monthly or yearly cycle (Starter, Professional, Enterprise) are subscriptions within the meaning of the Distance Contracts Regulation. Before you confirm, the total recurring amount, the billing cycle and the renewal behaviour are shown explicitly and require your separate approval.</p>
+    <p>The subscription renews automatically at the end of each cycle and the recurring amount is charged through the payment provider. You may cancel at any time from your panel; cancellation stops future renewals and the service remains active until the end of the already-paid period. No partial refund is issued for the remaining days of a cancelled cycle.</p>
+    <p>Because SaaS access is an instantly performed electronic service, the 14-day withdrawal right ends once the paid period starts, provided you gave express consent with the acknowledgment that you lose this right — which is collected at checkout. Price changes apply only to future renewals and are announced in advance.</p>
 </div>
 
 <p class="legal__updated">This Distance Selling Agreement comes into force upon order confirmation. The current version is always published on the Site.</p>
