@@ -9,7 +9,7 @@ $cu = current_user();
 $GLOBALS['seoKey'] = 'features';
 $GLOBALS['seoFallback'] = [
   'title' => 'Features - Vexaris',
-  'description' => 'Vexaris features: product and stock management, coupons, automatic delivery, license keys, 7 payment integrations and more.',
+  'description' => 'Vexaris features: product and stock management, coupons, automatic delivery, license keys, 12+ payment integrations, visual theme editor, modules and more.',
 ];
 
 $BASE = 'index.php';
@@ -19,7 +19,7 @@ $FEATS = [
   ['icon'=>'tag','title'=>'Coupons & Campaigns','desc'=>'Percentage or gift-product coupons, usage-limited campaigns.','keys'=>'coupon discount campaign gift'],
   ['icon'=>'bolt','title'=>'Automatic Delivery','desc'=>'Files and keys land in customer libraries the second payment is approved.','keys'=>'delivery automatic instant'],
   ['icon'=>'key','title'=>'License Keys','desc'=>'Per-order signed key generation, version rights and online verification.','keys'=>'license key'],
-  ['icon'=>'wallet','title'=>'7 Payment Integrations','desc'=>'Shopier, PayTR, iyzico, Stripe, PayPal, BitPay and Cryptomus from one panel.','keys'=>'payment pos shopier paytr iyzico stripe paypal crypto'],
+  ['icon'=>'wallet','title'=>'12+ Payment Integrations','desc'=>'Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, PayWant, Whop, Paddle, Lemon Squeezy, DodoPayments plus Havale/EFT and custom module gateways.','keys'=>'payment pos shopier paytr iyzico stripe paypal crypto bitpay paywant whop paddle lemon dodo havale eft'],
   ['icon'=>'headset','title'=>'Support Tickets','desc'=>'Categorized priority ticket system, internal messaging and ticket history.','keys'=>'support ticket help'],
   ['icon'=>'spark','title'=>'Customer Reviews','desc'=>'Verified buyer reviews, star ratings and moderation approval.','keys'=>'review star reference'],
   ['icon'=>'users','title'=>'Role & Permission Matrix','desc'=>'Admin, manager and moderator roles; detailed resource-based permissions.','keys'=>'role permission admin staff'],
@@ -42,6 +42,12 @@ $FEATS = [
   ['icon'=>'spark','title'=>'Slider System','desc'=>'Store slider texts, colors and links managed from the panel; visible above the header in all themes.','keys'=>'slider banner showcase announcement'],
   ['icon'=>'server','title'=>'Version History','desc'=>'Product versions archived with release notes; old versions listed, edited and managed.','keys'=>'version history changelog'],
   ['icon'=>'bolt','title'=>'Update Reminders','desc'=>'Unread update badges appear on versions with changed files; cleared on tab entry.','keys'=>'update reminder notification badge'],
+  ['icon'=>'palette','title'=>'Visual Theme Editor','desc'=>'Live draft preview, custom color picker with presets, Turkish and English saved in one click, custom CSS and mobile-friendly editing.','keys'=>'theme editor customize color preview design live css'],
+  ['icon'=>'plugin','title'=>'Landing & Menu Builder','desc'=>'Homepage section toggles, category showcases, custom blocks plus header/footer menu editors with dropdowns.','keys'=>'landing builder sections blocks header footer menu homepage dropdown'],
+  ['icon'=>'box','title'=>'Module System','desc'=>'Install payment and marketing modules with hooks: Havale/EFT, commission rules, announcement bars and more.','keys'=>'module plugin hook havale eft commission gateway extension'],
+  ['icon'=>'users','title'=>'Social Login','desc'=>'Customers sign in with Google, Discord, GitHub or Microsoft and manage linked accounts.','keys'=>'oauth social login google discord github microsoft account'],
+  ['icon'=>'spark','title'=>'AI Store Assistant','desc'=>'Built-in AI chat in the admin panel for content, settings and daily store tasks.','keys'=>'ai assistant artificial intelligence chat admin'],
+  ['icon'=>'globe','title'=>'Two Languages (TR/EN)','desc'=>'Full Turkish and English storefront, legal pages and panel content with automatic fallback.','keys'=>'language turkish english translation i18n bilingual'],
 ];
 
 function feat_search($f) {
