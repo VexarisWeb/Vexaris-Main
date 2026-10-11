@@ -56,7 +56,7 @@ $err = (string)($_GET['err'] ?? '');
             <?php if (trim((string)$it['description']) !== ''): ?>
             <div style="font-size:.82rem;color:var(--muted);line-height:1.6;margin-top:.7rem"><?= htmlspecialchars(mb_strimwidth((string)$it['description'], 0, 140, '…')) ?></div>
             <?php endif; ?>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-top:auto;padding-top:1rem">
                 <div style="font-family:var(--fd);font-size:1.3rem;font-weight:800;color:#fff"><?= number_format((float)$it['price'], 2) ?> <span style="font-size:.75rem;color:var(--muted)"><?= htmlspecialchars($it['show_currency']) ?></span></div>
                 <?php if ($owned): ?>
                 <a href="/dashboard/products" class="btn-panel btn-green"><i class="fas fa-check"></i> Owned</a>

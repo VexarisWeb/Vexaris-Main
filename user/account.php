@@ -54,7 +54,7 @@ $licDomains = $myLic ? (json_decode((string)$myLic['allowed_domains'], true) ?: 
 $subLive = $mySub && ($mySub['status'] ?? '') === 'active' && (int)($mySub['current_period_end'] ?? 0) > time();
 ?>
 <div class="panel-card" style="margin-bottom:1.2rem;border-color:rgba(79,143,192,.35)">
-    <div class="panel-card__head"><div class="panel-card__title"><i class="fas fa-crown"></i> My Plan &amp; License</div><div style="display:flex;gap:.5rem"><a href="/dashboard/subscription" class="btn-panel" style="text-decoration:none"><i class="fas fa-gauge-high"></i> Manage</a><a href="/pricing" class="btn-panel btn-cyan" style="text-decoration:none"><i class="fas fa-arrow-up"></i> <?= $subLive ? 'Change plan' : 'View plans' ?></a></div></div>
+    <div class="panel-card__head"><div class="panel-card__title"><i class="fas fa-crown"></i> My Plan &amp; License</div><div style="display:flex;gap:.5rem;flex-wrap:wrap"><a href="/dashboard/subscription" class="btn-panel" style="text-decoration:none"><i class="fas fa-gauge-high"></i> Manage</a><a href="/pricing" class="btn-panel btn-cyan" style="text-decoration:none"><i class="fas fa-arrow-up"></i> <?= $subLive ? 'Change plan' : 'View plans' ?></a></div></div>
     <div class="panel-card__body">
         <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center">
             <div>
@@ -174,7 +174,7 @@ $subLive = $mySub && ($mySub['status'] ?? '') === 'active' && (int)($mySub['curr
             <div style="flex:1;min-width:0">
                 <div style="font-weight:700;color:#fff;font-size:.88rem"><?= htmlspecialchars($cfg['label']) ?></div>
                 <?php if ($linked): ?>
-                <div style="font-size:.76rem;color:#4ade80"><i class="fas fa-check-circle"></i> Connected<?= !empty($linked['email']) ? ' — ' . htmlspecialchars($linked['email']) : '' ?></div>
+                <div style="font-size:.76rem;color:#4ade80;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><i class="fas fa-check-circle"></i> Connected<?= !empty($linked['email']) ? ' — ' . htmlspecialchars($linked['email']) : '' ?></div>
                 <?php else: ?>
                 <div style="font-size:.76rem;color:var(--muted)">Not connected — connect for one-click sign-in</div>
                 <?php endif; ?>

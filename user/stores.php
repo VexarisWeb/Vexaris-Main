@@ -338,7 +338,7 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
         </div>
     </div>
     <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;">
-        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:8px;"><span><i class="fas fa-gauge-high"></i> Monthly bandwidth</span><span><?= htmlspecialchars(nx_fmt_bytes($usedB)) ?> / <?= (int)$quotaGB ?> GB (<?= htmlspecialchars((string)$trafPct) ?>%)</span></div>
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.3rem;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:8px;"><span><i class="fas fa-gauge-high"></i> Monthly bandwidth</span><span><?= htmlspecialchars(nx_fmt_bytes($usedB)) ?> / <?= (int)$quotaGB ?> GB (<?= htmlspecialchars((string)$trafPct) ?>%)</span></div>
         <div style="height:10px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:<?= htmlspecialchars((string)$trafPct) ?>%;border-radius:999px;background:linear-gradient(90deg,#ff7a1a,#2bd4ff);transition:width .6s ease;"></div></div>
         <div style="font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:8px;">Last 14 days</div>
         <div style="display:flex;align-items:flex-end;gap:5px;height:90px;">
@@ -490,10 +490,10 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
         </div>
         <p style="font-size:11.5px;color:#64748b;margin:0 0 14px;line-height:1.6;">Use the A record for apex domains (example.com) or the CNAME for subdomains (shop.example.com). DNS changes can take a few minutes.</p>
         <div id="nxDomMsg" style="font-size:12px;min-height:18px;margin-bottom:8px;"></div>
-        <div style="display:flex;gap:10px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button class="btn-panel" id="nxDomCancel" style="flex:1;">Cancel</button>
             <button class="btn-panel" id="nxDomRemove" style="flex:1;color:#f87171;">Remove</button>
-            <button class="btn-panel btn-cyan" id="nxDomSave" style="flex:2;font-weight:800;">Save Domain</button>
+            <button class="btn-panel btn-cyan" id="nxDomSave" style="flex:2 1 180px;font-weight:800;">Save Domain</button>
         </div>
     </div>
 </div>

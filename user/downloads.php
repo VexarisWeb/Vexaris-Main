@@ -24,15 +24,15 @@ if ($pdo) {
     <div class="panel-card__body">
         <?php if ($downloads): ?>
         <table>
-            <thead><tr><th>File</th><th>Product</th><th>Size</th><th>Downloads</th><th>Last Download</th><th style="text-align:right">Action</th></tr></thead>
+            <thead><tr><th>File</th><th>Product</th><th class="hide-m">Size</th><th>Downloads</th><th class="hide-m">Last Download</th><th style="text-align:right">Action</th></tr></thead>
             <tbody>
             <?php foreach ($downloads as $d): ?>
                 <tr>
-                    <td style="font-weight:600"><i class="fas fa-file" style="color:var(--cyan);margin-right:8px"></i><?= htmlspecialchars($d['file_name']) ?></td>
+                    <td style="font-weight:600;word-break:break-all"><i class="fas fa-file" style="color:var(--cyan);margin-right:8px"></i><?= htmlspecialchars($d['file_name']) ?></td>
                     <td style="color:rgba(255,255,255,.55)"><?= htmlspecialchars($d['product_name'] ?: '—') ?></td>
-                    <td style="color:rgba(255,255,255,.45);font-size:.8rem"><?= htmlspecialchars($d['file_size'] ?: '—') ?></td>
+                    <td class="hide-m" style="color:rgba(255,255,255,.45);font-size:.8rem"><?= htmlspecialchars($d['file_size'] ?: '—') ?></td>
                     <td><?= (int)$d['download_count'] ?></td>
-                    <td style="color:rgba(255,255,255,.45);font-size:.8rem"><?= $d['last_download_at'] ? date('d.m.Y H:i', strtotime($d['last_download_at'])) : '—' ?></td>
+                    <td class="hide-m" style="color:rgba(255,255,255,.45);font-size:.8rem"><?= $d['last_download_at'] ? date('d.m.Y H:i', strtotime($d['last_download_at'])) : '—' ?></td>
                     <td style="text-align:right">
                         <a href="/api/download?id=<?= (int)$d['id'] ?>" class="btn-panel btn-green"><i class="fas fa-download"></i> Download</a>
                     </td>

@@ -41,15 +41,15 @@ if ($pdo) {
     <div class="panel-card__body">
         <?php if ($orders): ?>
         <table>
-            <thead><tr><th>#</th><th>Order No</th><th>Product</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+            <thead><tr><th class="hide-m">#</th><th>Order No</th><th>Product</th><th>Amount</th><th class="hide-m">Date</th><th>Status</th></tr></thead>
             <tbody>
             <?php foreach ($orders as $o): $cur = strtoupper($o['currency'] !== '' ? $o['currency'] : 'USD'); ?>
                 <tr>
-                    <td style="color:rgba(255,255,255,.45);font-size:.8rem"><?= (int)$o['id'] ?></td>
+                    <td class="hide-m" style="color:rgba(255,255,255,.45);font-size:.8rem"><?= (int)$o['id'] ?></td>
                     <td style="color:rgba(255,255,255,.45);font-size:.8rem">#<?= htmlspecialchars($o['order_no']) ?></td>
                     <td style="font-weight:600"><?= htmlspecialchars($o['product_name']) ?></td>
                     <td><?= number_format((float)$o['amount'], 2) ?> <?= htmlspecialchars($cur) ?></td>
-                    <td style="color:rgba(255,255,255,.45);font-size:.8rem"><?= date('d.m.Y H:i', strtotime($o['created_at'])) ?></td>
+                    <td class="hide-m" style="color:rgba(255,255,255,.45);font-size:.8rem"><?= date('d.m.Y H:i', strtotime($o['created_at'])) ?></td>
                     <td><?php if ($o['status'] === 'completed'): ?><span class="badge badge-approved"><i class="fas fa-check"></i> Completed</span><?php elseif ($o['status'] === 'pending'): ?><span class="badge badge-pending"><i class="fas fa-hourglass-half"></i> Pending</span><?php else: ?><span class="badge badge-rejected"><i class="fas fa-xmark"></i> <?= htmlspecialchars(ucfirst($o['status'])) ?></span><?php endif; ?></td>
                 </tr>
             <?php endforeach; ?>

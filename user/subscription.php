@@ -36,7 +36,7 @@ $pc = $planColors[$planSlug] ?? '#9aa3ac';
     <p>Your plan, limits and billing history.</p>
 </div>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.2rem;margin-bottom:1.2rem">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:1.2rem;margin-bottom:1.2rem">
     <div class="panel-card" style="margin:0;border-color:<?= $pc ?>55">
         <div class="panel-card__body">
             <div style="display:flex;align-items:center;gap:.8rem">
@@ -54,7 +54,7 @@ $pc = $planColors[$planSlug] ?? '#9aa3ac';
             <?php else: ?>
             <div style="font-size:.82rem;color:var(--muted);margin-top:.8rem"><i class="fas fa-circle-info"></i> Upgrade to unlock more products, revenue and features.</div>
             <?php endif; ?>
-            <div style="display:flex;gap:.6rem;margin-top:1rem">
+            <div style="display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap">
                 <a href="/pricing" class="btn-panel btn-cyan" style="text-decoration:none"><i class="fas fa-arrow-up"></i> <?= $planSlug === 'free' ? 'Upgrade plan' : 'Change plan' ?></a>
                 <a href="/dashboard/license" class="btn-panel" style="text-decoration:none"><i class="fas fa-key"></i> My License</a>
             </div>
@@ -64,7 +64,7 @@ $pc = $planColors[$planSlug] ?? '#9aa3ac';
     <div class="panel-card" style="margin:0">
         <div class="panel-card__head"><div class="panel-card__title"><i class="fas fa-gauge-high"></i> Plan Snapshot</div></div>
         <div class="panel-card__body">
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem;text-align:center">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:.8rem;text-align:center">
                 <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:.8rem .4rem">
                     <div style="font-size:1.2rem;font-weight:800;color:#fff"><?= count($licDomains) ?></div>
                     <div style="font-size:.7rem;color:var(--muted)">Domains</div>

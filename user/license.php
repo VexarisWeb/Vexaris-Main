@@ -77,7 +77,7 @@ $err = (string)($_GET['err'] ?? '');
 <?php else: ?>
 <div class="panel-card"><div class="panel-card__body"><div class="empty"><i class="fas fa-key"></i>No license linked yet. Buy a plan or claim an existing key.</div>
 <div style="text-align:center;margin-top:1rem"><a href="/pricing" class="btn-panel btn-cyan" style="text-decoration:none"><i class="fas fa-crown"></i> View Plans</a></div>
-<form method="POST" action="/api/license-domains" style="display:flex;gap:.6rem;margin-top:1rem;max-width:520px;margin-left:auto;margin-right:auto">
+<form method="POST" action="/api/license-domains" style="display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1rem;max-width:520px;margin-left:auto;margin-right:auto">
     <input type="hidden" name="_csrf" value="<?= htmlspecialchars(csrf_token()) ?>">
     <input type="hidden" name="action" value="claim">
     <input name="license_key" placeholder="Paste license key to claim" required maxlength="64" style="flex:1;min-width:200px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;color:#fff;padding:.65rem 1rem;font-size:.85rem;outline:none">

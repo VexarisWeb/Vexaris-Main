@@ -24,16 +24,16 @@ if ($pdo) {
     <div class="panel-card__body">
         <?php if ($products): ?>
         <table>
-            <thead><tr><th>Product</th><th>Description</th><th>File</th><th>Size</th><th>Current Version</th><th>Assigned Date</th><th style="text-align:right">Action</th></tr></thead>
+            <thead><tr><th>Product</th><th class="hide-m">Description</th><th class="hide-m">File</th><th class="hide-m">Size</th><th>Current Version</th><th class="hide-m">Assigned Date</th><th style="text-align:right">Action</th></tr></thead>
             <tbody>
             <?php foreach ($products as $p): ?>
                 <tr>
                     <td style="font-weight:600"><i class="fas fa-box-open" style="color:var(--cyan);margin-right:8px"></i><?= htmlspecialchars($p['name']) ?></td>
-                    <td style="color:rgba(255,255,255,.85);max-width:320px;font-size:.85rem;line-height:1.5"><div class="md-body" style="display:block"><?= $p['description'] ?: '—' ?></div></td>
-                    <td style="color:rgba(255,255,255,.55);font-size:.8rem"><?= htmlspecialchars($p['file_name']) ?></td>
-                    <td style="color:rgba(255,255,255,.45);font-size:.8rem"><?= htmlspecialchars($p['file_size'] ?: '—') ?></td>
+                    <td class="hide-m" style="color:rgba(255,255,255,.85);max-width:320px;font-size:.85rem;line-height:1.5"><div class="md-body" style="display:block"><?= $p['description'] ?: '—' ?></div></td>
+                    <td class="hide-m" style="color:rgba(255,255,255,.55);font-size:.8rem;word-break:break-all"><?= htmlspecialchars($p['file_name']) ?></td>
+                    <td class="hide-m" style="color:rgba(255,255,255,.45);font-size:.8rem"><?= htmlspecialchars($p['file_size'] ?: '—') ?></td>
                     <td><?php if (!empty($p['latest_version'])): ?><span class="badge" style="background:rgba(0,212,255,.12);color:var(--cyan);border:1px solid var(--border)">v<?= htmlspecialchars($p['latest_version']) ?></span><?php else: ?><span style="color:var(--muted);font-size:.8rem">—</span><?php endif; ?></td>
-                    <td style="color:rgba(255,255,255,.45);font-size:.8rem"><?= date('d.m.Y H:i', strtotime($p['granted_at'])) ?></td>
+                    <td class="hide-m" style="color:rgba(255,255,255,.45);font-size:.8rem"><?= date('d.m.Y H:i', strtotime($p['granted_at'])) ?></td>
                     <td style="text-align:right">
                         <?php $isUpdate = !empty($p['latest_version']) && (strtotime($p['granted_at']) < strtotime($p['latest_version_created'] ?? $p['granted_at']) || (int)$p['indirme_sayisi']>0); ?>
                         <?php if (setting_get('vx_downloads_off', '0') === '1'): ?>
