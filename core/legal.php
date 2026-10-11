@@ -193,6 +193,18 @@ function legal_defaults(): array {
     <h2>21. Acceptable Use and Fair Quotas</h2>
     <p>Each plan includes a monthly traffic quota. When the quota is exceeded, the store may be throttled or suspended until the next cycle; quota status is visible in the panel at all times.</p>
     <p>The following are forbidden on stores and subdomains: spam or phishing content, malware distribution, copyright-infringing sales, automated scraping or credential-stuffing infrastructure, crypto-mining, and any use that degrades the shared infrastructure for others. Detected violations lead to immediate suspension without refund, following an automated scan and, where possible, prior warning.</p>
+    <p>The following categories may not be sold or distributed through Vexaris stores or subdomains under any circumstances:</p>
+    <ul>
+        <li>Gambling, betting, casino, lottery, prediction markets and any games of chance involving money or prizes,</li>
+        <li>Narcotics, psychotropic substances, controlled drugs and any paraphernalia facilitating their use,</li>
+        <li>Weapons, ammunition, explosives and instructions facilitating their production,</li>
+        <li>Physical goods requiring shipment — Vexaris is a digital-goods platform; no physical products may be listed,</li>
+        <li>Counterfeit goods, pirated software, stolen accounts, credentials or personal data,</li>
+        <li>Adult/pornographic content and escort services,</li>
+        <li>Financial fraud instruments, money-laundering schemes, unlicensed investment or crypto-doubling offers,</li>
+        <li>Any content violating sanctions, export controls or applicable criminal law.</li>
+    </ul>
+    <p>Stores found to list prohibited products are closed immediately without refund, and related licenses are revoked. Where required by law, relevant records are shared with competent authorities.</p>
     <p>Version updates are applied from the panel with a short downtime window (about 1 minute). The User is responsible for keeping a backup of uploaded content before updating.</p>
 </div>
 
