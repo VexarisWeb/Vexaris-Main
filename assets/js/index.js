@@ -124,6 +124,14 @@
     window.addEventListener('resize', marqueeMeasure);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(marqueeMeasure);
     window.addEventListener('load', marqueeMeasure);
+    var mVisible = true;
+    if ('IntersectionObserver' in window) {
+      try {
+        new IntersectionObserver(function (ens) {
+          mVisible = ens && ens[0] ? !!ens[0].isIntersecting : true;
+        }, { threshold: 0 }).observe(track);
+      } catch (e) { mVisible = true; }
+    }
     var zone = track.parentElement;
     if (zone) {
       zone.addEventListener('mouseenter', function () { paused = true; });
@@ -147,8 +155,8 @@
       var dt = Math.min(0.05, (t - last) / 1000);
       last = t;
       frame++;
-      if (marqueeDirty || frame % 30 === 0) measure();
-      if (!paused && marqueeHalf > 0) {
+      if (marqueeDirty || frame % 240 === 0) measure();
+      if (!paused && !document.hidden && mVisible && marqueeHalf > 0) {
         x -= SPEED * dt;
         if (-x >= marqueeHalf) x += marqueeHalf;
         track.style.transform = 'translateX(' + x + 'px)';
@@ -159,7 +167,9 @@
   }
 
   /* ---------- hero dönen kelimeler ---------- */
-  var ROT_WORDS = ['Güçlü Altyapı', 'Modern Entegrasyonlar', 'Yüksek Performans', 'Otomatik Teslimat'];
+  var ROT_WORDS_TR = ['Güçlü Altyapı', 'Modern Entegrasyonlar', 'Yüksek Performans', 'Otomatik Teslimat'];
+  var ROT_WORDS_EN = ['Powerful Infrastructure', 'Modern Integrations', 'High Performance', 'Automatic Delivery'];
+  var ROT_WORDS = (document.documentElement.lang || 'en').toLowerCase().indexOf('tr') === 0 ? ROT_WORDS_TR : ROT_WORDS_EN;
   function initRotate() {
     var el = $('#rotWord');
     if (!el || !ROT_WORDS.length) return;
@@ -190,6 +200,14 @@
     measure();
     window.addEventListener('resize', function () { dirty = true; });
     window.addEventListener('load', function () { dirty = true; });
+    var rVisible = true;
+    if ('IntersectionObserver' in window) {
+      try {
+        new IntersectionObserver(function (ens) {
+          rVisible = ens && ens[0] ? !!ens[0].isIntersecting : true;
+        }, { threshold: 0 }).observe(track);
+      } catch (e) { rVisible = true; }
+    }
     var zone = $('#refSlider') || track.parentElement;
     if (zone) {
       zone.addEventListener('mouseenter', function () { paused = true; });
@@ -200,8 +218,8 @@
       var dt = Math.min(0.05, (t - last) / 1000);
       last = t;
       frame++;
-      if (dirty || frame % 60 === 0) measure();
-      if (!paused && !document.hidden && half > 0) {
+      if (dirty || frame % 240 === 0) measure();
+      if (!paused && !document.hidden && rVisible && half > 0) {
         x -= SPEED * dt;
         if (-x >= half) x += half;
         track.style.transform = 'translateX(' + x + 'px)';
@@ -384,8 +402,11 @@
     paintBtns();
   }
 
-  /* ---------- paket kartları: mouse ile parlama ---------- */
+  /* ---------- paket kartları: mouse ile parlama (dokunmatikte gereksiz) ---------- */
   function initPlanGlow() {
+    try {
+      if (window.matchMedia && window.matchMedia('(hover: none)').matches) return;
+    } catch (e) {}
     $all('.plan-card').forEach(function (card) {
       card.addEventListener('pointermove', function (e) {
         var r = card.getBoundingClientRect();

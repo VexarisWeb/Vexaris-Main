@@ -653,3 +653,29 @@ img, video, svg { max-width: 100%; }
     scroll-behavior: auto;
   }
 }
+
+/* ---------- mobil optimizasyon (tasarım korunur) ----------
+   Kural: animasyon ve hover'lar durur; sadece pahalı statik
+   parlama katmanları mobilde kapanır, sticky'ye dokunulmaz. */
+@media (max-width: 768px) {
+  /* büyük blur lekeleri: mobil GPU'nun en pahalı katmanı */
+  .mob-noglow {
+    display: none !important;
+  }
+  /* tam ekran sabit noise: kaydırmada her kareyi boyatır */
+  .noise-overlay {
+    display: none;
+  }
+}
+/* Dokunmatik: pricing kartında kalkma + ışık süpürme + fare parlaması yok
+   (kenarlık/gölge geri bildirimi durur, diğer tüm hover'lar aynen). */
+@media (hover: none) {
+  .plan-card:hover,
+  .plan-glow:hover {
+    transform: none;
+  }
+  .plan-card:hover::before,
+  .plan-card:hover::after {
+    opacity: 0;
+  }
+}

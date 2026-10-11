@@ -137,7 +137,7 @@ function vex_logo_item($l){
     <!-- ============ HERO ============ -->
     <section id="top" class="relative overflow-hidden pt-28 md:pt-40 pb-0">
       <div class="absolute inset-0 dotgrid opacity-60 [mask-image:radial-gradient(70%_60%_at_50%_20%,#000_20%,transparent_100%)]"></div>
-      <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full bg-[#4f8fc0]/[.06] blur-[120px]"></div>
+      <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full bg-[#4f8fc0]/[.06] blur-[120px] mob-noglow"></div>
       <div class="relative max-w-7xl mx-auto px-5 sm:px-8">
         <div class="grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <div class="lg:col-span-6">
@@ -418,8 +418,8 @@ function vex_logo_item($l){
 
     <!-- ============ PAKETLER ============ -->
     <section id="pricing" class="relative py-24 md:py-32 border-t border-[#262c33] scroll-mt-24 overflow-hidden">
-      <div class="absolute -right-32 top-10 w-96 h-96 rounded-full bg-[#4f8fc0]/[.07] blur-[110px]" aria-hidden="true"></div>
-      <div class="absolute -left-40 bottom-0 w-[28rem] h-[28rem] rounded-full bg-[#4f8fc0]/[.04] blur-[130px]" aria-hidden="true"></div>
+      <div class="absolute -right-32 top-10 w-96 h-96 rounded-full bg-[#4f8fc0]/[.07] blur-[110px] mob-noglow" aria-hidden="true"></div>
+      <div class="absolute -left-40 bottom-0 w-[28rem] h-[28rem] rounded-full bg-[#4f8fc0]/[.04] blur-[130px] mob-noglow" aria-hidden="true"></div>
       <div class="relative max-w-7xl mx-auto px-5 sm:px-8">
         <div class="reveal text-center max-w-2xl mx-auto mb-10 md:mb-12">
           <div class="font-mono2 text-[12px] uppercase tracking-[0.2em] text-[#4f8fc0]">Pricing</div>
