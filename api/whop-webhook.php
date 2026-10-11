@@ -5,6 +5,34 @@
 require_once __DIR__ . '/../core/db.php';
 require_once __DIR__ . '/../core/whop.php';
 
+// Iptal/iade/dispute sonrasi magazayi free'ye dusurur: panel plani + free
+// limitlerle rebuild job'u (custom domain free hook ile budanir).
+function whop_downgrade_store(PDO $pdo, int $uid): void {
+    if ($uid <= 0) return;
+    try {
+        $st = $pdo->prepare("SELECT email, password FROM users WHERE id=? LIMIT 1");
+        $st->execute([$uid]);
+        $urow = $st->fetch() ?: [];
+        $uemail = strtolower(trim((string)($urow['email'] ?? '')));
+        $uhash = (string)($urow['password'] ?? '');
+        if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $uhash)) $uhash = '';
+        $st = $pdo->prepare("SELECT slug, owner FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' LIMIT 1");
+        $st->execute([$uid, $uemail]);
+        $srow = $st->fetch();
+        if (!$srow) return;
+        $slug = (string)($srow['slug'] ?? '');
+        if ($slug === '') return;
+        $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
+        $st->execute([$slug]);
+        if ($st->fetch()) return;
+        $pdo->prepare("UPDATE hosted_stores SET plan='free' WHERE slug=?")->execute([$slug]);
+        $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?, ?, 'free', ?, ?, 'en', 'provision', 'pending', ?)")
+            ->execute([$uid, $slug, (string)($srow['owner'] ?? $uemail), $slug, $uhash]);
+    } catch (Throwable $e) {
+        error_log('Whop downgrade job: ' . $e->getMessage());
+    }
+}
+
 $payload = file_get_contents('php://input') ?: '';
 $msgId  = (string)($_SERVER['HTTP_WEBHOOK_ID'] ?? $_SERVER['HTTP_SVIX_ID'] ?? '');
 $msgTs  = (string)($_SERVER['HTTP_WEBHOOK_TIMESTAMP'] ?? $_SERVER['HTTP_SVIX_TIMESTAMP'] ?? '');
@@ -63,6 +91,7 @@ if ($orderNo === '' && stripos($type, 'membership') !== false) {
                         }
                     }
                     notify_user($sUid, 'info', 'Subscription cancelled', 'Your Vexaris plan subscription ended. Your site continues on the Free plan.');
+                    whop_downgrade_store($pdo, $sUid);
                 }
             }
         } catch (Throwable $e) {
@@ -216,6 +245,7 @@ try {
                 }
             }
             notify_user($rfUid, 'info', 'Payment refunded', 'Your plan payment was refunded. Your site continues on the Free plan.');
+            whop_downgrade_store($pdo, $rfUid);
         }
     } elseif (stripos($type, 'dispute') !== false || stripos($type, 'chargeback') !== false) {
         $dpPay = (string)($data['payment_id'] ?? $data['id'] ?? '');
@@ -237,6 +267,7 @@ try {
                     }
                 }
                 notify_user($dpUid, 'info', 'Payment disputed', 'A dispute was opened on your plan payment. Your site continues on the Free plan until resolved.');
+                whop_downgrade_store($pdo, $dpUid);
             }
         }
     }
