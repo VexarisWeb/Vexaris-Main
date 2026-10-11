@@ -5,4 +5,29 @@ Disallow: /api/
 Disallow: /user/
 Disallow: /dashboard
 
+# Agresif SEO tarayicilari
+User-agent: SemrushBot
+User-agent: SemrushBot-SA
+User-agent: AhrefsBot
+User-agent: Baiduspider
+User-agent: MJ12bot
+User-agent: PetalBot
+User-agent: Sogou
+User-agent: Exabot
+User-agent: BLEXBot
+User-agent: MegaIndex.ru
+User-agent: SEOkicks
+User-agent: SerpstatBot
+User-agent: LinkpadBot
+Disallow: /
+
+# Site kopyalayicilar / scraperlar
+User-agent: HTTrack
+User-agent: WebCopier
+User-agent: WebZIP
+User-agent: TeleportPro
+User-agent: Offline Explorer
+User-agent: SiteSucker
+Disallow: /
+
 Sitemap: https://vexaris.net/sitemap.xml
