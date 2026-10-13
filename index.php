@@ -66,7 +66,7 @@ $LOGOS = [
 $STEPS = [
   ['n'=>'01','title'=>'Publish your product','desc'=>'Upload your file or paste one-per-line e-pins / license content. Price, discount, category, and ordering in a single form.','meta'=>'zip / rar / 7z / jar • product_stocks'],
   ['n'=>'02','title'=>'Customer checks out','desc'=>'The customer finds the product, adds it to the cart, applies a coupon, and pays by balance or card. Turnstile verifies silently.','meta'=>'coupons + balance + 12 payment providers'],
-  ['n'=>'03','title'=>'Let the system deliver','desc'=>'The second payment is approved, a line is pulled from stock, the license key is signed, and the file and key land in "My Purchases".','meta'=>'average delivery time 0.4s'],
+  ['n'=>'03','title'=>'Let the system deliver','desc'=>'The second payment is approved, a line is pulled from stock, the license key is signed, and the file and key land in "My Purchases".','meta'=>'delivery automation'],
   ['n'=>'04','title'=>'Support and updates','desc'=>'If a customer gets stuck, they open a ticket; when you release a new version, every previous buyer gets the updated file from their download list.','meta'=>'tickets • version tracking • deferrals'],
 ];
 $TESTIMONIALS = [
@@ -91,7 +91,7 @@ try {
 $FAQS = [
   ['q'=>'What kinds of products can I sell with Vexaris?','a'=>'You can sell any kind of digital product, including e-pins, e-books, license keys, software packages, Minecraft plugins and server setups. For file-based products you upload zip/rar/7z/jar; for code-based products you enter one e-pin or key per line and the system delivers them in order.'],
   ['q'=>'How secure are payments?','a'=>'Card details are never written to Vexaris servers; all charges run through Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, Paywant, Whop, Paddle, Lemon Squeezy or DodoPayments. Forms are verified with Cloudflare Turnstile or reCAPTCHA, and the admin panel is protected by a role-based permission matrix.'],
-  ['q'=>'How are sold products delivered?','a'=>'The moment the approval webhook arrives from the payment provider, the system pulls a line from stock, signs the license key, and adds the file to the customer\'s “My Purchases” area. Customers download from the panel or copy the key in one click; the process averages 0.4 seconds.'],
+  ['q'=>'How are sold products delivered?','a'=>'The moment the approval webhook arrives from the payment provider, the system pulls a line from stock, signs the license key, and adds the file to the customer\'s “My Purchases” area. Customers download from the panel or copy the key in one click.'],
   ['q'=>'How is product stock managed?','a'=>'Two modes: unlimited stock (the file is delivered the same every order) and single stock (one e-pin / license key per line). In single mode each sale consumes a line; when stock runs out the product automatically closes and a panel warning appears.'],
   ['q'=>'What is the refund policy?','a'=>'Since digital delivery happens instantly, the seller sets refund terms; Vexaris offers tools to initiate refunds, load balances, or refund via the payment provider. You can publish your own refund policy in the legal page editor.'],
   ['q'=>'What can I do in the admin panel?','a'=>'Product and stock management, purchases, coupons, announcements, blog, references, FAQ, support tickets, user and role permissions, theme selection, payment / social login / live support integrations, mail templates, SEO settings, license and version tracking — all in one panel, tab by tab.'],
