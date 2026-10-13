@@ -18,7 +18,15 @@ if ($slug === '' && is_string($uriPath)) {
         $viaBlogPrefix = true;
     } elseif (preg_match('#^/([A-Za-z0-9_-]+)/?$#', $uriPath, $m)) {
         $slug = trim(urldecode($m[1]));
+    } elseif (preg_match('#^/([a-z0-9-]+/[a-z0-9-]+)/?$#', $uriPath, $m)) {
+        $slug = trim(urldecode($m[1]));
     }
+}
+// Tasanmis slug'lar kalici olarak yeni adrese tasinir (tek hopta 301).
+$legacySlugs = ['gumroad-alternatives-2026' => 'gumroad/alternative-2026'];
+if (isset($legacySlugs[$slug])) {
+    header('Location: /' . $legacySlugs[$slug], true, 301);
+    exit;
 }
 // Slug'lar blog_slugify() ile küçük harf üretilir; büyük harfli linkleri de tolere et.
 $slug = strtolower(trim($slug, " \t\n\r\0\x0B/"));

@@ -113,6 +113,10 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([A-Za-z0-9_-]+)/?$  blog-post.php?slug=$1 [QSA,L]
 
+# Ic ice (nested) blog URL'leri — kok canonical, dogrudan 200 verir.
+RewriteRule ^sellfy/alternatives-2026/?$ blog-post.php?slug=sellfy/alternatives-2026 [QSA,L]
+RewriteRule ^gumroad/alternative-2026/?$ blog-post.php?slug=gumroad/alternative-2026 [QSA,L]
+
 # API
 RewriteRule ^api/plan-checkout$   api/plan-checkout.php [L]
 RewriteRule ^api/whop-checkout$   api/whop-checkout.php [L]

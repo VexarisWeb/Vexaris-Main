@@ -65,12 +65,16 @@ function blog_slugify(string $text): string {
         'ç' => 'c', 'Ç' => 'c', 'ğ' => 'g', 'Ğ' => 'g', 'ı' => 'i', 'I' => 'i',
         'İ' => 'i', 'ö' => 'o', 'Ö' => 'o', 'ş' => 's', 'Ş' => 's', 'ü' => 'u', 'Ü' => 'u',
     ];
-    $text = strtr($text, $map);
-    $text = mb_strtolower($text, 'UTF-8');
-    $text = preg_replace('/[^a-z0-9]+/', '-', $text);
-    $text = trim($text, '-');
-    if ($text === '') $text = 'yazi';
-    return $text;
+    $out = [];
+    foreach (preg_split('#/#', $text) as $part) {
+        $part = strtr($part, $map);
+        $part = mb_strtolower($part, 'UTF-8');
+        $part = preg_replace('/[^a-z0-9]+/', '-', $part);
+        $part = trim($part, '-');
+        if ($part !== '') $out[] = $part;
+    }
+    if (!$out) return 'yazi';
+    return implode('/', $out);
 }
 
 function blog_slug_unique(PDO $pdo, string $slug, ?int $excludeId): string {
