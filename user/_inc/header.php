@@ -238,6 +238,12 @@ try {
         .panel-card table{min-width:520px;}
         .main__header h1{font-size:1.3rem;}
         @media(max-width:640px){.main{padding:4.5rem 1rem 2rem !important;} .stats-grid{gap:.8rem;} .stat-card{padding:1rem;} .ticket-msgs{padding:1rem;} .msg-bubble{max-width:88%;} .ticket-send{padding:.8rem;} .modal-new__box{padding:1.2rem;}.hide-m{display:none !important;}}
+        /* ── Mobil: tablo 520px tabanini zorlamasin, kart icinde sizsin ── */
+        @media(max-width:640px){
+            .panel-card table{min-width:0;}
+            th{padding:.6rem .7rem;}
+            td{padding:.7rem .7rem;font-size:.8rem;}
+        }
         /* ── Mobil iyileştirme ── */
         @media(max-width:700px){
             .acc-grid{grid-template-columns:1fr !important;}
