@@ -9,12 +9,14 @@ $BASE = isset($BASE) ? $BASE : '';
     <div class="reveal card p-8 md:p-14 grid lg:grid-cols-12 gap-8 items-center overflow-hidden relative">
       <div class="absolute -left-20 -bottom-24 w-72 h-72 rounded-full bg-[#4f8fc0]/[.07] blur-3xl" aria-hidden="true"></div>
       <div class="lg:col-span-7 relative">
-        <h2 class="font-display font-extrabold tracking-tight text-3xl sm:text-4xl lg:text-[2.8rem] leading-[1.05]">
-          Open your store today,<br />deliver your first sale tonight.
+        <span class="font-mono2 text-[11px] uppercase tracking-wider rounded-full px-2.5 py-1 border border-[#4f8fc0]/40 text-[#4f8fc0]">0% platform sales commission</span>
+        <h2 class="font-display font-extrabold tracking-tight text-3xl sm:text-4xl lg:text-[2.8rem] leading-[1.05] mt-4">
+          Open your store today,<br />keep 100% of every sale.
         </h2>
         <p class="mt-4 max-w-lg text-[15px] leading-relaxed text-[#9aa3ac]">
-          The setup files, license lookup, and demo environment land in your panel the moment your account is created.
-          No manual delivery on the seller side; no waiting on the customer side.
+          Vexaris takes no cut from your sales — no per-order percentage, no revenue share.
+          Your branded storefront, automated delivery, and license inventory are ready
+          the moment your account is created. Start free, upgrade as you grow.
         </p>
       </div>
       <div class="lg:col-span-5 relative flex flex-col sm:flex-row lg:flex-col gap-3 lg:items-end lg:pl-8">
@@ -28,7 +30,7 @@ $BASE = isset($BASE) ? $BASE : '';
         </a>
         <?php endif; ?>
         <a href="<?= $BASE ?>#top" class="btn-ghost w-full sm:w-auto px-7 py-3.5 text-sm font-semibold text-center">Explore the demo panel</a>
-        <span class="font-mono2 text-[11px] text-[#7d858e] lg:text-right">setup • theme • integrations included</span>
+        <span class="font-mono2 text-[11px] text-[#7d858e] lg:text-right">0% commission • free plan • automated delivery</span>
       </div>
     </div>
   </div>
