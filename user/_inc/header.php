@@ -132,6 +132,8 @@ try {
         .btn-panel:hover{transform:translateY(-2px)}
         .btn-cyan{background:rgba(79,143,192,.1);border-color:rgba(79,143,192,.35);color:#7fb3d9}
         .btn-cyan:hover{background:rgba(79,143,192,.2);box-shadow:0 8px 22px -10px rgba(79,143,192,.5)}
+        .btn-yellow{background:rgba(240,180,41,.12);border-color:rgba(240,180,41,.4);color:#f0b429}
+        .btn-yellow:hover{background:rgba(240,180,41,.22);box-shadow:0 8px 22px -10px rgba(240,180,41,.5)}
         .btn-green{background:rgba(116,192,145,.1);border-color:rgba(116,192,145,.35);color:#74c091}
         .btn-green:hover{background:rgba(116,192,145,.2)}
         .btn-red{background:rgba(255,112,112,.08);border-color:rgba(255,112,112,.3);color:#ff8080}
@@ -291,11 +293,7 @@ try {
         <a href="/dashboard/downloads" class="sidebar__link <?= $panelPage === 'downloads' ? 'active' : '' ?>">
             <i class="fas fa-download"></i> Downloads
         </a>
-        <?php if ($isFreePlan): ?>
-        <a href="/dashboard/license" class="sidebar__link <?= $panelPage === 'license' ? 'active' : '' ?>">
-            <i class="fas fa-key"></i> My License
-        </a>
-        <?php else: ?>
+        <?php if (!$isFreePlan): ?>
         <a href="/dashboard/products" class="sidebar__link <?= $panelPage === 'products' ? 'active' : '' ?>">
             <i class="fas fa-box-open"></i> My Products
         </a>
@@ -305,12 +303,6 @@ try {
         <a href="/dashboard/subscription" class="sidebar__link <?= $panelPage === 'subscription' ? 'active' : '' ?>">
             <i class="fas fa-crown"></i> My Subscription
         </a>
-        <?php if (!$isFreePlan): ?>
-        <a href="/dashboard/license" class="sidebar__link <?= $panelPage === 'license' ? 'active' : '' ?>">
-            <i class="fas fa-key"></i> My License
-        </a>
-        <?php endif; ?>
-
         <div class="sidebar__section">Support</div>
         <a href="/dashboard/support" class="sidebar__link <?= $panelPage === 'support' ? 'active' : '' ?>">
             <i class="fas fa-ticket"></i> My Support Tickets
