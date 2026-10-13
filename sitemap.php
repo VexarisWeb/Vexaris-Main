@@ -23,7 +23,7 @@ try {
         foreach ($st->fetchAll() as $r) {
             $lm = !empty($r['updated_at']) ? $r['updated_at'] : $r['created_at'];
             $urls[] = [
-                'loc' => $base . '/blog/' . $r['slug'],
+                'loc' => $base . '/' . $r['slug'],
                 'freq' => 'monthly',
                 'pr' => '0.6',
                 'lastmod' => date('Y-m-d', strtotime($lm)),

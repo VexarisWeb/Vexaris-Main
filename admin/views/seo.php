@@ -116,7 +116,7 @@ function renderSeoEditor(seo, fallback) {
     const canonical = seo.canonical || '';
     const urlBase = location.protocol + '//' + location.host;
     const isBlogTarget = seoCurrent.indexOf('blog:') === 0;
-    const pageUrl = canonical !== '' ? canonical : (urlBase + (isBlogTarget ? '/blog/' : '/'));
+    const pageUrl = canonical !== '' ? canonical : (urlBase + '/');
 
     ed.innerHTML = `
         <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;margin-bottom:1.2rem">

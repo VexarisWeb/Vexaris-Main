@@ -48,7 +48,7 @@ $VEX_LOGO = '/assets/images/vexaris-logo.png';
         <?php if ($posts): ?>
         <div class="blog-grid">
             <?php foreach ($posts as $p): ?>
-            <a href="/blog/<?= htmlspecialchars($p['slug']) ?>" class="blog-card" aria-label="<?= htmlspecialchars($p['title']) ?>">
+            <a href="/<?= htmlspecialchars($p['slug']) ?>" class="blog-card" aria-label="<?= htmlspecialchars($p['title']) ?>">
                 <?php if ($p['cover_image']): ?>
                 <div class="blog-card__img-wrap">
                     <img src="<?= htmlspecialchars($p['cover_image']) ?>" alt="<?= htmlspecialchars($p['title']) ?>" loading="lazy">

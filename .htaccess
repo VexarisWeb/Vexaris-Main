@@ -106,6 +106,13 @@ RewriteRule ^blog/([A-Za-z0-9_-]+)/?$  blog-post.php?slug=$1 [QSA,L]
 # Toleranslı fallback: query string düşse bile blog-post.php REQUEST_URI'den slug'ı çözer
 RewriteRule ^blog/(.+)$          blog-post.php        [QSA,L]
 
+# Blog yazilari kok-seviye canonical URL kullanir (or. /ornek-yazi).
+# Ustteki ozel rotalar [L] ile once eslestigi icin bu kural yalnizca
+# bilinmeyen tek-segment yollara duser; blog-post.php olmayan slug'da 404 verir.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([A-Za-z0-9_-]+)/?$  blog-post.php?slug=$1 [QSA,L]
+
 # API
 RewriteRule ^api/plan-checkout$   api/plan-checkout.php [L]
 RewriteRule ^api/whop-checkout$   api/whop-checkout.php [L]

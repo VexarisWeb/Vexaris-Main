@@ -46,7 +46,7 @@ $allPosts = $pdo ? blog_list($pdo, 200) : [];
                     <td style="text-align:center;white-space:nowrap">
                         <button onclick='openBlogModal(<?= htmlspecialchars(json_encode($bp), ENT_QUOTES, "UTF-8") ?>)' class="btn-tbl btn-tbl-info"><i class="fas fa-pen"></i> Düzenle</button>
                         <button onclick="openBlogStats(<?= (int)$bp['id'] ?>)" class="btn-tbl btn-tbl-info"><i class="fas fa-chart-column"></i> Analitik</button>
-                        <a href="/blog/<?= htmlspecialchars($bp['slug']) ?>" target="_blank" class="btn-tbl btn-tbl-info" style="text-decoration:none"><i class="fas fa-eye"></i> Gör</a>
+                        <a href="/<?= htmlspecialchars($bp['slug']) ?>" target="_blank" class="btn-tbl btn-tbl-info" style="text-decoration:none"><i class="fas fa-eye"></i> Gör</a>
                         <button onclick="deleteBlog(<?= (int)$bp['id'] ?>)" class="btn-tbl btn-tbl-del"><i class="fas fa-trash"></i> Sil</button>
                     </td>
                 </tr>
@@ -132,7 +132,7 @@ $allPosts = $pdo ? blog_list($pdo, 200) : [];
                 </div>
                 <div class="form-field">
                     <label>Canonical URL <span class="text-muted" style="text-transform:none;font-weight:400">— boşsa otomatik</span></label>
-                    <input id="blogCanonical" placeholder="/blog/ornek-yazi"
+                    <input id="blogCanonical" placeholder="/ornek-yazi"
                         style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:.6rem .85rem;font-size:.9rem;outline:none;font-family:'Inter',sans-serif">
                 </div>
             </div>

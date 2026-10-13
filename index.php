@@ -372,7 +372,7 @@ function vex_logo_item($l){
         <div class="grid md:grid-cols-3 gap-4">
           <?php foreach ($NEWS as $i => $n): ?>
           <div class="reveal" style="--rd:<?= $i * 90 ?>ms">
-            <a href="/blog/<?= htmlspecialchars($n['slug']) ?>" class="card card-hover h-full p-6 flex flex-col group">
+            <a href="/<?= htmlspecialchars($n['slug']) ?>" class="card card-hover h-full p-6 flex flex-col group">
               <div class="flex items-center justify-between">
                 <time class="font-mono2 text-[11px] text-[#7d858e]"><?= htmlspecialchars($n['date']) ?></time>
                 <span class="font-mono2 text-[10px] uppercase tracking-wider rounded-full px-2.5 py-1 border border-[#4f8fc0]/40 text-[#4f8fc0]"><?= htmlspecialchars($n['tag']) ?></span>

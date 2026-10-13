@@ -8,11 +8,15 @@ $BASE = '/';
 $VEX_LOGO = '/assets/images/vexaris-logo.png';
 $pdo = db();
 $slug = trim((string)($_GET['slug'] ?? ''));
-if ($slug === '') {
-    // Rewrite query string bazı sunucularda düşebiliyor (nginx proxy / AllowOverride farkları).
-    // Bu yüzden slug'ı doğrudan REQUEST_URI'den de çöz.
-    $uriPath = parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
-    if (is_string($uriPath) && preg_match('#^/blog/([^/]+)/?$#i', $uriPath, $m)) {
+$uriPath = parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+$viaBlogPrefix = is_string($uriPath) && (bool)preg_match('#^/blog/#i', (string)$uriPath);
+if ($slug === '' && is_string($uriPath)) {
+    // Rewrite query string bazi sunucularda dusebiliyor (nginx proxy / AllowOverride farklari).
+    // Bu yuzden slug dogrudan REQUEST_URI'den de coz: once /blog/slug, sonra kok-seviye /slug.
+    if (preg_match('#^/blog/([^/]+)/?$#i', $uriPath, $m)) {
+        $slug = trim(urldecode($m[1]));
+        $viaBlogPrefix = true;
+    } elseif (preg_match('#^/([A-Za-z0-9_-]+)/?$#', $uriPath, $m)) {
         $slug = trim(urldecode($m[1]));
     }
 }
@@ -22,6 +26,11 @@ if ($slug === '' || !$pdo) {
     header('Location: /blog'); exit;
 }
 $post = blog_get($pdo, $slug);
+if ((!$post || $post['status'] !== 'published') && !$viaBlogPrefix) {
+    // Kok-seviye bilinmeyen slug: blog 404'u degil, global 404 sayfasi gosterilir.
+    require __DIR__ . '/404.php';
+    exit;
+}
 if (!$post || $post['status'] !== 'published') {
     http_response_code(404);
     log_pageview('blog-post-404');
@@ -60,6 +69,11 @@ window.VEX_LEGAL = <?= json_encode($LEGAL, JSON_UNESCAPED_UNICODE) ?>;
 </body>
 </html>
 <?php
+    exit;
+}
+if ($viaBlogPrefix) {
+    // Canonical kok-seviye URL'dir (/slug); /blog/slug kalici olarak tasinir.
+    header('Location: /' . $post['slug'], true, 301);
     exit;
 }
 log_pageview('blog-post-' . $slug);
@@ -137,7 +151,7 @@ $GLOBALS['seoPost'] = $post;
             <h3 class="blog-post__other-title">Other Posts</h3>
             <div class="blog-grid">
                 <?php foreach ($other as $o): ?>
-                <a href="/blog/<?= htmlspecialchars($o['slug']) ?>" class="blog-card">
+                <a href="/<?= htmlspecialchars($o['slug']) ?>" class="blog-card">
                     <div class="blog-card__body">
                         <h2 class="blog-card__title"><?= htmlspecialchars($o['title']) ?></h2>
                         <span class="blog-card__more">Read More <i class="fas fa-arrow-right"></i></span>
@@ -182,6 +196,10 @@ $GLOBALS['seoPost'] = $post;
     .blog-post__body a:hover { color: #fff; }
     .blog-post__body ul { list-style: disc; margin: 0 0 1.1rem 1.4rem; padding: 0; }
     .blog-post__body ol { list-style: decimal; margin: 0 0 1.1rem 1.4rem; padding: 0; }
+    .blog-post__body table { width: 100%; border-collapse: collapse; margin: 1.4rem 0; font-size: .92rem; display: block; overflow-x: auto; }
+    .blog-post__body th, .blog-post__body td { border: 1px solid rgba(255,255,255,.12); padding: .65rem .8rem; text-align: left; }
+    .blog-post__body thead th { background: rgba(0,212,255,.08); font-weight: 800; color: #fff; white-space: nowrap; }
+    .blog-post__body tbody tr:nth-child(even) { background: rgba(255,255,255,.03); }
     .blog-post__body li { margin-bottom: .4rem; }
     .blog-post__body li::marker { color: var(--cyan); }
     .blog-post__body img { max-width: 100%; height: auto; border-radius: 12px; margin: 1.2rem 0; display: inline-block; }
