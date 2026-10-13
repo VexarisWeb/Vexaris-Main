@@ -219,6 +219,11 @@ switch ($action) {
 
     // ── Kredi Gönder ────────────────────────────────────────
     case 'send_credit':
+        if (!is_admin()) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'msg' => 'Bu işlem için yetkin yok.']);
+            exit;
+        }
         if ($id === $selfId) {
             echo json_encode(['ok' => false, 'msg' => 'Kendine kredi gönderemezsin.']);
             exit;

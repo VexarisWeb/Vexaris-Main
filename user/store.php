@@ -62,6 +62,7 @@ $err = (string)($_GET['err'] ?? '');
                 <a href="/dashboard/products" class="btn-panel btn-green"><i class="fas fa-check"></i> Owned</a>
                 <?php else: ?>
                 <form method="POST" action="/api/whop-checkout" style="margin:0">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="product_id" value="<?= (int)$it['id'] ?>">
                     <button type="submit" class="btn-panel btn-cyan"><i class="fas fa-bolt"></i> Buy with Whop</button>
                 </form>

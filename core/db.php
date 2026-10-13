@@ -787,6 +787,10 @@ function csrf_token(): string {
     return $_SESSION['csrf'];
 }
 
+function csrf_field(): string {
+    return '<input type="hidden" name="_csrf" value="' . csrf_token() . '">';
+}
+
 function csrf_check(): void {
     boot_session();
     $token = $_POST['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';

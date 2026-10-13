@@ -19,7 +19,7 @@ if ($act === 'login') {
         exit;
     }
     $next = (string)($_GET['next'] ?? '');
-    if (!preg_match('#^/(?!/)#', $next)) $next = '';
+    if (!preg_match('#^/(?![/\\\\%5c])#i', $next)) $next = '';
     header('Location: ' . oauth_login_url($p, $next));
     exit;
 }

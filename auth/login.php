@@ -6,7 +6,9 @@ require_once __DIR__ . '/../core/multi.php';
 boot_session();
 
 function vex_safe_next($v): string {
-    return (is_string($v) && preg_match('#^/(?!/)#', $v)) ? $v : '';
+    if (!is_string($v) || $v === '') return '';
+    // Backslash ve URL-encoded backslash korumasi (tarayicilar / ile normalize eder)
+    return (preg_match('#^/(?![/\\\\%5c])#i', $v) && strpos($v, '/\\') === false) ? $v : '';
 }
 $nextUrl = vex_safe_next($_GET['next'] ?? '');
 
@@ -23,6 +25,7 @@ if (isset($_GET['activated'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
     $identifier = trim($_POST['identifier'] ?? '');
     $password   = $_POST['password'] ?? '';
     $remember   = !empty($_POST['remember']);
@@ -209,6 +212,7 @@ body{font-family:var(--fb);background:var(--ink);color:var(--text);min-height:10
 <div class="alert"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 <form method="POST" action="/login" autocomplete="on">
+    <?= csrf_field() ?>
 <?php if ($nextUrl): ?><input type="hidden" name="next" value="<?= htmlspecialchars($nextUrl) ?>"><?php endif; ?>
 <div class="field">
 <label for="identifier">Email or Username</label>

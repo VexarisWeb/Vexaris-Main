@@ -11,6 +11,7 @@ if (is_logged_in()) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
     $username  = trim($_POST['username']  ?? '');
     $email     = trim($_POST['email']     ?? '');
     $password  = $_POST['password']       ?? '';
@@ -216,6 +217,7 @@ body{font-family:var(--fb);background:var(--ink);color:var(--text);min-height:10
 <div class="alert"><i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 <form method="POST" action="/register" autocomplete="on">
+    <?= csrf_field() ?>
 <div class="field">
 <label for="username">Username</label>
 <div class="input-wrap">

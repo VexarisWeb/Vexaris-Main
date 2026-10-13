@@ -3,6 +3,8 @@
 require_once __DIR__ . '/../core/db.php';
 require_once __DIR__ . '/../core/whop.php';
 boot_session();
+if (!is_logged_in()) { header('Location: /login'); exit; }
+if ($_SERVER['REQUEST_METHOD'] === 'POST') csrf_check();
 
 if (!is_logged_in()) {
     header('Location: /login?next=/dashboard/store');

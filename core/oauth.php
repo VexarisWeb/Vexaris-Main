@@ -314,6 +314,6 @@ function oauth_finish(string $p): array {
         'sess_ver' => (int)($user['session_version'] ?? 0),
     ];
     session_regenerate_id(true);
-    $next = (isset($saved['next']) && is_string($saved['next']) && preg_match('#^/(?!/)#', $saved['next'])) ? $saved['next'] : '';
+    $next = (isset($saved['next']) && is_string($saved['next']) && preg_match('#^/(?![/\\\\%5c])#i', $saved['next'])) ? $saved['next'] : '';
     return ['target' => $next !== '' ? $next : ($user['is_admin'] ? '/admin' : '/dashboard')];
 }

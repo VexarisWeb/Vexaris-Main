@@ -2,6 +2,11 @@
 require_once __DIR__ . '/../core/db.php';
 boot_session();
 require_admin();
+if (!has_permission('licenses')) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'msg' => 'Bu işlem için yetkin yok.']);
+    exit;
+}
 
 header('Content-Type: application/json; charset=utf-8');
 
