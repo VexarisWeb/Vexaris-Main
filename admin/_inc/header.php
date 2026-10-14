@@ -30,6 +30,8 @@ $total_users = $pdo ? (int)$pdo->query("SELECT COUNT(*) FROM users")->fetchColum
 $total_views = $pdo ? (int)$pdo->query("SELECT COUNT(*) FROM page_views")->fetchColumn() : 0;
 $total_tickets = $pdo ? (int)$pdo->query("SELECT COUNT(*) FROM support_tickets WHERE status != 'closed'")->fetchColumn() : 0;
 $unread_tickets = $pdo ? (int)$pdo->query("SELECT COUNT(*) FROM support_tickets t JOIN support_messages m ON m.ticket_id = t.id WHERE m.sender_role = 'user' AND m.is_read = 0")->fetchColumn() : 0;
+$unread_inbox = 0;
+if ($pdo) { try { $unread_inbox = (int)$pdo->query("SELECT COUNT(*) FROM inbound_emails WHERE is_read=0")->fetchColumn(); } catch (Exception $e) {} }
 
 $user = current_user();
 $myRole = user_role();
@@ -264,6 +266,14 @@ $csrf = csrf_token();
             <i class="fas fa-ticket"></i> Destek Talepleri
             <?php if ($unread_tickets > 0): ?>
                 <span class="sidebar__count"><?= $unread_tickets ?></span>
+            <?php endif; ?>
+        </a>
+        <?php endif; ?>
+        <?php if (has_permission('tickets')): ?>
+        <a href="/admin?tab=inbox" class="sidebar__link <?= $tab === 'inbox' ? 'active' : '' ?>">
+            <i class="fas fa-inbox"></i> Gelen Kutusu
+            <?php if ($unread_inbox > 0): ?>
+                <span class="sidebar__count"><?= $unread_inbox ?></span>
             <?php endif; ?>
         </a>
         <?php endif; ?>

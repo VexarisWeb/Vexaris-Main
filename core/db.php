@@ -494,6 +494,21 @@ function run_migrations(): void {
             KEY idx_sm_ticket (ticket_id, created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        $pdo->exec("CREATE TABLE IF NOT EXISTS inbound_emails (
+            id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            to_addr     VARCHAR(190) NOT NULL,
+            from_addr   VARCHAR(190) NOT NULL,
+            from_name   VARCHAR(190) NULL,
+            subject     VARCHAR(255) NULL,
+            body_text   MEDIUMTEXT NULL,
+            message_id  VARCHAR(255) NULL,
+            is_read     TINYINT(1) NOT NULL DEFAULT 0,
+            replied_at  DATETIME NULL,
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_ie_to (to_addr, created_at),
+            KEY idx_ie_mid (message_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
         $pdo->exec("CREATE TABLE IF NOT EXISTS legal_pages (
             slug       VARCHAR(60) NOT NULL PRIMARY KEY,
             title      VARCHAR(190) NOT NULL,
