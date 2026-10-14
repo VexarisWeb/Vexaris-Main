@@ -19,6 +19,7 @@ $tabPermissions = [
     'blog'        => 'blog',
     'seo'         => 'seo',
     'tickets'     => 'tickets',
+    'inbox'       => 'tickets',
     'permissions' => 'permissions',
     'api'         => 'settings',
 ];
