@@ -509,6 +509,16 @@ function run_migrations(): void {
             KEY idx_ie_mid (message_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        $pdo->exec("CREATE TABLE IF NOT EXISTS sent_emails (
+            id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            to_addr     VARCHAR(190) NOT NULL,
+            from_addr   VARCHAR(190) NOT NULL,
+            subject     VARCHAR(255) NULL,
+            body_html   MEDIUMTEXT NULL,
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_se_from (from_addr, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
         $pdo->exec("CREATE TABLE IF NOT EXISTS legal_pages (
             slug       VARCHAR(60) NOT NULL PRIMARY KEY,
             title      VARCHAR(190) NOT NULL,

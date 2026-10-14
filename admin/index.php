@@ -1,4 +1,5 @@
 <?php
+ob_start();
 require_once __DIR__ . '/../core/db.php';
 boot_session();
 require_admin();
