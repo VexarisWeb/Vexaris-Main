@@ -508,6 +508,7 @@ function run_migrations(): void {
             KEY idx_ie_to (to_addr, created_at),
             KEY idx_ie_mid (message_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        try { ensure_column($pdo, 'inbound_emails', 'body_html', "`body_html` MEDIUMTEXT NULL"); } catch (Exception $e) {}
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS sent_emails (
             id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

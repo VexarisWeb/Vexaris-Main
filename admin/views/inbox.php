@@ -1,6 +1,7 @@
  <?php
 require_once __DIR__ . '/../../core/mail.php';
 require_once __DIR__ . '/../../core/editor.php';
+require_once __DIR__ . '/../../core/html-sanitize.php';
 
 function e2($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
@@ -258,8 +259,34 @@ if ($inErr) {
             <div style="padding:1.2rem 1.4rem;border-bottom:1px solid var(--border)">
                 <div style="font-size:1.05rem;font-weight:800"><?= e2($sel['subject'] !== '' ? $sel['subject'] : '(konu yok)') ?></div>
                 <div style="font-size:.8rem;color:var(--muted);margin-top:.3rem">Kimden: <?= e2(!empty($sel['from_name']) ? $sel['from_name'] . ' <' . $sel['from_addr'] . '>' : $sel['from_addr']) ?> &nbsp;•&nbsp; Kime: <b style="color:#a9b6cf"><?= e2($sel['to_addr']) ?></b> &nbsp;•&nbsp; <?= e2($sel['created_at']) ?><?= $sel['replied_at'] ? ' &nbsp;•&nbsp; <span style="color:#a9c4ad">yanıtlandı</span>' : '' ?></div>
+                <?php if (!empty($sel['body_html'])): ?>
+                <div style="display:flex;gap:.5rem;margin-top:.7rem">
+                    <button type="button" class="ib-fold ib-viewbtn on" data-v="html"><i class="fas fa-palette"></i> HTML</button>
+                    <button type="button" class="ib-fold ib-viewbtn" data-v="text"><i class="fas fa-align-left"></i> Metin</button>
+                </div>
+                <?php endif; ?>
             </div>
+            <?php if (!empty($sel['body_html'])): ?>
+            <div id="ibHtmlPane" style="padding:0">
+                <iframe sandbox="" referrerpolicy="no-referrer" title="E-posta içeriği" srcdoc="<?= e2(vx_clean_html($sel['body_html'], 'rich')) ?>" style="width:100%;height:52vh;border:none;background:#fff;display:block"></iframe>
+                <div style="font-size:.7rem;color:var(--muted);padding:.4rem 1.4rem;border-top:1px solid var(--border)"><i class="fas fa-shield-halved"></i> HTML görünüm yalıtımlı kutuda açılır (betikler çalışmaz).</div>
+            </div>
+            <div id="ibTextPane" style="display:none;padding:1.2rem 1.4rem;white-space:pre-wrap;font-size:.9rem;line-height:1.65;max-height:40vh;overflow:auto;overflow-wrap:anywhere"><?= e2($sel['body_text'] !== '' ? $sel['body_text'] : '(düz metin yok)') ?></div>
+            <script>
+            (function(){
+                var btns=document.querySelectorAll('.ib-viewbtn'), hp=document.getElementById('ibHtmlPane'), tp=document.getElementById('ibTextPane');
+                if(!btns.length||!hp||!tp) return;
+                btns.forEach(function(b){ b.addEventListener('click',function(){
+                    var v=b.getAttribute('data-v');
+                    btns.forEach(function(x){x.classList.toggle('on',x===b);});
+                    hp.style.display=v==='html'?'':'none';
+                    tp.style.display=v==='text'?'':'none';
+                });});
+            })();
+            </script>
+            <?php else: ?>
             <div style="padding:1.2rem 1.4rem;white-space:pre-wrap;font-size:.9rem;line-height:1.65;max-height:40vh;overflow:auto;overflow-wrap:anywhere"><?= e2($sel['body_text'] !== '' ? $sel['body_text'] : '(içerik yok)') ?></div>
+            <?php endif; ?>
             <div style="display:flex;gap:.6rem;padding:1.2rem 1.4rem;border-top:1px solid var(--border);flex-wrap:wrap">
                 <a class="ib-fold" href="/admin?tab=inbox&reply=<?= (int)$sel['id'] ?>"><i class="fas fa-reply"></i> Yanıtla</a>
                 <form method="post" style="margin-left:auto" onsubmit="return confirm('Silinsin mi?')">

@@ -25,6 +25,8 @@ $from    = mb_substr(trim((string)($d['from'] ?? '')), 0, 190);
 $fromNm  = mb_substr(trim((string)($d['from_name'] ?? '')), 0, 190);
 $subject = mb_substr(trim((string)($d['subject'] ?? '')), 0, 255);
 $text    = mb_substr((string)($d['text'] ?? ''), 0, 200000);
+$html    = mb_substr((string)($d['html'] ?? ''), 0, 200000);
+$htmlsum = (string)($d['htmlsum'] ?? '');
 $mid     = mb_substr(trim((string)($d['message_id'] ?? '')), 0, 255);
 $ts      = (string)($d['ts'] ?? '');
 $sig     = (string)($d['sig'] ?? '');
@@ -38,8 +40,15 @@ if (stripos($to, '@vexaris.net') === false) {
 if (abs(time() - (int)$ts) > 600) {
     http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'stale']); exit;
 }
-$calc = hash_hmac('sha256', $ts . "\n" . $to . "\n" . $from . "\n" . $subject . "\n" . $text, $secret);
+$calc = hash_hmac('sha256', $ts . "\n" . $to . "\n" . $from . "\n" . $subject . "\n" . $text . "\n" . ($html !== '' ? hash('sha256', $html) : ''), $secret);
 if (!hash_equals($calc, $sig)) {
+    // Geriye uyumluluk: html gondermeyen eski Worker surumu
+    $calc0 = hash_hmac('sha256', $ts . "\n" . $to . "\n" . $from . "\n" . $subject . "\n" . $text, $secret);
+    if ($html !== '' || !hash_equals($calc0, $sig)) {
+        http_response_code(403); echo json_encode(['ok' => false]); exit;
+    }
+    if ($htmlsum !== '') { http_response_code(403); echo json_encode(['ok' => false]); exit; }
+} elseif ($html !== '' && $htmlsum !== '' && !hash_equals(hash('sha256', $html), strtolower($htmlsum))) {
     http_response_code(403); echo json_encode(['ok' => false]); exit;
 }
 
@@ -49,8 +58,8 @@ try {
         $st->execute([$mid]);
         if ($st->fetch()) { echo json_encode(['ok' => true, 'dup' => true]); exit; }
     }
-    $st = $pdo->prepare("INSERT INTO inbound_emails (to_addr, from_addr, from_name, subject, body_text, message_id) VALUES (?,?,?,?,?,?)");
-    $st->execute([$to, $from, ($fromNm !== '' ? $fromNm : null), ($subject !== '' ? $subject : null), ($text !== '' ? $text : null), ($mid !== '' ? $mid : null)]);
+    $st = $pdo->prepare("INSERT INTO inbound_emails (to_addr, from_addr, from_name, subject, body_text, body_html, message_id) VALUES (?,?,?,?,?,?,?)");
+    $st->execute([$to, $from, ($fromNm !== '' ? $fromNm : null), ($subject !== '' ? $subject : null), ($text !== '' ? $text : null), ($html !== '' ? $html : null), ($mid !== '' ? $mid : null)]);
     echo json_encode(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
 } catch (Exception $e) {
     http_response_code(500); echo json_encode(['ok' => false]);
