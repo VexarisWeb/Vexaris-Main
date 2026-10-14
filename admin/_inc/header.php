@@ -62,8 +62,12 @@ $csrf = csrf_token();
             --text:rgba(255,255,255,0.85);
             --muted:rgba(255,255,255,0.4);
         }
-        body{font-family:'Inter',sans-serif;background:#060810;background:linear-gradient(160deg,#060810 0%,#0a0e1a 100%);color:var(--text);min-height:100vh;display:flex}
-        .sidebar{width:var(--sidebar-w);min-height:100vh;background:rgba(6,8,16,.98);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;bottom:0;z-index:100}
+        body{font-family:'Inter',sans-serif;background:#060810;background:linear-gradient(160deg,#060810 0%,#0a0e1a 100%);color:var(--text);min-height:100vh;min-height:100dvh;display:flex}
+        body::before{content:'';position:fixed;top:-140px;right:-140px;width:420px;height:420px;background:radial-gradient(circle,rgba(0,212,255,.09),transparent 65%);pointer-events:none;z-index:0}
+        body::after{content:'';position:fixed;bottom:-160px;left:20%;width:460px;height:460px;background:radial-gradient(circle,rgba(0,123,255,.08),transparent 65%);pointer-events:none;z-index:0}
+        .sidebar,.main{position:relative;z-index:1}
+        .sidebar{width:var(--sidebar-w);min-height:100vh;min-height:100dvh;background:rgba(6,8,16,.98);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .25s ease}
+        @media(max-width:768px){.topbar{display:flex}.page-header h1{display:none}}
         .sidebar__logo{padding:1.4rem 1.4rem .9rem;display:flex;align-items:center;gap:10px;text-decoration:none;border-bottom:1px solid var(--border)}
         .sidebar__logo img{height:30px}
         .sidebar__logo-text{font-size:1.1rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -84,11 +88,28 @@ $csrf = csrf_token();
         .sidebar__urole{color:var(--cyan);font-size:.7rem}
         .sidebar__logout{display:flex;align-items:center;gap:8px;color:rgba(255,100,100,.6);text-decoration:none;font-size:.83rem;font-weight:500;transition:color .2s;background:none;border:none;cursor:pointer;padding:0;font-family:'Inter',sans-serif;width:100%}
         .sidebar__logout:hover{color:#ff6b6b}
-        .main{margin-left:var(--sidebar-w);flex:1;padding:2rem 2.5rem;min-height:100vh}
+        .main{margin-left:var(--sidebar-w);flex:1;padding:2rem 2.5rem;min-height:100vh;min-height:100dvh;min-width:0;max-width:100%}
+        .topbar{display:none;position:sticky;top:0;z-index:90;background:rgba(6,8,16,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:.7rem 1rem;padding-top:calc(.7rem + env(safe-area-inset-top));align-items:center;gap:.8rem}
+        .topbar__btn{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:#fff;font-size:1.05rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .topbar__title{font-weight:800;font-size:.95rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .topbar__logo{font-weight:800;font-size:.85rem;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex-shrink:0}
+        .quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:2rem}
+        .quick{display:flex;align-items:center;gap:.7rem;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.85rem 1rem;color:var(--text);text-decoration:none;font-size:.83rem;font-weight:600;transition:border-color .2s,transform .15s}
+        .quick:hover{border-color:var(--border-c);transform:translateY(-1px)}
+        .quick i{color:var(--cyan);font-size:1rem}
+        .chart-bars{display:flex;align-items:flex-end;gap:8px;height:150px;padding:.5rem .25rem 0}
+        .chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:.35rem;min-width:0}
+        .chart-bar{width:100%;max-width:44px;border-radius:6px 6px 3px 3px;background:var(--gradient);min-height:4px;opacity:.9}
+        .chart-bar.dim{background:rgba(255,255,255,.12)}
+        .chart-lbl{font-size:.66rem;color:var(--muted)}
+        .chart-val{font-size:.68rem;font-weight:700;color:var(--cyan)}
+        .dash-alert{display:flex;align-items:center;gap:.7rem;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:12px;padding:.8rem 1rem;font-size:.85rem;margin-bottom:1.2rem}
+        .dash-alert i{color:#fb923c}
+        .dash-alert a{color:var(--cyan);font-weight:700;text-decoration:none;margin-left:auto;flex-shrink:0}
         .page-header{margin-bottom:2rem;padding-bottom:1.2rem;border-bottom:1px solid var(--border)}
         .page-header h1{font-size:1.5rem;font-weight:800}
         .page-header p{color:var(--muted);font-size:.875rem;margin-top:.25rem}
-        .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem}
+        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
         .stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;position:relative;overflow:hidden;transition:border-color .3s}
         .stat:hover{border-color:var(--border-c)}
         .stat__top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
@@ -134,8 +155,8 @@ $csrf = csrf_token();
         .page-row__bar{flex:2;height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
         .page-row__fill{height:100%;background:var(--gradient);border-radius:3px}
         .page-row__cnt{font-size:.82rem;font-weight:700;color:var(--cyan);min-width:30px;text-align:right}
-        @media(max-width:1024px){.two-col{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr 1fr}}
-        @media(max-width:768px){.main{margin-left:0;padding:1.2rem}.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.stats-grid{grid-template-columns:1fr 1fr}}
+        @media(max-width:1024px){.two-col{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr 1fr}.quick-grid{grid-template-columns:1fr 1fr}}
+        @media(max-width:768px){.main{margin-left:0;padding:1rem 1rem 3rem;padding-bottom:calc(3rem + env(safe-area-inset-bottom))}.sidebar{transform:translateX(-100%);box-shadow:none}.sidebar.open{transform:translateX(0);box-shadow:20px 0 60px rgba(0,0,0,.5)}.stats-grid{grid-template-columns:1fr 1fr;gap:.7rem}.stat{padding:1rem}.stat__val{font-size:1.5rem}.topbar{display:flex}.page-header h1{font-size:1.2rem}.page-header{margin-bottom:1.2rem}.table-card{border-radius:12px}th:nth-child(4),td:nth-child(4){white-space:nowrap}}
         .btn-tbl{padding:5px 11px;border-radius:7px;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid;margin:0 2px;transition:background .15s}
         .btn-tbl-info{background:rgba(0,212,255,.08);border-color:rgba(0,212,255,.25);color:var(--cyan)}
         .btn-tbl-info:hover{background:rgba(0,212,255,.18)}
@@ -236,9 +257,8 @@ $csrf = csrf_token();
 </head>
 <body>
 
-<button class="mobile-toggle" id="mobileToggleAdmin" aria-label="Menü" style="position:fixed;top:1rem;left:1rem;z-index:200;background:rgba(10,14,26,.9);border:1px solid var(--border);border-radius:10px;padding:.6rem .8rem;cursor:pointer;color:#fff;font-size:1.1rem;display:none"><i class="fas fa-bars"></i></button>
-<div class="sidebar-overlay" id="sidebarOverlayAdmin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99"></div>
-<style>@media(max-width:768px){#mobileToggleAdmin{display:flex !important;align-items:center;} .sidebar{transform:translateX(-100%);} .sidebar.open{transform:translateX(0);} .sidebar-overlay.open{display:block !important;} .main{margin-left:0 !important;padding:1.2rem !important;} .stats-grid{grid-template-columns:1fr !important;} .two-col{grid-template-columns:1fr !important;}}</style>
+<div class="sidebar-overlay" id="sidebarOverlayAdmin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99"></div>
+<style>@media(max-width:768px){.sidebar-overlay.open{display:block !important;}}</style>
 
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
@@ -353,6 +373,11 @@ $csrf = csrf_token();
 
 <!-- Main -->
 <main class="main">
+    <div class="topbar">
+        <button class="topbar__btn" id="mobileToggleAdmin" aria-label="Menü"><i class="fas fa-bars"></i></button>
+        <div class="topbar__title"><?= htmlspecialchars($pageTitle ?? 'Admin Panel') ?></div>
+        <div class="topbar__logo">Vexaris</div>
+    </div>
     <script>
     const VX_CSRF = <?= json_encode($csrf) ?>;
     function esc(s) {

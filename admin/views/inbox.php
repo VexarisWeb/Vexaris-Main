@@ -127,7 +127,7 @@ if ($selId > 0 && $pdo) {
     <div class="ib-main">
         <?php if ($inMsg !== ''): ?><div style="background:rgba(79,143,192,.12);border:1px solid rgba(79,143,192,.4);border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem;font-size:.85rem"><?= $inMsg ?></div><?php endif; ?>
         <?php if (!$sel): ?>
-            <div class="ib-empty"><i class="fas fa-envelope-open"></i><p>Soldan bir mail seç.</p>
+            <div class="ib-empty"><i class="fas fa-envelope-open"></i><p>Listeden bir mail seç.</p>
                 <div class="ib-box">
                     <b style="color:#fff">Worker kurulum bilgisi</b><br>
                     Webhook URL: <code style="color:#9fc7e8">https://vexaris.net/api/inbound-mail.php</code><br>
