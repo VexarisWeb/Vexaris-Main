@@ -183,6 +183,7 @@ if ($inErr) {
     <input type="text" name="ib_subj" required placeholder="Konu" value="<?= e2($cSubj) ?>">
     <label style="display:flex;align-items:center;gap:.6rem">İçerik
         <button type="button" class="ed-btn ib-modebtn" id="ibModeBtn" title="Görsel / HTML kod görünümü" style="width:auto;padding:0 12px;font-size:.75rem;border:1px solid #333;border-radius:4px"><i class="fa-solid fa-code"></i> KOD</button>
+        <button type="button" class="ed-btn ib-modebtn" id="ibAiBtn" title="Vexaris AI ile yaz" style="width:auto;padding:0 12px;font-size:.75rem;border:1px solid #333;border-radius:4px;color:#c9b8e8"><svg width="14" height="14" viewBox="0 0 200 200" style="vertical-align:-2px"><path d="M70 44q11 45 56 56-45 11-56 56-11-45-56-56 45-11 56-56m90-30q7 19 26 26-19 7-26 26-7-19-26-26 19-7 26-26m-10 120q7 19 26 26-19 7-26 26-7-19-26-26 19-7 26-26" fill="currentColor"/></svg> AI</button>
     </label>
     <?php render_editor('mailEd', $cBody, '280px', 'mailEdName'); ?>
     <textarea class="ib-code" id="ibCode" placeholder="<p>HTML kodunu buraya yapıştır...</p>"></textarea>
@@ -206,6 +207,114 @@ if ($inErr) {
     });
     form.addEventListener('submit',function(){
         html.value=isCode?code.value:body.innerHTML;
+    });
+})();
+</script>
+<div class="modal-overlay" id="ibAiModal" style="z-index:9500">
+    <div class="modal-box" style="max-width:620px;width:94%">
+        <button class="modal-close" id="ibAiClose" type="button"><i class="fas fa-xmark"></i></button>
+        <div class="modal-title"><svg width="16" height="16" viewBox="0 0 200 200" style="vertical-align:-2px;color:#c9b8e8"><path d="M70 44q11 45 56 56-45 11-56 56-11-45-56-56 45-11 56-56m90-30q7 19 26 26-19 7-26 26-7-19-26-26 19-7 26-26m-10 120q7 19 26 26-19 7-26 26-7-19-26-26 19-7 26-26" fill="currentColor"/></svg> Vexaris AI <span id="ibAiModel" style="font-size:.7rem;color:var(--muted);font-weight:400"></span></div>
+        <div class="form-field">
+            <label>Ne yapsın? (ör: "iade talebine kibar ret yaz", "şu metindeki yazım hatalarını düzelt", "İngilizceye çevir")</label>
+            <textarea id="ibAiPrompt" rows="3" placeholder="İsteğini yaz..." style="min-height:70px;resize:vertical"></textarea>
+        </div>
+        <label class="feat-label" style="margin-bottom:1rem"><input type="checkbox" id="ibAiCtx" checked> Editördeki mevcut metni bağlam olarak gönder</label>
+        <div id="ibAiOut" style="display:none;background:#101318;border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;margin-bottom:1rem;max-height:38vh;overflow:auto">
+            <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">AI ÖNERİSİ (markdown)</div>
+            <pre id="ibAiText" style="white-space:pre-wrap;font-family:monospace;font-size:.8rem;line-height:1.6;margin:0"></pre>
+        </div>
+        <div class="form-field" id="ibAiRevWrap" style="display:none">
+            <label>Revize ettir</label>
+            <div style="display:flex;gap:.5rem">
+                <input type="text" id="ibAiRev" placeholder="ör: daha kısa yaz" style="flex:1">
+                <button type="button" class="btn-primary" id="ibAiRevGo" style="white-space:nowrap">Revize</button>
+            </div>
+        </div>
+        <div class="alert-msg" id="ibAiAlert"></div>
+        <div class="modal-actions" style="flex-wrap:wrap">
+            <button type="button" class="btn-save" id="ibAiGo"><i class="fas fa-wand-magic-sparkles"></i> Oluştur</button>
+            <button type="button" class="btn-ghost" id="ibAiCopy" style="display:none"><i class="fas fa-copy"></i> Kopyala</button>
+            <button type="button" class="btn-ghost" id="ibAiApply" style="display:none;border-color:rgba(148,178,150,.4);color:#a9c4ad"><i class="fas fa-check"></i> Editöre Uygula</button>
+        </div>
+    </div>
+</div>
+<script>
+(function(){
+    var open=document.getElementById('ibAiBtn'), modal=document.getElementById('ibAiModal'),
+        close=document.getElementById('ibAiClose'), go=document.getElementById('ibAiGo'),
+        prm=document.getElementById('ibAiPrompt'), ctx=document.getElementById('ibAiCtx'),
+        out=document.getElementById('ibAiOut'), txt=document.getElementById('ibAiText'),
+        alert=document.getElementById('ibAiAlert'), model=document.getElementById('ibAiModel'),
+        revW=document.getElementById('ibAiRevWrap'), rev=document.getElementById('ibAiRev'), revGo=document.getElementById('ibAiRevGo'),
+        copy=document.getElementById('ibAiCopy'), apply=document.getElementById('ibAiApply');
+    if(!open||!modal) return;
+    var hist=[];
+    function edText(){
+        var b=document.getElementById('edBody-mailEd'), c=document.getElementById('ibCode');
+        if(c&&c.style.display==='block') return c.value.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,6000);
+        return b?(b.innerText||'').trim().slice(0,6000):'';
+    }
+    function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    function mdToHtml(md){
+        var html=escH(md);
+        html=html.replace(/```([\s\S]*?)```/g,function(_,c){return '<pre>'+c.trim()+'</pre>';});
+        html=html.replace(/`([^`]+)`/g,'<code>$1</code>');
+        html=html.replace(/^###\s+(.+)$/gm,'<h3>$1</h3>');
+        html=html.replace(/^##\s+(.+)$/gm,'<h2>$1</h2>');
+        html=html.replace(/^#\s+(.+)$/gm,'<h1>$1</h1>');
+        html=html.replace(/^&gt;\s+(.+)$/gm,'<blockquote>$1</blockquote>');
+        html=html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>');
+        html=html.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+        html=html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g,'$1<em>$2</em>');
+        html=html.replace(/^(?:-|\*)\s+(.+)$/gm,'<li>$1</li>');
+        html=html.replace(/(<li>.*<\/li>)/gs,function(m){return '<ul>'+m+'</ul>';});
+        html=html.replace(/^\d+\.\s+(.+)$/gm,'<li>$1</li>');
+        html=html.split(/\n{2,}/).map(function(p){p=p.trim(); if(!p) return ''; if(/^<(h[1-3]|ul|ol|pre|blockquote|hr|img)/.test(p)) return p; return '<p>'+p.replace(/\n/g,'<br>')+'</p>';}).join('');
+        return html;
+    }
+    function showAlert(msg,ok){
+        alert.style.display='block';
+        alert.className='alert-msg '+(ok?'alert-ok':'alert-err');
+        alert.textContent=msg;
+    }
+    async function callAI(prompt){
+        showAlert('AI yazıyor...',true);
+        go.disabled=true;
+        try{
+            var res=await fetch('/api/mail-ai.php',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({prompt:prompt,history:hist,context:(ctx&&ctx.checked)?edText():'',_csrf:(typeof VX_CSRF!=='undefined'?VX_CSRF:'')})});
+            var d=await res.json();
+            if(!d.ok){ showAlert(d.msg||'AI hatası',false); return; }
+            if(model&&d.model) model.textContent='· '+d.model;
+            txt.textContent=d.text||'';
+            out.style.display='block';
+            revW.style.display='block';
+            copy.style.display='';
+            apply.style.display='';
+            hist.push({role:'user',content:prompt});
+            hist.push({role:'assistant',content:d.text||''});
+            showAlert('Hazır. Revize ettirebilir veya editöre uygulayabilirsin.',true);
+        }catch(e){ showAlert('Bağlantı hatası.',false); }
+        go.disabled=false;
+    }
+    open.addEventListener('click',function(){ modal.style.display='flex'; });
+    close.addEventListener('click',function(){ modal.style.display='none'; });
+    modal.addEventListener('click',function(e){ if(e.target===modal) modal.style.display='none'; });
+    go.addEventListener('click',function(){ var v=prm.value.trim(); if(!v){showAlert('Önce ne yapacağını yaz.',false);return;} hist=[]; callAI(v); });
+    revGo.addEventListener('click',function(){ var v=rev.value.trim(); if(!v)return; rev.value=''; callAI(v); });
+    copy.addEventListener('click',function(){
+        var t=txt.textContent;
+        if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){showAlert('Kopyalandı.',true);});
+        else showAlert('Kopyalama desteklenmiyor.',false);
+    });
+    apply.addEventListener('click',function(){
+        var t=txt.textContent;
+        if(!t) return;
+        var html=mdToHtml(t);
+        var b=document.getElementById('edBody-mailEd'), c=document.getElementById('ibCode');
+        if(c&&c.style.display==='block'){ c.value=html; }
+        else if(b){ b.innerHTML=html; b.focus(); }
+        modal.style.display='none';
     });
 })();
 </script>
