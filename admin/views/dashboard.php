@@ -49,7 +49,7 @@ foreach ($chart as $c) $maxV = max($maxV, $c['v']);
     <div class="stat">
         <div class="stat__top">
             <div class="stat__icon orange"><i class="fas fa-clock"></i></div>
-            <div class="stat__today"><?= $pending_orders > 0 ? '<span style="color:#fb923c">işlem bekliyor</span>' : 'temiz' ?></div>
+            <div class="stat__today"><?= $pending_orders > 0 ? '<span style="color:#cbb894">işlem bekliyor</span>' : 'temiz' ?></div>
         </div>
         <div class="stat__val"><?= $pending_orders ?></div>
         <div class="stat__label">Bekleyen Sipariş</div>
@@ -57,7 +57,7 @@ foreach ($chart as $c) $maxV = max($maxV, $c['v']);
     <div class="stat">
         <div class="stat__top">
             <div class="stat__icon pink"><i class="fas fa-ticket"></i></div>
-            <div class="stat__today"><?= $open_tickets > 0 ? '<span style="color:#ff7070">yanıt bekliyor</span>' : 'temiz' ?></div>
+            <div class="stat__today"><?= $open_tickets > 0 ? '<span style="color:#d79595">yanıt bekliyor</span>' : 'temiz' ?></div>
         </div>
         <div class="stat__val"><?= $open_tickets ?></div>
         <div class="stat__label">Açık Destek Talebi</div>
