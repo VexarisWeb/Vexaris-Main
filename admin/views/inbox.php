@@ -2,7 +2,27 @@
 require_once __DIR__ . '/../../core/mail.php';
 
 function e2($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
-
+?>
+<style>
+.ib-wrap{display:flex;gap:1.2rem;align-items:flex-start}
+.ib-side{width:340px;min-width:300px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.ib-side__head{display:flex;justify-content:space-between;align-items:center;padding:.9rem 1.1rem;border-bottom:1px solid var(--border)}
+.ib-side__title{font-weight:800;font-size:.95rem}
+.ib-side__count{font-size:.72rem;color:var(--muted)}
+.ib-list{max-height:70vh;overflow:auto}
+.ib-item{display:block;padding:.7rem 1.1rem;border-bottom:1px solid var(--border);text-decoration:none;color:inherit}
+.ib-item:hover{background:rgba(255,255,255,.03)}
+.ib-item.on{background:rgba(79,143,192,.1)}
+.ib-item.unread{border-left:3px solid #4f8fc0}
+.ib-subj{font-weight:700;margin-top:.25rem;font-size:.88rem}
+.ib-meta{font-size:.75rem;color:var(--muted)}
+.ib-tag{font-size:.66rem;font-weight:800;background:rgba(79,143,192,.15);border:1px solid rgba(79,143,192,.4);border-radius:6px;padding:.1rem .4rem;color:#9fc7e8}
+.ib-main{flex:1;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-width:0}
+.ib-empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+.ib-box{max-width:560px;margin:1.2rem auto 0;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;text-align:left;font-size:.78rem;color:var(--muted)}
+@media(max-width:900px){.ib-wrap{flex-direction:column}.ib-side{width:100%}}
+</style>
+<?php
 try {
     $st = $pdo->prepare("SELECT `value` FROM settings WHERE `key`='mail_inbound_secret' LIMIT 1");
     $st->execute();
@@ -82,37 +102,37 @@ if ($selId > 0 && $pdo) {
     } catch (Exception $e) {}
 }
 ?>
-<div class="ticket-wrap">
-    <div class="ticket-side">
-        <div class="ticket-side__head">
-            <div class="ticket-side__title"><i class="fas fa-inbox"></i> Gelen Kutusu</div>
-            <span class="ticket-side__count"><?= (int)$unread ?> okunmadı</span>
+<div class="ib-wrap">
+    <div class="ib-side">
+        <div class="ib-side__head">
+            <div class="ib-side__title"><i class="fas fa-inbox"></i> Gelen Kutusu</div>
+            <span class="ib-side__count"><?= (int)$unread ?> okunmadı</span>
         </div>
-        <div class="ticket-list">
+        <div class="ib-list">
             <?php if (!$mails): ?>
-                <div class="ticket-empty"><i class="fas fa-inbox"></i><br>Henüz mail yok.<br><span style="font-size:.75rem">Worker aktif olunca mailler buraya düşer.</span></div>
+                <div class="ib-empty"><i class="fas fa-inbox"></i><br>Henüz mail yok.<br><span style="font-size:.75rem">Worker aktif olunca mailler buraya düşer.</span></div>
             <?php else: foreach ($mails as $m): ?>
-                <a href="/admin?tab=inbox&id=<?= (int)$m['id'] ?>" class="ticket-item<?= $selId === (int)$m['id'] ? ' on' : '' ?>" style="<?= (int)$m['is_read'] ? '' : 'border-left:3px solid #4f8fc0' ?>">
+                <a href="/admin?tab=inbox&id=<?= (int)$m['id'] ?>" class="ib-item<?= $selId === (int)$m['id'] ? ' on' : '' ?><?= (int)$m['is_read'] ? '' : ' unread' ?>">
                     <div style="display:flex;gap:6px;align-items:center">
-                        <span style="font-size:.66rem;font-weight:800;background:rgba(79,143,192,.15);border:1px solid rgba(79,143,192,.4);border-radius:6px;padding:.1rem .4rem;color:#9fc7e8"><?= e2($m['to_addr']) ?></span>
+                        <span class="ib-tag"><?= e2($m['to_addr']) ?></span>
                         <?php if ($m['replied_at']): ?><span style="font-size:.66rem;color:#74c091;font-weight:700"><i class="fas fa-reply"></i></span><?php endif; ?>
                     </div>
-                    <div style="font-weight:700;margin-top:.25rem"><?= e2($m['subject'] !== '' ? $m['subject'] : '(konu yok)') ?></div>
-                    <div style="font-size:.75rem;color:var(--muted)"><?= e2($m['from_name'] !== '' ? $m['from_name'] . ' <' . $m['from_addr'] . '>' : $m['from_addr']) ?></div>
-                    <div style="font-size:.7rem;color:var(--muted)"><?= e2($m['created_at']) ?></div>
+                    <div class="ib-subj"><?= e2($m['subject'] !== '' ? $m['subject'] : '(konu yok)') ?></div>
+                    <div class="ib-meta"><?= e2($m['from_name'] !== '' ? $m['from_name'] . ' <' . $m['from_addr'] . '>' : $m['from_addr']) ?></div>
+                    <div class="ib-meta"><?= e2($m['created_at']) ?></div>
                 </a>
             <?php endforeach; endif; ?>
         </div>
     </div>
-    <div class="ticket-chat">
+    <div class="ib-main">
         <?php if ($inMsg !== ''): ?><div style="background:rgba(79,143,192,.12);border:1px solid rgba(79,143,192,.4);border-radius:10px;padding:.6rem 1rem;margin-bottom:1rem;font-size:.85rem"><?= $inMsg ?></div><?php endif; ?>
         <?php if (!$sel): ?>
-            <div class="ticket-chat__empty"><i class="fas fa-envelope-open"></i><p>Soldan bir mail seç.</p>
-                <div style="max-width:560px;margin:1.2rem auto 0;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:1rem;text-align:left;font-size:.78rem;color:var(--muted)">
+            <div class="ib-empty"><i class="fas fa-envelope-open"></i><p>Soldan bir mail seç.</p>
+                <div class="ib-box">
                     <b style="color:#fff">Worker kurulum bilgisi</b><br>
                     Webhook URL: <code style="color:#9fc7e8">https://vexaris.net/api/inbound-mail.php</code><br>
                     Anahtar (INBOUND_SECRET): <code id="ibSec" style="color:#9fc7e8;word-break:break-all"><?= e2($inSecret) ?></code>
-                    <form method="post" style="margin-top:.5rem"><?= csrf_field() ?><input type="hidden" name="ib_act" value="regen"><button class="ticket-new-btn" style="padding:5px 10px;font-size:.72rem">Anahtarı yenile</button></form>
+                    <form method="post" style="margin-top:.5rem"><?= csrf_field() ?><input type="hidden" name="ib_act" value="regen"><button style="background:rgba(79,143,192,.15);border:1px solid rgba(79,143,192,.45);color:#fff;border-radius:8px;padding:5px 10px;font-size:.72rem;cursor:pointer">Anahtarı yenile</button></form>
                 </div>
             </div>
         <?php else: ?>
@@ -128,7 +148,7 @@ if ($selId > 0 && $pdo) {
                 <label style="font-size:.8rem;font-weight:700">Yanıtla <span style="color:var(--muted);font-weight:400">(<?= e2($sel['to_addr']) ?> adresinden, Brevo ile gönderilir)</span></label>
                 <textarea name="ib_body" rows="5" required style="width:100%;margin-top:.5rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;color:#fff;padding:.7rem;font-family:inherit" placeholder="Yanıt metni..."></textarea>
                 <div style="display:flex;gap:8px;margin-top:.6rem">
-                    <button class="ticket-new-btn" style="padding:8px 16px"><i class="fas fa-paper-plane"></i> Gönder</button>
+                    <button style="background:rgba(79,143,192,.15);border:1px solid rgba(79,143,192,.45);color:#fff;border-radius:8px;padding:8px 16px;cursor:pointer"><i class="fas fa-paper-plane"></i> Gönder</button>
                 </div>
             </form>
             <form method="post" style="padding:0 1.4rem 1.2rem" onsubmit="return confirm('Silinsin mi?')">
