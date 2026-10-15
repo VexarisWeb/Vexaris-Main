@@ -86,7 +86,7 @@ function mail_send_brevo(\PDO $pdo, array $cfg, string $to, string $subject, str
         'sender' => ['email' => $fromEmail, 'name' => $fromName],
         'to' => [['email' => $to]],
         'subject' => mail_render($subject, $vars),
-        'htmlContent' => mail_wrap_layout($pdo, $bodyHtml, $vars),
+        'htmlContent' => !empty($from['raw']) ? mail_render($bodyHtml, $vars) : mail_wrap_layout($pdo, $bodyHtml, $vars),
         'textContent' => $plain,
     ];
     $ch = curl_init('https://api.brevo.com/v3/smtp/email');
@@ -171,7 +171,7 @@ function mail_send(\PDO $pdo, string $to, string $subject, string $bodyHtml, arr
         $plainSrc = str_ireplace(['<br>', '<br/>', '<br />', '</p>', '</div>', '</tr>', '</h1>', '</h2>', '</h3>'], "\n", $plainSrc);
         $mail->AltBody = html_entity_decode(trim((string)preg_replace('/[ \t\x0B\f]+/', ' ', (string)preg_replace('/\n\s*\n+/', "\n\n", strip_tags($plainSrc)))), ENT_QUOTES, 'UTF-8');
         $mail->Subject = mail_render($subject, $vars);
-        $mail->Body    = mail_wrap_layout($pdo, $bodyHtml, $vars);
+        $mail->Body    = !empty($from['raw']) ? mail_render($bodyHtml, $vars) : mail_wrap_layout($pdo, $bodyHtml, $vars);
         $mail->send();
         return true;
     } catch (\Throwable $e) {
