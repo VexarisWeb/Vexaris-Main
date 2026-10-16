@@ -1,4 +1,9 @@
 <!-- KULLANICILAR -->
+<style>
+.urow{cursor:pointer}
+.urow:active td{background:rgba(0,212,255,.07)}
+@media(max-width:768px){.urow td:first-child{border-left:3px solid transparent}.urow:active td:first-child{border-left-color:var(--cyan)}}
+</style>
 <div class="search-bar">
     <span style="font-size:.88rem;color:var(--muted)" id="userCountLabel">Yükleniyor...</span>
     <div style="margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
@@ -10,7 +15,7 @@
     </div>
 </div>
 
-<div class="table-card">
+<div class="table-card"><div class="table-wrap">
     <table>
         <thead><tr>
             <th>#</th>
@@ -26,7 +31,7 @@
             <tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--muted)">Yükleniyor...</td></tr>
         </tbody>
     </table>
-</div>
+</div></div>
 <div class="pagination" id="usersPagination"></div>
 
 <!-- Kullanıcı Düzenleme Modal -->
@@ -190,16 +195,16 @@ async function loadUsers(page) {
                     ? '<button onclick="showLinks(' + u.id + ')" class="btn-tbl btn-tbl-warn" title="Bağlantılı hesapları gör"><i class="fas fa-link"></i> ' + risk + '</button>'
                     : '<span style="color:var(--muted);font-size:.78rem">—</span>');
                 if (banned) isSelf += ' <span class="badge badge-rev" style="margin-left:4px"><i class="fas fa-gavel"></i> multi-ban</span>';
-                return `<tr id="urow-${u.id}">
+                return `<tr id="urow-${u.id}" class="urow" onclick="rowOpen(event, ${u.id})">
                     <td class="text-muted" style="font-size:.8rem">${esc(u.id)}</td>
                     <td style="font-weight:600">${esc(u.username)}${isSelf}</td>
-                    <td><a href="mailto:${esc(u.email)}" style="color:var(--cyan);text-decoration:none;font-size:.85rem">${esc(u.email)}</a></td>
+                    <td><a href="mailto:${esc(u.email)}" onclick="event.stopPropagation()" style="color:var(--cyan);text-decoration:none;font-size:.85rem">${esc(u.email)}</a></td>
                     <td>${adminBadge}</td>
                     <td style="font-size:.85rem;font-weight:600;color:#fbbf24"><i class="fas fa-coins" style="font-size:.75rem"></i> ₺${bl}</td>
                     <td style="text-align:center">${riskBadge}</td>
                     <td class="text-muted" style="font-size:.8rem">${dt}</td>
                     <td style="text-align:center">
-                        <button onclick="openUserModal(${u.id})"
+                        <button onclick="event.stopPropagation();openUserModal(${u.id})"
                             class="btn-tbl btn-tbl-info"><i class="fas fa-pen"></i> Düzenle</button>
                     </td>
                 </tr>`;
@@ -216,6 +221,11 @@ async function loadUsers(page) {
     } catch(e) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:#ff7070">Bağlantı hatası.</td></tr>';
     }
+}
+
+function rowOpen(ev, id) {
+    if (ev && ev.target && ev.target.closest('a,button,input,select,textarea')) return;
+    openUserModal(id);
 }
 
 function openUserModal(id) {

@@ -97,7 +97,7 @@ if ($action === 'links') {
                 $detail[] = $r;
             }
         }
-        $flags = $pdo->prepare("SELECT linked_user_id, sig AS signal, detail, created_at FROM multi_flags WHERE user_id = ? ORDER BY created_at DESC LIMIT 20");
+        $flags = $pdo->prepare("SELECT linked_user_id, `sig` AS `signal`, detail, created_at FROM multi_flags WHERE user_id = ? ORDER BY created_at DESC LIMIT 20");
         $flags->execute([$id]);
         echo json_encode(['ok' => true, 'linked' => $detail, 'flags' => $flags->fetchAll()]);
     } catch (Exception $e) {

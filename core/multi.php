@@ -250,10 +250,10 @@ function multi_flag(\PDO $pdo, int $uid, int $linkedId, string $signal, string $
     if ($uid <= 0) return;
     try {
         // Aynı eşleşmeyi 30 günde bir kez bayrakla (spam önleme).
-        $st = $pdo->prepare("SELECT COUNT(*) FROM multi_flags WHERE user_id = ? AND linked_user_id = ? AND sig = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)");
+        $st = $pdo->prepare("SELECT COUNT(*) FROM multi_flags WHERE user_id = ? AND linked_user_id = ? AND `sig` = ? AND created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)");
         $st->execute([$uid, $linkedId, $signal]);
         if ((int)$st->fetchColumn() > 0) return;
-        $pdo->prepare("INSERT INTO multi_flags (user_id, linked_user_id, sig, detail) VALUES (?,?,?,?)")
+        $pdo->prepare("INSERT INTO multi_flags (user_id, linked_user_id, `sig`, detail) VALUES (?,?,?,?)")
             ->execute([$uid, $linkedId, $signal, mb_substr($detail, 0, 255)]);
     } catch (Throwable $e) {}
 }
