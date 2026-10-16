@@ -37,7 +37,7 @@ if ($action === 'issue') {
         }
         $token = bin2hex(random_bytes(32));
         $pdo->prepare("INSERT INTO store_tokens (token, slug, admin_id, used) VALUES (?,?,?,0)")->execute([$token, $slug, (int)$me['id']]);
-        echo json_encode(['ok' => true, 'url' => 'https://' . $slug . '.vexaris.net/shop/admin-login.php?token=' . $token]);
+        echo json_encode(['ok' => true, 'url' => 'https://' . $slug . '.vexaris.app/shop/admin-login.php?token=' . $token]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['ok' => false]);
@@ -72,7 +72,7 @@ if ($action === 'issue-owner') {
         }
         $token = bin2hex(random_bytes(32));
         $pdo->prepare("INSERT INTO store_tokens (token, slug, admin_id, used) VALUES (?,?,?,0)")->execute([$token, $slug, $meId]);
-        echo json_encode(['ok' => true, 'url' => 'https://' . $slug . '.vexaris.net/shop/admin-login.php?token=' . $token]);
+        echo json_encode(['ok' => true, 'url' => 'https://' . $slug . '.vexaris.app/shop/admin-login.php?token=' . $token]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['ok' => false]);

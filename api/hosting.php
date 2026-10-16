@@ -18,8 +18,9 @@ if ($action === 'check') {
     }
     $slug = strtolower(trim((string)($_POST['slug'] ?? '')));
     $slug = preg_replace('/[^a-z0-9\-]/', '', $slug);
-    if (strlen($slug) < 3 || strlen($slug) > 40) {
-        echo json_encode(['ok' => false, 'available' => false, 'msg' => 'length']);
+    $slugErr = hosting_slug_check($slug);
+    if ($slugErr !== '') {
+        echo json_encode(['ok' => false, 'available' => false, 'msg' => $slugErr]);
         exit;
     }
     if (hosting_reserved($slug)) {
@@ -28,7 +29,7 @@ if ($action === 'check') {
     }
     try {
         $st = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
-        $st->execute(['%"' . $slug . '.vexaris.net"%']);
+        $st->execute(['%"' . $slug . '.vexaris.app"%']);
         if ($st->fetch()) {
             echo json_encode(['ok' => false, 'available' => false, 'msg' => 'taken']);
             exit;
@@ -52,7 +53,7 @@ if ($action === 'check') {
             exit;
         }
     } catch (Exception $e) {}
-    echo json_encode(['ok' => true, 'available' => true, 'domain' => $slug . '.vexaris.net']);
+    echo json_encode(['ok' => true, 'available' => true, 'domain' => $slug . '.vexaris.app']);
     exit;
 }
 
@@ -108,10 +109,11 @@ try {
         if ($row) {
             $doms = json_decode((string)($row['allowed_domains'] ?? ''), true);
             if (!is_array($doms)) $doms = [];
-            if (!in_array($domain, $doms, true)) $doms[] = $domain;
-            if (preg_match('/^([a-z0-9-]+)\.vexaris\.net$/i', $domain, $mm2)) {
+            if (preg_match('/^([a-z0-9-]+)\.vexaris\.(?:net|app)$/i', $domain, $mm2)) {
                 $app = strtolower($mm2[1]) . '.vexaris.app';
                 if (!in_array($app, $doms, true)) $doms[] = $app;
+            } elseif (!in_array($domain, $doms, true)) {
+                $doms[] = $domain;
             }
             $pdo->prepare("UPDATE licenses SET customer_name=?, features=?, allowed_domains=?, status='active', suspended_until=NULL WHERE id=?")
                 ->execute([$customer, $features, json_encode(array_values(array_unique($doms))), (int)$row['id']]);
@@ -120,7 +122,7 @@ try {
         }
         $key = bin2hex(random_bytes(24));
         $domains = [$domain];
-        if (preg_match('/^([a-z0-9-]+)\.vexaris\.net$/i', $domain, $mm)) $domains[] = strtolower($mm[1]) . '.vexaris.app';
+        if (preg_match('/^([a-z0-9-]+)\.vexaris\.(?:net|app)$/i', $domain, $mm)) $domains = [strtolower($mm[1]) . '.vexaris.app'];
         $pdo->prepare("INSERT INTO licenses (customer_name, license_key, allowed_domains, status, features, suspended_until) VALUES (?,?,?,'active',?,NULL)")
             ->execute([$customer, $key, json_encode(array_values(array_unique($domains))), json_encode(hosting_features($plan))]);
         echo json_encode(['ok' => true, 'msg' => 'registered', 'license_id' => (int)$pdo->lastInsertId()]);
@@ -224,7 +226,7 @@ try {
                 $pdo->prepare("DELETE FROM hosted_stores WHERE slug=?")->execute([$jobSlug]);
             } catch (Exception $e2) {}
             try {
-                $pdo->prepare("UPDATE licenses SET status='suspended' WHERE allowed_domains LIKE ?")->execute(['%"' . $jobSlug . '.vexaris.net"%']);
+                $pdo->prepare("UPDATE licenses SET status='suspended' WHERE allowed_domains LIKE ?")->execute(['%"' . $jobSlug . '.vexaris.app"%']);
             } catch (Exception $e2) {}
             if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
                 hosting_mail($pdo, $jobOwner, 'Your store has been deleted — Vexaris', hosting_deleted_html($jobSlug));
@@ -252,7 +254,7 @@ try {
             }
             $jsite = mb_substr(trim((string)($job['site_name'] ?? '')), 0, 80);
             $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, site_name, owner, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), site_name=VALUES(site_name), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()")
-                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.net', $jobPlan, $jsite, $jobOwner, $users, $revenue, $products, $currency]);
+                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.app', $jobPlan, $jsite, $jobOwner, $users, $revenue, $products, $currency]);
             if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
                 $amode = (string)($_POST['admin_mode'] ?? '');
                 if ($amode !== 'hash' && $amode !== 'generated') $amode = 'hash';
@@ -280,7 +282,7 @@ try {
         }
         try {
             $st = $pdo->prepare("SELECT id, allowed_domains FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
-            $st->execute(['%"' . $slug . '.vexaris.net"%']);
+            $st->execute(['%"' . $slug . '.vexaris.app"%']);
             $lic = $st->fetch();
             if (!$lic) {
                 echo json_encode(['ok' => false, 'msg' => 'license not found']);
@@ -374,7 +376,7 @@ try {
             $tmon = max(0, (int)($s['traf_month'] ?? 0));
             $tday = max(0, (int)($s['traf_today'] ?? 0));
             $aver = preg_replace('/[^A-Za-z0-9.\-+]/', '', substr((string)($s['app_ver'] ?? ''), 0, 30));
-            $up->execute([$slug, $slug . '.vexaris.net', $plan, mb_substr((string)($s['owner'] ?? ''), 0, 190), max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0)), max(0, (int)($s['products'] ?? 0)), $scur, $tmon, $aver]);
+            $up->execute([$slug, $slug . '.vexaris.app', $plan, mb_substr((string)($s['owner'] ?? ''), 0, 190), max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0)), max(0, (int)($s['products'] ?? 0)), $scur, $tmon, $aver]);
             try { $upDay->execute([$slug, date('Y-m-d'), $tday]); } catch (Exception $e2) {}
             $n++;
         }
@@ -420,7 +422,7 @@ function hosting_mail(?PDO $pdo, string $to, string $subject, string $html, arra
 }
 
 function hosting_created_html(string $slug, string $plan, string $mode = 'hash', string $pass = ''): string {
-    $url = 'https://' . $slug . '.vexaris.net';
+    $url = 'https://' . $slug . '.vexaris.app';
     $login = $url . '/login';
     $cred = $mode === 'generated' && $pass !== ''
         ? '<p style="margin:0 0 6px;">Store admin login:</p><p style="margin:0 0 18px;background:#131f45;border-radius:10px;padding:12px 14px;">Username: <strong>admin</strong><br>Password: <strong>' . htmlspecialchars($pass) . '</strong></p>'
@@ -429,7 +431,7 @@ function hosting_created_html(string $slug, string $plan, string $mode = 'hash',
         . '<div style="padding:28px;text-align:center;background:linear-gradient(135deg,#ff7a1a,#ff3c11);color:#fff;"><h1 style="margin:0;font-size:22px;">Your store is ready!</h1></div>'
         . '<div style="padding:26px;color:#e8eaf6;font-size:14px;line-height:1.7;">'
         . '<p style="margin:0 0 12px;">Your <strong>' . htmlspecialchars(ucfirst($plan)) . '</strong> store is live:</p>'
-        . '<p style="margin:0 0 18px;"><a href="' . htmlspecialchars($url) . '" style="color:#8cb8ff;font-weight:700;">' . htmlspecialchars($slug . '.vexaris.net') . '</a></p>'
+        . '<p style="margin:0 0 18px;"><a href="' . htmlspecialchars($url) . '" style="color:#8cb8ff;font-weight:700;">' . htmlspecialchars($slug . '.vexaris.app') . '</a></p>'
         . $cred
         . '<p style="margin:0 0 18px;"><a href="' . htmlspecialchars($login) . '" style="display:inline-block;background:#ff7a1a;color:#fff;font-weight:700;padding:10px 22px;border-radius:10px;text-decoration:none;">Open Store Login</a></p>'
         . '<p style="margin:0;color:#9aa3ac;font-size:13px;">Manage it anytime from your dashboard under My Stores.</p>'
@@ -440,14 +442,9 @@ function hosting_deleted_html(string $slug): string {
     return '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#0d1b3e;border-radius:16px;overflow:hidden;">'
         . '<div style="padding:28px;text-align:center;background:linear-gradient(135deg,#3a4356,#1c2333);color:#fff;"><h1 style="margin:0;font-size:22px;">Store deleted</h1></div>'
         . '<div style="padding:26px;color:#e8eaf6;font-size:14px;line-height:1.7;">'
-        . '<p style="margin:0 0 12px;">Your store <strong>' . htmlspecialchars($slug . '.vexaris.net') . '</strong> and all its data have been permanently deleted.</p>'
+        . '<p style="margin:0 0 12px;">Your store <strong>' . htmlspecialchars($slug . '.vexaris.app') . '</strong> and all its data have been permanently deleted.</p>'
         . '<p style="margin:0;color:#9aa3ac;font-size:13px;">You can create a new free store anytime from your dashboard.</p>'
         . '</div></div>';
-}
-
-function hosting_reserved(string $slug): bool {
-    static $r = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise','vexaris','mustafa8907'];
-    return in_array(strtolower($slug), $r, true);
 }
 
 function hosting_ratelimit(?PDO $pdo, string $ip, string $scope, int $limit): bool {

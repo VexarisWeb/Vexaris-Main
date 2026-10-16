@@ -35,11 +35,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
     $name = mb_substr(trim((string)($_POST['store_name'] ?? '')), 0, 80);
     $slug = strtolower(trim((string)($_POST['slug'] ?? '')));
     $slug = preg_replace('/[^a-z0-9\-]/', '', $slug);
-    if ($name === '' || strlen($slug) < 3 || strlen($slug) > 40) {
+    if ($name === '' || hosting_slug_check($slug) !== '') {
         stores_json(['ok' => false, 'msg' => 'Invalid name or subdomain.']);
     }
-    $reserved = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise','vexaris','mustafa8907'];
-    if (in_array($slug, $reserved, true)) {
+    if (hosting_reserved($slug)) {
         stores_json(['ok' => false, 'msg' => 'This subdomain is reserved.']);
     }
     try {
@@ -187,7 +186,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
             if (strlen($dom) > 190 || !filter_var($dom, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) stores_json(['ok' => false, 'msg' => 'Invalid domain name.']);
             if (strpos($dom, '.') === false) stores_json(['ok' => false, 'msg' => 'Invalid domain name.']);
             if (filter_var($dom, FILTER_VALIDATE_IP)) stores_json(['ok' => false, 'msg' => 'IP addresses are not allowed.']);
-            if (substr($dom, -13) === '.vexaris.net' || $dom === 'vexaris.net') stores_json(['ok' => false, 'msg' => 'Vexaris subdomains use the subdomain flow.']);
+            if (substr($dom, -13) === '.vexaris.app' || $dom === 'vexaris.app') stores_json(['ok' => false, 'msg' => 'Vexaris subdomains use the subdomain flow.']);
             $st = $pdo->prepare("SELECT slug FROM hosted_stores WHERE custom_domain=? AND slug<>? LIMIT 1");
             $st->execute([$dom, $slug]);
             if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'This domain is already connected to another store.']);
@@ -216,7 +215,7 @@ if (isset($_GET['check'])) {
     if (in_array($slug, $reserved, true)) stores_json(['ok' => true, 'available' => false, 'msg' => 'reserved']);
     try {
         $st = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
-        $st->execute(['%"' . $slug . '.vexaris.net"%']);
+        $st->execute(['%"' . $slug . '.vexaris.app"%']);
         if ($st->fetch()) stores_json(['ok' => true, 'available' => false, 'msg' => 'taken']);
         $st = $pdo->prepare("SELECT id FROM users WHERE username=? LIMIT 1");
         $st->execute([$slug]);
@@ -228,7 +227,7 @@ if (isset($_GET['check'])) {
         $st->execute([$slug]);
         if ($st->fetch()) stores_json(['ok' => true, 'available' => false, 'msg' => 'taken']);
     } catch (Exception $e) {}
-    stores_json(['ok' => true, 'available' => true, 'domain' => $slug . '.vexaris.net']);
+    stores_json(['ok' => true, 'available' => true, 'domain' => $slug . '.vexaris.app']);
 }
 
 if (isset($_GET['check_job'])) {
@@ -239,7 +238,7 @@ if (isset($_GET['check_job'])) {
         $row = $st->fetch();
         if (!$row) stores_json(['ok' => false, 'msg' => 'not found']);
         $out = ['ok' => true, 'status' => $row['status'], 'message' => $row['last_msg'], 'kind' => $row['kind']];
-        if ($row['status'] === 'done') $out['domain'] = $row['slug'] . '.vexaris.net';
+        if ($row['status'] === 'done') $out['domain'] = $row['slug'] . '.vexaris.app';
         stores_json($out);
     } catch (Exception $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
@@ -275,7 +274,7 @@ function nx_fmt_bytes($b) {
 ?>
 <div class="main__header">
     <h1>My Stores</h1>
-    <p>One-click free store on your own subdomain.</p>
+    <p>One-click free store at <strong style="color:#8cb8ff;">yourname.vexaris.app</strong>.</p>
 </div>
 
 <?php if (!$store): ?>
@@ -307,6 +306,11 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
             <div style="font-size:13px;color:#8cb8ff;font-weight:700;"><?= htmlspecialchars($store['domain']) ?></div>
         </div>
         <span style="font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:4px 12px;border-radius:999px;background:<?= $sp === 'free' ? 'rgba(255,255,255,.07);color:#cfd6e4' : 'rgba(0,212,255,.12);color:#7dd7fc' ?>;"><?= htmlspecialchars($sp) ?></span>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:12px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <i class="fas fa-globe" style="color:#8cb8ff;"></i>
+        <a href="https://<?= htmlspecialchars($store['domain']) ?>" target="_blank" rel="noopener" style="flex:1;min-width:180px;color:#8cb8ff;font-weight:800;font-size:14px;text-decoration:none;word-break:break-all;"><?= htmlspecialchars($store['domain']) ?></a>
+        <button class="btn-panel" style="font-size:12px;" onclick="nxCopyUrl('https://<?= htmlspecialchars($store['domain'], ENT_QUOTES) ?>',this)"><i class="fas fa-copy"></i> Copy</button>
     </div>
     <?php if ($updAvail): ?>
     <div style="background:rgba(250,204,21,.07);border:1px solid rgba(250,204,21,.35);border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -405,7 +409,7 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
             <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Subdomain</label>
             <div style="display:flex;gap:0;margin-bottom:6px;">
                 <input id="nxStoreSlug" type="text" maxlength="40" placeholder="mystore" style="flex:1;min-width:0;box-sizing:border-box;background:var(--bg-surface,#0f1422);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px 0 0 10px;padding:11px 14px;color:var(--text,#e8eaf6);font-size:14px;outline:none;border-right:none;">
-                <span style="background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:0 10px 10px 0;padding:11px 14px;font-size:14px;color:#9aa3ac;white-space:nowrap;">.vexaris.net</span>
+                <span style="background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:0 10px 10px 0;padding:11px 14px;font-size:14px;color:#9aa3ac;white-space:nowrap;">.vexaris.app</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div id="nxSlugMsg" style="font-size:12px;min-height:18px;"></div><div id="nxSlugCount" style="font-size:11px;color:#64748b;">0/40</div></div>
             <div id="nxTsWrap" style="margin-bottom:14px;"><?php require_once __DIR__ . '/../core/turnstile.php'; if (function_exists('turnstile_widget')) { echo turnstile_widget('nxTs'); echo turnstile_script(); } ?></div>
@@ -517,7 +521,10 @@ if(slugIn){slugIn.addEventListener('input',function(){
   clearTimeout(slugTimer); setMsg('',false);
   var v=slugIn.value.toLowerCase().replace(/[^a-z0-9\-]/g,''); if(v.length>40){v=v.substring(0,40);} slugIn.value=v;
   if(slugCount){slugCount.textContent=v.length+'/40';}
-  if(v.length<3){return;}
+  if(v.length<5){ if(v.length>0) setMsg('At least 5 characters.',false); return; }
+  if(/^[0-9]+$/.test(v)){ setMsg('Cannot be only numbers.',false); return; }
+  if(v[0]==='-'||v[v.length-1]==='-'){ setMsg('Cannot start or end with a hyphen.',false); return; }
+  if(v.indexOf('--')!==-1){ setMsg('No double hyphens.',false); return; }
   slugTimer=setTimeout(function(){
     setMsg('Checking…',false);
     fetch('/dashboard/stores?check=1&slug='+encodeURIComponent(v)).then(function(r){return r.json()}).then(function(d){
@@ -526,6 +533,7 @@ if(slugIn){slugIn.addEventListener('input',function(){
   },450);
 });}
 function csrf(){var m=document.querySelector('meta[name="csrf-token"]');return m?m.getAttribute('content'):'';}
+function nxCopyUrl(u,btn){ var t=btn?btn.innerHTML:''; function ok(){ if(btn){btn.innerHTML='<i class="fas fa-check"></i> Copied';setTimeout(function(){btn.innerHTML=t;},1500);} } if(navigator.clipboard){navigator.clipboard.writeText(u).then(ok,function(){});} else { var i=document.createElement('input');i.value=u;document.body.appendChild(i);i.select();try{document.execCommand('copy');ok();}catch(e){}document.body.removeChild(i); } }
 function tsToken(){var el=document.querySelector('#nxTsWrap [name="cf-turnstile-response"]');return el?el.value:'';}
 if(createBtn){createBtn.addEventListener('click',function(){
   if(!slugOk)return;
@@ -536,7 +544,7 @@ if(createBtn){createBtn.addEventListener('click',function(){
   clearInterval(progTick);
   progTick=setInterval(function(){document.getElementById('nxProgSec').textContent=Math.floor((Date.now()-progT0)/1000)+'s';},500);
   var nm=document.getElementById('nxStoreName').value;
-  document.getElementById('nxProgStore').textContent=(nm?nm+' · ':'')+slugIn.value+'.vexaris.net';
+  document.getElementById('nxProgStore').textContent=(nm?nm+' · ':'')+slugIn.value+'.vexaris.app';
   nxPct(5);
   document.getElementById('nxSmStep1').style.display='none';
   document.getElementById('nxSmStep2').style.display='block';

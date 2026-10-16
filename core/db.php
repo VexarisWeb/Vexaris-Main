@@ -1027,6 +1027,24 @@ function demo_db(): ?PDO {
     return $pdo;
 }
 
+// ── Magaza subdomain kurallari (tek kaynak) ──────────────────
+function hosting_reserved(string $slug): bool {
+    static $r = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise','vexaris','mustafa8907','founder','abuse','www2','ns','ns1','ns2','dns','smtp','imap','pop','webmail','dev','staging','beta','docs','help','billing','pay','payment','checkout','orders','dashboard','user','users','account','security','trust','legal','terms','privacy'];
+    return in_array(strtolower($slug), $r, true);
+}
+
+function hosting_slug_check(string $slug): string {
+    $slug = strtolower(trim($slug));
+    if ($slug === '') return 'empty';
+    if (strlen($slug) < 5) return 'length';
+    if (strlen($slug) > 40) return 'length';
+    if (!preg_match('/^[a-z0-9-]+$/', $slug)) return 'chars';
+    if ($slug[0] === '-' || substr($slug, -1) === '-') return 'edge';
+    if (strpos($slug, '--') !== false) return 'double';
+    if (preg_match('/^[0-9]+$/', $slug)) return 'numeric';
+    return '';
+}
+
 // ── Sayfa yüklenince migrate et (30 dk'da bir; her istekte 30+ DDL
 // sorgusu bot yükünde CPU patlatıyordu, IF NOT EXISTS güvencesiyle atlanır)
 if (!function_exists('run_migrations_guarded')) {
