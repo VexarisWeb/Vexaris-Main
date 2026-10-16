@@ -101,19 +101,28 @@ try {
         if (!in_array($plan, $plans, true)) $plan = 'free';
         $customer = mb_substr(trim((string)($_POST['customer'] ?? $domain)), 0, 255);
         if ($customer === '') $customer = $domain;
-        $ck = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
+        $ck = $pdo->prepare("SELECT id, allowed_domains FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
         $ck->execute(['%\"' . $domain . '\"%']);
         $row = $ck->fetch();
         $features = json_encode(hosting_features($plan));
         if ($row) {
-            $pdo->prepare("UPDATE licenses SET customer_name=?, features=?, status='active', suspended_until=NULL WHERE id=?")
-                ->execute([$customer, $features, (int)$row['id']]);
+            $doms = json_decode((string)($row['allowed_domains'] ?? ''), true);
+            if (!is_array($doms)) $doms = [];
+            if (!in_array($domain, $doms, true)) $doms[] = $domain;
+            if (preg_match('/^([a-z0-9-]+)\.vexaris\.net$/i', $domain, $mm2)) {
+                $app = strtolower($mm2[1]) . '.vexaris.app';
+                if (!in_array($app, $doms, true)) $doms[] = $app;
+            }
+            $pdo->prepare("UPDATE licenses SET customer_name=?, features=?, allowed_domains=?, status='active', suspended_until=NULL WHERE id=?")
+                ->execute([$customer, $features, json_encode(array_values(array_unique($doms))), (int)$row['id']]);
             echo json_encode(['ok' => true, 'msg' => 'updated', 'license_id' => (int)$row['id']]);
             exit;
         }
         $key = bin2hex(random_bytes(24));
+        $domains = [$domain];
+        if (preg_match('/^([a-z0-9-]+)\.vexaris\.net$/i', $domain, $mm)) $domains[] = strtolower($mm[1]) . '.vexaris.app';
         $pdo->prepare("INSERT INTO licenses (customer_name, license_key, allowed_domains, status, features, suspended_until) VALUES (?,?,?,'active',?,NULL)")
-            ->execute([$customer, $key, json_encode([$domain]), json_encode(hosting_features($plan))]);
+            ->execute([$customer, $key, json_encode(array_values(array_unique($domains))), json_encode(hosting_features($plan))]);
         echo json_encode(['ok' => true, 'msg' => 'registered', 'license_id' => (int)$pdo->lastInsertId()]);
         exit;
     }
