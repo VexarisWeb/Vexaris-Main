@@ -28,8 +28,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action']
                         $db->prepare("UPDATE licenses SET features=? WHERE id=?")->execute([json_encode($f), (int)$lic['id']]);
                     }
                     $db->prepare("UPDATE hosted_stores SET plan=? WHERE id=?")->execute([$nplan, $sid]);
-                    $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,?,?,?,?,'en','provision','pending')")
-                        ->execute([(int)($row['user_id'] ?? 0), $slug, $nplan, (string)($row['owner'] ?? ''), $slug]);
+                    $st = $db->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
+                    $st->execute([(int)($row['user_id'] ?? 0)]);
+                    $plOh = (string)$st->fetchColumn();
+                    if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $plOh)) $plOh = '';
+                    $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?,?,?,'en','provision','pending',?)")
+                        ->execute([(int)($row['user_id'] ?? 0), $slug, $nplan, (string)($row['owner'] ?? ''), $slug, $plOh]);
                     $planMsg = 'OK: plan set to ' . $nplan . ', limits queued.';
                 }
             } catch (Exception $e) {
