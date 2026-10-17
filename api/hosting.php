@@ -222,11 +222,35 @@ try {
             } catch (Exception $e2) {}
         }
         if ($ok && $jobKind === 'delete') {
+            $delCustom = '';
+            try {
+                $cs = $pdo->prepare("SELECT custom_domain FROM hosted_stores WHERE slug=? LIMIT 1");
+                $cs->execute([$jobSlug]);
+                $delCustom = strtolower(trim((string)($cs->fetchColumn() ?: '')));
+            } catch (Exception $e2) {}
             try {
                 $pdo->prepare("DELETE FROM hosted_stores WHERE slug=?")->execute([$jobSlug]);
             } catch (Exception $e2) {}
             try {
-                $pdo->prepare("UPDATE licenses SET status='suspended' WHERE allowed_domains LIKE ?")->execute(['%"' . $jobSlug . '.vexaris.app"%']);
+                $delSlug = strtolower($jobSlug);
+                $delDoms = [$delSlug . '.vexaris.app', $delSlug . '.vexaris.net'];
+                if ($delCustom !== '' && !in_array($delCustom, $delDoms, true)) $delDoms[] = $delCustom;
+                $ls = $pdo->prepare("SELECT id, allowed_domains FROM licenses WHERE allowed_domains LIKE ? OR allowed_domains LIKE ?");
+                $ls->execute(['%"' . $delDoms[0] . '"%', '%"' . $delDoms[1] . '"%']);
+                foreach ($ls->fetchAll() as $lic) {
+                    $domList = json_decode((string)$lic['allowed_domains'], true);
+                    if (!is_array($domList)) $domList = [];
+                    $keptDoms = [];
+                    foreach ($domList as $dd) {
+                        if (in_array(strtolower(trim((string)$dd)), $delDoms, true)) continue;
+                        $keptDoms[] = (string)$dd;
+                    }
+                    if (!$keptDoms) {
+                        $pdo->prepare("DELETE FROM licenses WHERE id=?")->execute([(int)$lic['id']]);
+                    } else {
+                        $pdo->prepare("UPDATE licenses SET allowed_domains=? WHERE id=?")->execute([json_encode($keptDoms, JSON_UNESCAPED_UNICODE), (int)$lic['id']]);
+                    }
+                }
             } catch (Exception $e2) {}
             if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
                 hosting_mail($pdo, $jobOwner, 'Your store has been deleted — Vexaris', hosting_deleted_html($jobSlug));
