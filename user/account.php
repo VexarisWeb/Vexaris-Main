@@ -117,7 +117,7 @@ $subLive = $mySub && ($mySub['status'] ?? '') === 'active' && (int)($mySub['curr
                 <label style="font-size:.78rem;color:var(--muted)">Verification code (from email)</label>
                 <div style="display:flex;gap:.5rem;margin-top:.4rem">
                     <input id="emailToken" placeholder="••••••" maxlength="32" style="flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:#fff;padding:.65rem .9rem;outline:none;letter-spacing:.2em;text-align:center;font-weight:700">
-                    <button onclick="verifyEmail()" class="btn-panel btn-green" style="flex:none">Onayla</button>
+                    <button onclick="verifyEmail()" class="btn-panel btn-green" style="flex:none">Verify</button>
                 </div>
                 <div id="verifyMsg" style="font-size:.82rem;margin-top:.5rem;display:none"></div>
                 <button onclick="changeEmail(true)" id="btnResend" class="btn-panel" style="width:100%;justify-content:center;margin-top:.8rem"><i class="fas fa-rotate"></i> Resend</button>
@@ -146,7 +146,10 @@ $subLive = $mySub && ($mySub['status'] ?? '') === 'active' && (int)($mySub['curr
 <div class="panel-card" style="margin-top:1.2rem">
     <div class="panel-card__head">
         <div class="panel-card__title"><i class="fas fa-desktop"></i> My Sessions</div>
-        <button onclick="loadSessions()" class="btn-panel btn-cyan" style="padding:6px 12px;font-size:.75rem"><i class="fas fa-rotate"></i> Yenile</button>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <button onclick="terminateAllOthers()" class="btn-panel" style="padding:6px 12px;font-size:.75rem;background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.3)"><i class="fas fa-right-from-bracket"></i> Sign out others</button>
+            <button onclick="loadSessions()" class="btn-panel btn-cyan" style="padding:6px 12px;font-size:.75rem"><i class="fas fa-rotate"></i> Refresh</button>
+        </div>
     </div>
     <div class="panel-card__body">
         <p style="font-size:.82rem;color:var(--muted);margin-bottom:.8rem">Devices signed in to your account. If you see an unfamiliar session, close it and change your password.</p>
@@ -320,7 +323,7 @@ async function loadSessions(){
         el.innerHTML=d.sessions.map(s=>{
             const badge=s.current
                 ? '<span class="badge badge-active"><i class="fas fa-check"></i> This device</span>'
-                : '<button onclick="terminateSession(this)" data-key="'+s.key.replace(/"/g,'')+'" class="btn-panel btn-red" style="padding:6px 12px;font-size:.75rem;flex:none"><i class="fas fa-xmark"></i> Kapat</button>';
+                : '<button onclick="terminateSession(this)" data-key="'+s.key.replace(/"/g,'')+'" class="btn-panel btn-red" style="padding:6px 12px;font-size:.75rem;flex:none"><i class="fas fa-xmark"></i> Close</button>';
             const icon=s.mobile?'fa-mobile-screen':'fa-desktop';
             return '<div style="display:flex;align-items:center;gap:.8rem;padding:.7rem .9rem;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;flex-wrap:wrap">'
                 + '<div style="width:36px;height:36px;flex:none;border-radius:10px;background:rgba(79,143,192,.1);display:flex;align-items:center;justify-content:center;color:#7fb3d9"><i class="fas '+icon+'"></i></div>'
@@ -340,6 +343,16 @@ async function terminateSession(btn){
         if(d.ok) loadSessions(); else alert(d.msg||'Could not close.');
     }catch(e){ alert('Connection error.'); }
     btn.disabled=false;
+}
+async function terminateAllOthers(){
+    if(!confirm('Sign out all other sessions?')) return;
+    try{
+        const fd=new FormData(); fd.append('action','sessions_terminate_all');
+        const r=await fetch('/api/account',{method:'POST',headers:{'X-CSRF-Token':ACC_CSRF},body:fd});
+        const d=await r.json();
+        if(d.ok){ showPopup('Success','All other sessions have been signed out.'); loadSessions(); }
+        else alert(d.msg||'Could not sign out.');
+    }catch(e){ alert('Connection error.'); }
 }
 let fEmail = '', fToken = '', fSends = 0, fCdTimer = null;
 function fShow(ok, txt){const e=document.getElementById('fMsg'); e.style.display='block'; e.style.color=ok?'#4ade80':'#f87171'; e.textContent=txt;}

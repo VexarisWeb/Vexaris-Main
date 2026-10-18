@@ -96,40 +96,58 @@ if ($act === 'sessions_list') {
     try {
         $pdo->prepare("DELETE FROM user_sessions WHERE user_id=? AND last_seen < DATE_SUB(NOW(), INTERVAL 30 DAY)")->execute([$uid]);
     } catch (Throwable $e) {}
-    $st = $pdo->prepare("SELECT session_key, ip, user_agent, device_label, device_hash, created_at, last_seen, revoked FROM user_sessions WHERE user_id=? AND revoked=0 ORDER BY last_seen DESC");
+    $st = $pdo->prepare("SELECT session_key, ip, user_agent, device_label, device_hash, created_at, last_seen FROM user_sessions WHERE user_id=? AND revoked=0 ORDER BY last_seen DESC");
     $st->execute([$uid]);
     $rows = $st->fetchAll();
     $cur = (string)session_id();
-    $out = [];
+    $groups = [];
     foreach ($rows as $r) {
         $lbl = trim((string)($r['device_label'] ?? ''));
-        if ($lbl === '') {
-            $dp = device_parse((string)($r['user_agent'] ?? ''));
-            $lbl = $dp['label'];
+        if ($lbl === '') $lbl = device_parse((string)($r['user_agent'] ?? ''))['label'];
+        $dh = trim((string)($r['device_hash'] ?? ''));
+        $dkey = $dh !== '' ? $dh : ('l:' . md5($lbl));
+        $created = (string)($r['created_at'] ?? '');
+        $seen = (string)($r['last_seen'] ?? '');
+        if (!isset($groups[$dkey])) {
+            $groups[$dkey] = ['key' => $dkey, 'device' => $lbl, 'mobile' => (stripos($lbl, 'Android') !== false || stripos($lbl, 'iOS') !== false), 'ip' => ($r['ip'] ?: '—'), 'started' => $created, 'last_seen' => $seen, 'current' => false];
         }
-        $isMobile = stripos($lbl, 'Android') !== false || stripos($lbl, 'iOS') !== false;
+        if ($r['session_key'] === $cur) $groups[$dkey]['current'] = true;
+        if (strtotime($created) < strtotime((string)$groups[$dkey]['started'])) $groups[$dkey]['started'] = $created;
+        if (strtotime($seen) >= strtotime((string)$groups[$dkey]['last_seen'])) { $groups[$dkey]['last_seen'] = $seen; $groups[$dkey]['ip'] = $r['ip'] ?: $groups[$dkey]['ip']; }
+    }
+    $out = [];
+    foreach ($groups as $g) {
         $out[] = [
-            'current'   => ($r['session_key'] === $cur),
-            'device'    => $lbl,
-            'mobile'    => $isMobile,
-            'ip'        => $r['ip'] ?: '—',
-            'started'   => date('d.m.Y H:i', strtotime((string)$r['created_at'])),
-            'last_seen' => date('d.m.Y H:i', strtotime((string)$r['last_seen'])),
-            'key'       => (string)$r['session_key'],
+            'current'   => $g['current'],
+            'device'    => $g['device'],
+            'mobile'    => $g['mobile'],
+            'ip'        => $g['ip'],
+            'started'   => date('d.m.Y H:i', strtotime((string)$g['started'])),
+            'last_seen' => date('d.m.Y H:i', strtotime((string)$g['last_seen'])),
+            'key'       => $g['key'],
         ];
     }
-    echo json_encode(['ok'=>true,'sessions'=>$out]);
+    usort($out, function ($a, $b) { return ($a['current'] ? 0 : 1) <=> ($b['current'] ? 0 : 1); });
+    echo json_encode(['ok' => true, 'sessions' => $out]);
     exit;
 }
 if ($act === 'sessions_terminate') {
     $key = trim((string)($_POST['key'] ?? ''));
     $cur = (string)session_id();
-    if ($key === '' || $key === $cur) {
-        echo json_encode(['ok'=>false,'msg'=>'Invalid request.']);
-        exit;
+    if ($key === '') { echo json_encode(['ok' => false, 'msg' => 'Invalid request.']); exit; }
+    if (preg_match('/^[a-f0-9]{64}$/', $key)) {
+        $pdo->prepare("UPDATE user_sessions SET revoked=1 WHERE user_id=? AND device_hash=? AND session_key<>?")->execute([$uid, $key, $cur]);
+    } else {
+        if ($key === $cur) { echo json_encode(['ok' => false, 'msg' => 'Invalid request.']); exit; }
+        $pdo->prepare("UPDATE user_sessions SET revoked=1 WHERE user_id=? AND session_key=?")->execute([$uid, $key]);
     }
-    $pdo->prepare("UPDATE user_sessions SET revoked=1 WHERE user_id=? AND session_key=?")->execute([$uid,$key]);
-    echo json_encode(['ok'=>true,'msg'=>'Session signed out.']);
+    echo json_encode(['ok' => true, 'msg' => 'Session signed out.']);
+    exit;
+}
+if ($act === 'sessions_terminate_all') {
+    $cur = (string)session_id();
+    try { $pdo->prepare("UPDATE user_sessions SET revoked=1 WHERE user_id=? AND session_key<>?")->execute([$uid, $cur]); } catch (Throwable $e) {}
+    echo json_encode(['ok' => true, 'msg' => 'Other sessions signed out.']);
     exit;
 }
 echo json_encode(['ok'=>false,'msg'=>'Unknown action']);

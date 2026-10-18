@@ -71,6 +71,8 @@ if ($act === 'save_oauth') {
     if (!isset($labels[$p])) { echo json_encode(['ok'=>false,'msg'=>'Geçersiz sağlayıcı']); exit; }
     $en = ($_POST['enabled'] ?? '0') === '1' ? '1':'0';
     $cid = trim((string)($_POST['client_id'] ?? ''));
+    $cid = preg_replace('#^https?://#i', '', $cid);
+    $cid = rtrim((string)$cid, '/');
     $sec = trim((string)($_POST['client_secret'] ?? ''));
     setting_set($p.'_oauth_enabled', $en);
     if ($cid !== '') setting_set($p.'_client_id', $cid);

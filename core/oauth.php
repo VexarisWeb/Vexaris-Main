@@ -114,7 +114,6 @@ function oauth_normalize(string $p, array $u, string $at): ?array {
             'avatar' => $u['picture'] ?? null,
         ];
     }
-    if ($p === 'discord') {
     if ($p === 'microsoft') {
         $pid = $u['sub'] ?? $u['oid'] ?? null;
         if (empty($pid)) return null;
@@ -125,7 +124,8 @@ function oauth_normalize(string $p, array $u, string $at): ?array {
             'avatar' => null,
         ];
     }
-    if (empty($u['id'])) return null;
+    if ($p === 'discord') {
+        if (empty($u['id'])) return null;
         $av = null;
         if (!empty($u['avatar'])) $av = 'https://cdn.discordapp.com/avatars/' . $u['id'] . '/' . $u['avatar'] . '.png?size=128';
         $verified = !empty($u['verified']);
@@ -280,6 +280,9 @@ function oauth_finish(string $p): array {
         if ($owner !== false && (int)$owner !== (int)$cu['id']) return ['error' => 'taken'];
         $pdo->prepare("INSERT INTO oauth_accounts (user_id, provider, provider_user_id, email, avatar) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE email = VALUES(email), avatar = VALUES(avatar)")
             ->execute([(int)$cu['id'], $p, $norm['pid'], $norm['email'], $norm['avatar']]);
+        if (!empty($norm['avatar']) && is_string($norm['avatar'])) {
+            try { $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?")->execute([mb_substr(trim($norm['avatar']), 0, 255), (int)$cu['id']]); } catch (Throwable $e) {}
+        }
         return ['target' => '/dashboard/account?linked=' . $p];
     }
     $user = oauth_find_or_create($p, $norm);
