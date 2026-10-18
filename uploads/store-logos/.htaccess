@@ -1,0 +1,4 @@
+# Store logoları: yalnızca statik görsel servislenir; PHP çalıştırma yok.
+<FilesMatch "\.(php|phar|phtml|php\d)$">
+    Require all denied
+</FilesMatch>

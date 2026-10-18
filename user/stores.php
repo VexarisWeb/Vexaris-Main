@@ -24,6 +24,8 @@ function stores_allowed_themes(string $plan): array {
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? '') === 'create-store')) {
+    $logoPath = '';
+    $logoUrl = '';
     csrf_check();
     require_once __DIR__ . '/../core/turnstile.php';
     $tok = (string)($_POST['cf-turnstile-response'] ?? $_POST['cf_token'] ?? '');
@@ -63,6 +65,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $have += (int)$st->fetchColumn();
         if ($have >= 1 && !$isAdmin) {
             $pdo->rollBack();
+            if ($logoPath !== '' && is_file($logoPath)) @unlink($logoPath);
             stores_json(['ok' => false, 'msg' => 'Your plan includes 1 store. Delete it to create a new one.']);
         }
         if (!$isAdmin && $effPlan === 'free') {
@@ -70,15 +73,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
             $st->execute([$uid]);
             if ((int)$st->fetchColumn() >= 2) {
                 $pdo->rollBack();
+                if ($logoPath !== '' && is_file($logoPath)) @unlink($logoPath);
                 stores_json(['ok' => false, 'msg' => 'Free store limit reached (2 lifetime). Upgrade for more.']);
             }
         }
         $st = $pdo->prepare("SELECT id FROM hosted_stores WHERE slug=? LIMIT 1 FOR UPDATE");
         $st->execute([$slug]);
-        if ($st->fetch()) { $pdo->rollBack(); stores_json(['ok' => false, 'msg' => 'Subdomain taken.']); }
+        if ($st->fetch()) { $pdo->rollBack(); if ($logoPath !== '' && is_file($logoPath)) @unlink($logoPath); stores_json(['ok' => false, 'msg' => 'Subdomain taken.']); }
         $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1 FOR UPDATE");
         $st->execute([$slug]);
-        if ($st->fetch()) { $pdo->rollBack(); stores_json(['ok' => false, 'msg' => 'Subdomain taken.']); }
+        if ($st->fetch()) { $pdo->rollBack(); if ($logoPath !== '' && is_file($logoPath)) @unlink($logoPath); stores_json(['ok' => false, 'msg' => 'Subdomain taken.']); }
         $st = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
         $st->execute([$uid]);
         $ohash = (string)$st->fetchColumn();
@@ -87,8 +91,60 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         if (!in_array($cat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $cat = 'other';
         $langSel = strtolower(trim((string)($_POST['lang'] ?? 'en')));
         if ($langSel !== 'tr' && $langSel !== 'en') $langSel = 'en';
-        $logoUrl = trim((string)($_POST['logo_url'] ?? ''));
-        if ($logoUrl !== '' && !preg_match('#^https://vexaris\.net/uploads/store-logos/[A-Za-z0-9._-]+$#', $logoUrl)) $logoUrl = '';
+        $logoUrl = '';
+        if (isset($_FILES['logo']) && is_array($_FILES['logo']) && ($_FILES['logo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $lf = $_FILES['logo'];
+            $logoErr = '';
+            if (!is_uploaded_file((string)($lf['tmp_name'] ?? ''))) {
+                $logoErr = 'Logo upload failed.';
+            } elseif ((int)($lf['size'] ?? 0) > 2 * 1024 * 1024) {
+                $logoErr = 'Logo must be 2 MB or smaller.';
+            } else {
+                $gmt = (new finfo(FILEINFO_MIME_TYPE))->file((string)$lf['tmp_name']);
+                if (!in_array($gmt, ['image/png', 'image/jpeg', 'image/webp'], true)) {
+                    $logoErr = 'Logo must be PNG, JPG or WebP.';
+                } else {
+                    $gis = @getimagesize((string)$lf['tmp_name']);
+                    if ($gis === false) {
+                        $logoErr = 'Logo must be PNG, JPG or WebP.';
+                    } elseif ((int)$gis[0] > 4096 || (int)$gis[1] > 4096) {
+                        $logoErr = 'Logo image is too large.';
+                    }
+                }
+            }
+            if ($logoErr === '') {
+                $src = @imagecreatefromstring((string)@file_get_contents((string)$lf['tmp_name']));
+                if (!$src) {
+                    $logoErr = 'Invalid image file.';
+                } else {
+                    $w = imagesx($src);
+                    $h = imagesy($src);
+                    $side = min($w, $h);
+                    $sx = (int)(($w - $side) / 2);
+                    $sy = (int)(($h - $side) / 2);
+                    $size = $side > 512 ? 512 : $side;
+                    $dst = imagecreatetruecolor($size, $size);
+                    imagealphablending($dst, false);
+                    imagesavealpha($dst, true);
+                    imagefilledrectangle($dst, 0, 0, $size, $size, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+                    imagecopyresampled($dst, $src, 0, 0, $sx, $sy, $size, $size, $side, $side);
+                    $dir = __DIR__ . '/../uploads/store-logos';
+                    if (!is_dir($dir)) @mkdir($dir, 0755, true);
+                    $fname = 'logo-' . bin2hex(random_bytes(8)) . '.png';
+                    $okPng = is_dir($dir) && imagepng($dst, $dir . '/' . $fname, 9);
+                    imagedestroy($dst);
+                    imagedestroy($src);
+                    if ($okPng) {
+                        $logoPath = $dir . '/' . $fname;
+                        @chmod($logoPath, 0644);
+                        $logoUrl = 'https://vexaris.net/uploads/store-logos/' . $fname;
+                    } else {
+                        $logoErr = 'Logo could not be saved. Try again.';
+                    }
+                }
+            }
+            if ($logoErr !== '') stores_json(['ok' => false, 'msg' => $logoErr]);
+        }
         try {
             $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category, logo_url) VALUES (?,?, ?,?,?, ?, 'provision','pending', ?, ?, ?)");
             $ins->execute([$uid, $slug, $effPlan, $uemail, $name, $langSel, $ohash, $cat, $logoUrl]);
@@ -96,6 +152,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
             $pdo->commit();
         } catch (Exception $e2) {
             if ($pdo->inTransaction()) $pdo->rollBack();
+            if ($logoPath !== '' && is_file($logoPath)) @unlink($logoPath);
             stores_json(['ok' => false, 'msg' => 'Subdomain taken.']);
         }
         stores_json(['ok' => true, 'job_id' => $jid]);
@@ -408,7 +465,11 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
 </div></div>
 <?php endif; ?>
 
-<style>@keyframes nxPop{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}@keyframes nxFade{from{opacity:0;}to{opacity:1;}}.nx-modal-show{animation:nxFade .18s ease;}.nx-modal-show>div{animation:nxPop .22s cubic-bezier(.22,1,.36,1);}.nx-spin{animation:nxRot 1s linear infinite;}@keyframes nxRot{to{transform:rotate(360deg);}}@keyframes nxPulse{0%,100%{opacity:1;}50%{opacity:.45;}}.nx-pulse{animation:nxPulse 1.6s ease-in-out infinite;}</style>
+<style>.nx-cat{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#aab3bd;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;box-sizing:border-box;text-align:left;transition:border-color .15s,background .15s;}
+.nx-cat.on{border-color:rgba(43,212,255,.55)!important;background:rgba(43,212,255,.1)!important;color:var(--text,#e8eaf6)!important;}
+.nx-lang{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#aab3bd;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:1;transition:border-color .15s,background .15s;}
+.nx-lang.on{border-color:rgba(43,212,255,.55)!important;background:rgba(43,212,255,.1)!important;color:var(--text,#e8eaf6)!important;}
+@keyframes nxPop{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}@keyframes nxFade{from{opacity:0;}to{opacity:1;}}.nx-modal-show{animation:nxFade .18s ease;}.nx-modal-show>div{animation:nxPop .22s cubic-bezier(.22,1,.36,1);}.nx-spin{animation:nxRot 1s linear infinite;}@keyframes nxRot{to{transform:rotate(360deg);}}@keyframes nxPulse{0%,100%{opacity:1;}50%{opacity:.45;}}.nx-pulse{animation:nxPulse 1.6s ease-in-out infinite;}</style>
 <div id="nxStoreModal" style="display:none;position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px;">
     <div style="width:100%;max-width:460px;background:var(--bg-card,#131929);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:18px;padding:26px;">
         <div id="nxSmStep1">
@@ -416,6 +477,31 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
             <p style="font-size:13px;color:#9aa3ac;margin:0 0 18px;">Pick a name and subdomain. Free forever.</p>
             <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Store Name</label>
             <input id="nxStoreName" type="text" maxlength="80" placeholder="My Awesome Store" style="width:100%;box-sizing:border-box;background:var(--bg-surface,#0f1422);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px;padding:11px 14px;color:var(--text,#e8eaf6);font-size:14px;outline:none;margin-bottom:14px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Logo (optional)</label>
+            <div id="nxLogoDrop" style="display:flex;align-items:center;gap:10px;background:var(--bg-surface,#0f1422);border:1px dashed rgba(255,255,255,.18);border-radius:10px;padding:9px 12px;margin-bottom:6px;cursor:pointer;">
+                <img id="nxLogoPrev" alt="" style="display:none;width:40px;height:40px;border-radius:8px;object-fit:cover;flex:none;">
+                <div style="flex:1;min-width:0;">
+                    <div id="nxLogoText" style="font-size:12.5px;color:#9aa3ac;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Drop your logo or click to browse</div>
+                    <div style="font-size:11px;color:#64748b;">PNG, JPG or WebP · max 2 MB · square-cropped automatically</div>
+                </div>
+                <button type="button" id="nxLogoClear" style="display:none;font-size:12px;font-weight:800;color:#f87171;background:none;border:none;cursor:pointer;flex:none;">✕</button>
+            </div>
+            <div id="nxLogoMsg" style="font-size:12px;min-height:16px;color:#f87171;margin-bottom:8px;"></div>
+            <input id="nxLogoFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none;">
+            <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">What would you like to sell?</label>
+            <div id="nxCatCards" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+                <button type="button" class="nx-cat" data-cat="epin"><i class="fas fa-key" style="width:18px;text-align:center;color:#8cb8ff;"></i> E-PIN / Account</button>
+                <button type="button" class="nx-cat" data-cat="ebook"><i class="fas fa-book-open" style="width:18px;text-align:center;color:#8cb8ff;"></i> E-Book / Courses</button>
+                <button type="button" class="nx-cat" data-cat="design"><i class="fas fa-pen-ruler" style="width:18px;text-align:center;color:#8cb8ff;"></i> Design</button>
+                <button type="button" class="nx-cat" data-cat="software"><i class="fas fa-code" style="width:18px;text-align:center;color:#8cb8ff;"></i> Software / Bot</button>
+                <button type="button" class="nx-cat" data-cat="other" style="grid-column:1 / -1;"><i class="fas fa-box" style="width:18px;text-align:center;color:#8cb8ff;"></i> Other</button>
+            </div>
+            <div id="nxCatMsg" style="display:none;font-size:12px;color:#f87171;margin-bottom:10px;">Pick what you want to sell to continue.</div>
+            <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Language</label>
+            <div id="nxLangPick" style="display:flex;gap:8px;margin-bottom:14px;">
+                <button type="button" class="nx-lang" data-lang="en"><span style="display:inline-flex;width:20px;height:14px;border-radius:3px;overflow:hidden;flex:none;"><svg width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" fill="#012169"/><path d="M0 0l20 14M20 0L0 14" stroke="#fff" stroke-width="4"/><path d="M0 0l20 14M20 0L0 14" stroke="#c8102e" stroke-width="1.6"/><path d="M10 0v14M0 7h20" stroke="#fff" stroke-width="5"/><path d="M10 0v14M0 7h20" stroke="#c8102e" stroke-width="2.5"/></svg></span> English</button>
+                <button type="button" class="nx-lang" data-lang="tr"><span style="display:inline-flex;width:20px;height:14px;border-radius:3px;overflow:hidden;flex:none;"><svg width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" fill="#e30a17"/><circle cx="8" cy="7" r="3.2" fill="#fff"/><circle cx="9.1" cy="7" r="2.55" fill="#e30a17"/><path d="M12.4 5l.65 1.35 1.5.2-1.1 1.05.3 1.5L12.4 8.4l-1.35.7.3-1.5-1.1-1.05 1.5-.2z" fill="#fff"/></svg></span> Türkçe</button>
+            </div>
             <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Subdomain</label>
             <div style="display:flex;gap:0;margin-bottom:6px;">
                 <input id="nxStoreSlug" type="text" maxlength="40" placeholder="mystore" style="flex:1;min-width:0;box-sizing:border-box;background:var(--bg-surface,#0f1422);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:10px 0 0 10px;padding:11px 14px;color:var(--text,#e8eaf6);font-size:14px;outline:none;border-right:none;">
@@ -525,7 +611,52 @@ var c2=document.getElementById('nxSmClose2'); if(c2){c2.addEventListener('click'
 if(modal){modal.addEventListener('click',function(e){ if(e.target===modal)closeM(); });}
 var slugEl=document.getElementById('nxSlugMsg'),createBtn=document.getElementById('nxSmCreate'),slugIn=document.getElementById('nxStoreSlug');
 var slugTimer=null,slugOk=false;
-function setMsg(t,ok){ slugEl.textContent=t||''; slugEl.style.color=ok?'#4ade80':'#f87171'; createBtn.disabled=!ok; slugOk=!!ok; }
+var nxCat='',nxLang='en',nxLogo=null,nxLogoUrl='';
+function nxRefreshBtn(){ if(createBtn)createBtn.disabled=!(slugOk&&nxCat); }
+function nxPickCat(c){ nxCat=c||''; var cm=document.getElementById('nxCatMsg'); if(nxCat&&cm)cm.style.display='none'; nxRefreshBtn(); }
+function nxPickLang(l){ nxLang=(l==='tr')?'tr':'en'; }
+function setMsg(t,ok){ slugEl.textContent=t||''; slugEl.style.color=ok?'#4ade80':'#f87171'; slugOk=!!ok; nxRefreshBtn(); }
+(function(){
+  var nl=document.getElementById('nxLangPick');
+  if(nl){ nl.querySelectorAll('.nx-lang').forEach(function(b){
+    b.addEventListener('click',function(){ nxPickLang(b.getAttribute('data-lang')); nl.querySelectorAll('.nx-lang').forEach(function(x){x.classList.toggle('on',x===b);}); });
+  }); }
+  var en=document.querySelector('#nxLangPick .nx-lang[data-lang="en"]'); if(en)en.classList.add('on');
+  var nc=document.getElementById('nxCatCards');
+  if(nc){ nc.querySelectorAll('.nx-cat').forEach(function(b){
+    b.addEventListener('click',function(){ nxPickCat(b.getAttribute('data-cat')); nc.querySelectorAll('.nx-cat').forEach(function(x){x.classList.toggle('on',x===b);}); });
+  }); }
+  var drop=document.getElementById('nxLogoDrop'),file=document.getElementById('nxLogoFile'),prev=document.getElementById('nxLogoPrev'),lmsg=document.getElementById('nxLogoMsg'),ltext=document.getElementById('nxLogoText'),lclr=document.getElementById('nxLogoClear');
+  function nxSetLogo(f){
+    lmsg.textContent='';
+    if(!f)return;
+    if(f.type!=='image/png'&&f.type!=='image/jpeg'&&f.type!=='image/webp'){ lmsg.textContent='Logo must be PNG, JPG or WebP.'; return; }
+    if(f.size>2*1024*1024){ lmsg.textContent='Logo must be 2 MB or smaller.'; return; }
+    nxLogo=f;
+    if(nxLogoUrl){URL.revokeObjectURL(nxLogoUrl);}
+    nxLogoUrl=URL.createObjectURL(f);
+    prev.src=nxLogoUrl;prev.style.display='block';
+    ltext.textContent=f.name;
+    lclr.style.display='block';
+  }
+  function nxClearLogo(){
+    nxLogo=null;
+    if(nxLogoUrl){URL.revokeObjectURL(nxLogoUrl);nxLogoUrl='';}
+    prev.removeAttribute('src');prev.style.display='none';
+    ltext.textContent='Drop your logo or click to browse';
+    lclr.style.display='none';
+    file.value='';
+  }
+  if(drop){
+    drop.addEventListener('click',function(e){ if(e.target===lclr)return; file.click(); });
+    ['dragover','dragenter'].forEach(function(ev){ drop.addEventListener(ev,function(e){e.preventDefault();drop.style.borderColor='rgba(43,212,255,.6)';}); });
+    ['dragleave','dragend'].forEach(function(ev){ drop.addEventListener(ev,function(e){e.preventDefault();drop.style.borderColor='';}); });
+    drop.addEventListener('drop',function(e){ e.preventDefault(); drop.style.borderColor=''; if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files.length)nxSetLogo(e.dataTransfer.files[0]); });
+    ['dragover','drop'].forEach(function(ev){ document.addEventListener(ev,function(e){ if(drop.contains(e.target))return; e.preventDefault(); }); });
+  }
+  if(lclr){ lclr.addEventListener('click',function(e){ e.stopPropagation(); nxClearLogo(); }); }
+  if(file){ file.addEventListener('change',function(){ nxSetLogo(file.files&&file.files[0]); }); }
+})();
 var slugCount=document.getElementById('nxSlugCount');
 if(slugIn){slugIn.addEventListener('input',function(){
   clearTimeout(slugTimer); setMsg('',false);
@@ -546,7 +677,7 @@ function csrf(){var m=document.querySelector('meta[name="csrf-token"]');return m
 function nxCopyUrl(u,btn){ var t=btn?btn.innerHTML:''; function ok(){ if(btn){btn.innerHTML='<i class="fas fa-check"></i> Copied';setTimeout(function(){btn.innerHTML=t;},1500);} } if(navigator.clipboard){navigator.clipboard.writeText(u).then(ok,function(){});} else { var i=document.createElement('input');i.value=u;document.body.appendChild(i);i.select();try{document.execCommand('copy');ok();}catch(e){}document.body.removeChild(i); } }
 function tsToken(){var el=document.querySelector('#nxTsWrap [name="cf-turnstile-response"]');return el?el.value:'';}
 if(createBtn){createBtn.addEventListener('click',function(){
-  if(!slugOk)return;
+  if(!slugOk||!nxCat){ if(!nxCat){var cm=document.getElementById('nxCatMsg');if(cm)cm.style.display='block';} return; }
   createBtn.disabled=true;
   createBtn.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Creating…';
   nxResetProg();
@@ -566,6 +697,9 @@ if(createBtn){createBtn.addEventListener('click',function(){
   fd.append('store_name',document.getElementById('nxStoreName').value);
   fd.append('slug',slugIn.value);
   fd.append('cf-turnstile-response',tsToken());
+  fd.append('category',nxCat);
+  fd.append('lang',nxLang);
+  if(nxLogo)fd.append('logo',nxLogo);
   createBtn.disabled=true;
   fetch('/dashboard/stores',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
     if(d&&d.ok&&d.job_id){startProgress(d.job_id);}else{backToForm((d&&d.msg)||'Failed');}
@@ -574,7 +708,7 @@ if(createBtn){createBtn.addEventListener('click',function(){
 function backToForm(msg){
   document.getElementById('nxSmStep2').style.display='none';
   document.getElementById('nxSmStep1').style.display='block';
-  createBtn.disabled=false;
+  nxRefreshBtn();
   createBtn.innerHTML='Create Store';
   var rows=document.querySelectorAll('#nxProgSteps [data-ps]');
   rows.forEach(function(r){r.style.opacity='.45';r.querySelector('.nx-ps-ic').innerHTML='<i class="fas fa-clock" style="color:#64748b;"></i>';});
