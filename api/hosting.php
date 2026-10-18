@@ -182,7 +182,7 @@ try {
         exit;
     }
     if ($action === 'jobs') {
-        $st = $pdo->prepare("SELECT id, slug, plan, owner, site_name, lang, kind, owner_hash FROM hosting_jobs WHERE status='pending' OR (status='claimed' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)) ORDER BY id ASC LIMIT 5");
+        $st = $pdo->prepare("SELECT id, slug, plan, owner, site_name, lang, kind, owner_hash, category, logo_url FROM hosting_jobs WHERE status='pending' OR (status='claimed' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)) ORDER BY id ASC LIMIT 5");
         $st->execute();
         $rows = $st->fetchAll();
         $ids = [];
@@ -277,8 +277,12 @@ try {
                 exit;
             }
             $jsite = mb_substr(trim((string)($job['site_name'] ?? '')), 0, 80);
-            $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, site_name, owner, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), site_name=VALUES(site_name), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()")
-                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.app', $jobPlan, $jsite, $jobOwner, $users, $revenue, $products, $currency]);
+            $jlang = strtolower(trim((string)($job['lang'] ?? 'en')));
+            if ($jlang !== 'tr' && $jlang !== 'en') { $jlang = 'en'; }
+            $jcat = strtolower(trim((string)($job['category'] ?? 'other')));
+            if (!in_array($jcat, ['epin', 'ebook', 'design', 'software', 'other'], true)) { $jcat = 'other'; }
+            $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, site_name, owner, lang, category, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), site_name=VALUES(site_name), owner=VALUES(owner), lang=VALUES(lang), category=VALUES(category), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()")
+                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.app', $jobPlan, $jsite, $jobOwner, $jlang, $jcat, $users, $revenue, $products, $currency]);
             if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
                 $amode = (string)($_POST['admin_mode'] ?? '');
                 if ($amode !== 'hash' && $amode !== 'generated') $amode = 'hash';

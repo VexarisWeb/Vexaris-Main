@@ -269,6 +269,10 @@ function run_migrations(): void {
         ensure_column($pdo, 'licenses', 'user_id', '`user_id` INT UNSIGNED NULL');
         ensure_column($pdo, 'hosting_jobs', 'kind', "`kind` VARCHAR(20) NOT NULL DEFAULT 'provision'");
         ensure_column($pdo, 'hosting_jobs', 'owner_hash', "`owner_hash` VARCHAR(255) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosting_jobs', 'category', "`category` VARCHAR(20) NOT NULL DEFAULT 'other'");
+        ensure_column($pdo, 'hosting_jobs', 'logo_url', "`logo_url` VARCHAR(255) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosted_stores', 'category', "`category` VARCHAR(20) NOT NULL DEFAULT 'other'");
+        ensure_column($pdo, 'hosted_stores', 'lang', "`lang` VARCHAR(5) NOT NULL DEFAULT 'en'");
         ensure_column($pdo, 'hosted_stores', 'site_name', "`site_name` VARCHAR(80) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'app_version', "`app_version` VARCHAR(30) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'traffic_bytes', "`traffic_bytes` BIGINT NOT NULL DEFAULT 0");
@@ -327,6 +331,8 @@ function run_migrations(): void {
             domain     VARCHAR(190) NOT NULL,
             plan       VARCHAR(20) NOT NULL DEFAULT 'free',
             owner      VARCHAR(190) NOT NULL DEFAULT '',
+            lang       VARCHAR(5) NOT NULL DEFAULT 'en',
+            category   VARCHAR(20) NOT NULL DEFAULT 'other',
             users      INT NOT NULL DEFAULT 0,
             revenue    DECIMAL(14,2) NOT NULL DEFAULT 0.00,
             status     VARCHAR(20) NOT NULL DEFAULT 'active',
@@ -345,6 +351,8 @@ function run_migrations(): void {
             owner      VARCHAR(190) NOT NULL DEFAULT '',
             site_name  VARCHAR(80) NOT NULL DEFAULT '',
             lang       VARCHAR(5) NOT NULL DEFAULT 'en',
+            category   VARCHAR(20) NOT NULL DEFAULT 'other',
+            logo_url   VARCHAR(255) NOT NULL DEFAULT '',
             status     VARCHAR(20) NOT NULL DEFAULT 'pending',
             attempts   INT NOT NULL DEFAULT 0,
             last_msg   VARCHAR(255) NOT NULL DEFAULT '',
@@ -503,12 +511,24 @@ function run_migrations(): void {
             body_text   MEDIUMTEXT NULL,
             message_id  VARCHAR(255) NULL,
             is_read     TINYINT(1) NOT NULL DEFAULT 0,
+            starred     TINYINT(1) NOT NULL DEFAULT 0,
+            deleted     TINYINT(1) NOT NULL DEFAULT 0,
+            spam        TINYINT(1) NOT NULL DEFAULT 0,
+            spam_checked TINYINT(1) NOT NULL DEFAULT 0,
+            spam_score  TINYINT NULL,
+            spam_reason VARCHAR(190) NULL,
             replied_at  DATETIME NULL,
             created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             KEY idx_ie_to (to_addr, created_at),
             KEY idx_ie_mid (message_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         try { ensure_column($pdo, 'inbound_emails', 'body_html', "`body_html` MEDIUMTEXT NULL"); } catch (Exception $e) {}
+        try { ensure_column($pdo, 'inbound_emails', 'starred', "`starred` TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+        try { ensure_column($pdo, 'inbound_emails', 'deleted', "`deleted` TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+        try { ensure_column($pdo, 'inbound_emails', 'spam', "`spam` TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+        try { ensure_column($pdo, 'inbound_emails', 'spam_checked', "`spam_checked` TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+        try { ensure_column($pdo, 'inbound_emails', 'spam_score', "`spam_score` TINYINT NULL"); } catch (Exception $e) {}
+        try { ensure_column($pdo, 'inbound_emails', 'spam_reason', "`spam_reason` VARCHAR(190) NULL"); } catch (Exception $e) {}
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS sent_emails (
             id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -516,9 +536,23 @@ function run_migrations(): void {
             from_addr   VARCHAR(190) NOT NULL,
             subject     VARCHAR(255) NULL,
             body_html   MEDIUMTEXT NULL,
+            starred     TINYINT(1) NOT NULL DEFAULT 0,
+            deleted     TINYINT(1) NOT NULL DEFAULT 0,
             created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             KEY idx_se_from (from_addr, created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        try { ensure_column($pdo, 'sent_emails', 'starred', "`starred` TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+        try { ensure_column($pdo, 'sent_emails', 'deleted', "`deleted` TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES
+            ('mail_aliases', " . $pdo->quote(json_encode(['info@vexaris.net','abuse@vexaris.net','founder@vexaris.net','noreply@vexaris.net'])) . "),
+            ('mail_default_from', 'info@vexaris.net'),
+            ('mail_signature', ''),
+            ('mail_page_size', '25'),
+            ('mail_mark_read', '1'),
+            ('mail_spam_enabled', '1'),
+            ('mail_spam_prompt', 'Sen bir e-posta spam filtresisin. Sana verilen e-postayi incele ve SADECE \"Yes\" ya da \"No\" yaz. Reklam, phishing, dolandiricilik, istenmeyen toplu gonderim veya supheli ise \"Yes\"; gercek, kisisel veya mesru bir yazisma ise \"No\". Baska hicbir sey yazma.'),
+            ('mail_spam_words', ''),
+            ('mail_spam_maxlen', '10000')");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS legal_pages (
             slug       VARCHAR(60) NOT NULL PRIMARY KEY,

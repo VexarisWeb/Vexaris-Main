@@ -83,9 +83,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st->execute([$uid]);
         $ohash = (string)$st->fetchColumn();
         if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $ohash)) $ohash = '';
+        $cat = strtolower(trim((string)($_POST['category'] ?? 'other')));
+        if (!in_array($cat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $cat = 'other';
+        $langSel = strtolower(trim((string)($_POST['lang'] ?? 'en')));
+        if ($langSel !== 'tr' && $langSel !== 'en') $langSel = 'en';
+        $logoUrl = trim((string)($_POST['logo_url'] ?? ''));
+        if ($logoUrl !== '' && !preg_match('#^https://vexaris\.net/uploads/store-logos/[A-Za-z0-9._-]+$#', $logoUrl)) $logoUrl = '';
         try {
-            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?, ?,?,?, 'en','provision','pending',?)");
-            $ins->execute([$uid, $slug, $effPlan, $uemail, $name, $ohash]);
+            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category, logo_url) VALUES (?,?, ?,?,?, ?, 'provision','pending', ?, ?, ?)");
+            $ins->execute([$uid, $slug, $effPlan, $uemail, $name, $langSel, $ohash, $cat, $logoUrl]);
             $jid = (int)$pdo->lastInsertId();
             $pdo->commit();
         } catch (Exception $e2) {
@@ -133,7 +139,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
     csrf_check();
     $sid = (int)($_POST['store_id'] ?? 0);
     try {
-        $st = $pdo->prepare("SELECT slug, plan, app_version FROM hosted_stores WHERE id=? AND (user_id=? OR owner=?) AND status='active' LIMIT 1");
+        $st = $pdo->prepare("SELECT slug, plan, app_version, category, lang FROM hosted_stores WHERE id=? AND (user_id=? OR owner=?) AND status='active' LIMIT 1");
         $st->execute([$sid, $uid, $uemail]);
         $row = $st->fetch();
         if (!$row) stores_json(['ok' => false, 'msg' => 'Store not found.']);
@@ -149,8 +155,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st->execute([$uid]);
         $ohash = (string)$st->fetchColumn();
         if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $ohash)) $ohash = '';
-        $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?, ?, '','en','update','pending',?)");
-        $ins->execute([$uid, $slug, (string)($row['plan'] ?? 'free'), $uemail, $ohash]);
+        $ucat = strtolower(trim((string)($row['category'] ?? 'other')));
+        if (!in_array($ucat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $ucat = 'other';
+        $ulang = strtolower(trim((string)($row['lang'] ?? 'en')));
+        if ($ulang !== 'tr' && $ulang !== 'en') $ulang = 'en';
+        $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?, ?, '', ?, 'update','pending', ?, ?)");
+        $ins->execute([$uid, $slug, (string)($row['plan'] ?? 'free'), $uemail, $ulang, $ohash, $ucat]);
         stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId(), 'version' => $latest]);
     } catch (Exception $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);

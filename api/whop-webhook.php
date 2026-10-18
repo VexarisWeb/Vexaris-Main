@@ -16,7 +16,7 @@ function whop_downgrade_store(PDO $pdo, int $uid): void {
         $uemail = strtolower(trim((string)($urow['email'] ?? '')));
         $uhash = (string)($urow['password'] ?? '');
         if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $uhash)) $uhash = '';
-        $st = $pdo->prepare("SELECT slug, owner FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' LIMIT 1");
+        $st = $pdo->prepare("SELECT slug, owner, category, lang FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' LIMIT 1");
         $st->execute([$uid, $uemail]);
         $srow = $st->fetch();
         if (!$srow) return;
@@ -25,9 +25,13 @@ function whop_downgrade_store(PDO $pdo, int $uid): void {
         $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
         $st->execute([$slug]);
         if ($st->fetch()) return;
+        $dcat = strtolower(trim((string)($srow['category'] ?? 'other')));
+        if (!in_array($dcat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $dcat = 'other';
+        $dlang = strtolower(trim((string)($srow['lang'] ?? 'en')));
+        if ($dlang !== 'tr' && $dlang !== 'en') $dlang = 'en';
         $pdo->prepare("UPDATE hosted_stores SET plan='free' WHERE slug=?")->execute([$slug]);
-        $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?, ?, 'free', ?, ?, 'en', 'provision', 'pending', ?)")
-            ->execute([$uid, $slug, (string)($srow['owner'] ?? $uemail), $slug, $uhash]);
+        $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?, ?, 'free', ?, ?, ?, 'provision', 'pending', ?, ?)")
+            ->execute([$uid, $slug, (string)($srow['owner'] ?? $uemail), $slug, $dlang, $uhash, $dcat]);
     } catch (Throwable $e) {
         error_log('Whop downgrade job: ' . $e->getMessage());
     }
@@ -209,13 +213,17 @@ try {
                         $uemail = strtolower(trim((string)($urow['email'] ?? '')));
                         $uhash = (string)($urow['password'] ?? '');
                         if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $uhash)) $uhash = '';
-                        $hs = $pdo->prepare("SELECT slug, owner, user_id FROM hosted_stores WHERE slug=? LIMIT 1");
+                        $hs = $pdo->prepare("SELECT slug, owner, user_id, category, lang FROM hosted_stores WHERE slug=? LIMIT 1");
                         $hs->execute([$upSlug]);
                         $hrow = $hs->fetch();
                         $owns = $hrow && ((int)($hrow['user_id'] ?? 0) === $uid || ($uemail !== '' && strtolower((string)($hrow['owner'] ?? '')) === $uemail));
                         if ($owns) {
-                            $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?, ?,?, 'en','provision','pending',?)")
-                                ->execute([$uid, $upSlug, $subPlan, (string)($hrow['owner'] ?? $uemail), (string)$upSlug, $uhash]);
+                            $ucat = strtolower(trim((string)($hrow['category'] ?? 'other')));
+                            if (!in_array($ucat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $ucat = 'other';
+                            $ulang = strtolower(trim((string)($hrow['lang'] ?? 'en')));
+                            if ($ulang !== 'tr' && $ulang !== 'en') $ulang = 'en';
+                            $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?, ?,?, ?, 'provision','pending', ?, ?)")
+                                ->execute([$uid, $upSlug, $subPlan, (string)($hrow['owner'] ?? $uemail), (string)$upSlug, $ulang, $uhash, $ucat]);
                         }
                     }
                 } catch (Throwable $e) {
