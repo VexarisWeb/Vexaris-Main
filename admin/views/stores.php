@@ -1,8 +1,10 @@
 <?php
 $db = db();
-function nx_store_type_label(string $c): string {
-    $m = ['epin' => 'E-PIN', 'ebook' => 'E-Book', 'design' => 'Design', 'software' => 'Software', 'other' => 'Other'];
-    return $m[strtolower(trim($c))] ?? 'Other';
+if (!function_exists('nx_store_type_label')) {
+    function nx_store_type_label(string $c): string {
+        $m = ['epin' => 'E-PIN', 'ebook' => 'E-Book', 'design' => 'Design', 'software' => 'Software', 'other' => 'Other'];
+        return $m[strtolower(trim($c))] ?? 'Other';
+    }
 }
 $planMsg = '';
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action'] ?? '') === 'set-plan')) {
