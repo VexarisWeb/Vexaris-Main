@@ -51,6 +51,10 @@ function oauth_configured_list(): array {
 }
 
 function oauth_base_url(): string {
+    if (defined('SITE_URL') && (string)SITE_URL !== '') {
+        $u = rtrim((string)SITE_URL, '/');
+        if (preg_match('#^https?://#i', $u)) return $u;
+    }
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
