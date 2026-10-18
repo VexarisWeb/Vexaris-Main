@@ -273,6 +273,7 @@ function run_migrations(): void {
         ensure_column($pdo, 'hosting_jobs', 'logo_url', "`logo_url` VARCHAR(255) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'category', "`category` VARCHAR(20) NOT NULL DEFAULT 'other'");
         ensure_column($pdo, 'hosted_stores', 'lang', "`lang` VARCHAR(5) NOT NULL DEFAULT 'en'");
+        ensure_column($pdo, 'hosted_stores', 'logo_url', "`logo_url` VARCHAR(255) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'site_name', "`site_name` VARCHAR(80) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'app_version', "`app_version` VARCHAR(30) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'traffic_bytes', "`traffic_bytes` BIGINT NOT NULL DEFAULT 0");
@@ -333,6 +334,7 @@ function run_migrations(): void {
             owner      VARCHAR(190) NOT NULL DEFAULT '',
             lang       VARCHAR(5) NOT NULL DEFAULT 'en',
             category   VARCHAR(20) NOT NULL DEFAULT 'other',
+            logo_url   VARCHAR(255) NOT NULL DEFAULT '',
             users      INT NOT NULL DEFAULT 0,
             revenue    DECIMAL(14,2) NOT NULL DEFAULT 0.00,
             status     VARCHAR(20) NOT NULL DEFAULT 'active',

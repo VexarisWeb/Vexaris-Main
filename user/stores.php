@@ -316,7 +316,7 @@ require_once __DIR__ . '/_inc/header.php';
 
 $store = null;
 try {
-    $st = $pdo->prepare("SELECT id, slug, domain, plan, site_name, users, products, revenue, currency, traffic_bytes, traffic_updated, app_version, status, reported_at, created_at, custom_domain, custom_status FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id DESC LIMIT 1");
+    $st = $pdo->prepare("SELECT id, slug, domain, plan, category, site_name, users, products, revenue, currency, traffic_bytes, traffic_updated, app_version, status, reported_at, created_at, custom_domain, custom_status FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id DESC LIMIT 1");
     $st->execute([$uid, $uemail]);
     $store = $st->fetch() ?: null;
 } catch (Exception $e) {}
@@ -372,6 +372,8 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
             <div style="font-weight:800;font-size:17px;"><?= $sname !== '' ? htmlspecialchars($sname) : htmlspecialchars($store['domain']) ?></div>
             <div style="font-size:13px;color:#8cb8ff;font-weight:700;"><?= htmlspecialchars($store['domain']) ?></div>
         </div>
+        <?php $scat = strtolower((string)($store['category'] ?? 'other')); $scMap = ['epin' => 'E-PIN', 'ebook' => 'E-Book', 'design' => 'Design', 'software' => 'Software', 'other' => 'Other']; ?>
+        <span style="font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:4px 12px;border-radius:999px;background:rgba(139,92,246,.14);color:#c4a5fb;"><?= htmlspecialchars($scMap[$scat] ?? 'Other') ?></span>
         <span style="font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:4px 12px;border-radius:999px;background:<?= $sp === 'free' ? 'rgba(255,255,255,.07);color:#cfd6e4' : 'rgba(0,212,255,.12);color:#7dd7fc' ?>;"><?= htmlspecialchars($sp) ?></span>
     </div>
     <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:12px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">

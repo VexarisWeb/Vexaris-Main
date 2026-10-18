@@ -1,5 +1,9 @@
 <?php
 $db = db();
+function nx_store_type_label(string $c): string {
+    $m = ['epin' => 'E-PIN', 'ebook' => 'E-Book', 'design' => 'Design', 'software' => 'Software', 'other' => 'Other'];
+    return $m[strtolower(trim($c))] ?? 'Other';
+}
 $planMsg = '';
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action'] ?? '') === 'set-plan')) {
     $tok = (string)($_POST['_csrf'] ?? '');
@@ -97,7 +101,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array(($_POST['store_
 $latestVer = function_exists('saas_latest_version') ? saas_latest_version($db) : '';
 $rows = [];
 try {
-    $rows = $db->query("SELECT h.id, h.user_id, h.slug, h.domain, h.plan, h.app_version, h.owner, h.users, h.revenue, h.currency, h.abuse_score, h.abuse_detail, h.status, h.reported_at, h.created_at, u.username AS uname FROM hosted_stores h LEFT JOIN users u ON u.id=h.user_id ORDER BY h.id DESC LIMIT 200")->fetchAll();
+    $rows = $db->query("SELECT h.id, h.user_id, h.slug, h.domain, h.plan, h.app_version, h.owner, h.users, h.revenue, h.currency, h.category, h.abuse_score, h.abuse_detail, h.status, h.reported_at, h.created_at, u.username AS uname FROM hosted_stores h LEFT JOIN users u ON u.id=h.user_id ORDER BY h.id DESC LIMIT 200")->fetchAll();
 } catch (Exception $e) {}
 $totalRev = 0.0;
 $totalUsers = 0;
@@ -127,6 +131,7 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
                 <tr>
                     <th style="width:50px">#</th>
                     <th>Domain</th>
+                    <th style="width:90px">Type</th>
                     <th>Plan</th>
                     <th>Owner</th>
                     <th>Created By</th>
@@ -140,11 +145,12 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
             </thead>
             <tbody>
                 <?php if (!$rows): ?>
-                <tr><td colspan="11" style="text-align:center;padding:2.5rem" class="text-muted">Henüz mağaza yok.</td></tr>
+                <tr><td colspan="12" style="text-align:center;padding:2.5rem" class="text-muted">Henüz mağaza yok.</td></tr>
                 <?php else: foreach ($rows as $i => $r): ?>
                 <tr>
                     <td><?= (int)$r['id'] ?></td>
                     <td><a href="https://<?= htmlspecialchars($r['domain']) ?>" target="_blank" rel="noopener" style="color:var(--cyan);font-weight:600;"><?= htmlspecialchars($r['domain']) ?></a></td>
+                    <td><?php $cat = strtolower((string)($r['category'] ?? 'other')); $cs = ['epin' => 'background:rgba(255,122,26,.14);color:#ffb37a', 'ebook' => 'background:rgba(43,212,255,.14);color:#7dd7fc', 'design' => 'background:rgba(168,85,247,.16);color:#c4a5fb', 'software' => 'background:rgba(34,197,94,.14);color:#4ade80', 'other' => 'background:rgba(255,255,255,.07);color:#cfd6e4']; ?><span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;<?= $cs[$cat] ?? $cs['other'] ?>"><?= htmlspecialchars(nx_store_type_label($cat)) ?></span></td>
                     <td><span style="text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.05em;"><?= htmlspecialchars($r['plan']) ?></span>
                         <form method="POST" action="/admin?tab=stores" style="margin:4px 0 0;display:flex;gap:4px;">
                             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf ?? '') ?>">

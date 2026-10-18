@@ -223,13 +223,22 @@ try {
         }
         if ($ok && $jobKind === 'delete') {
             $delCustom = '';
+            $delLogo = '';
             try {
-                $cs = $pdo->prepare("SELECT custom_domain FROM hosted_stores WHERE slug=? LIMIT 1");
+                $cs = $pdo->prepare("SELECT custom_domain, logo_url FROM hosted_stores WHERE slug=? LIMIT 1");
                 $cs->execute([$jobSlug]);
-                $delCustom = strtolower(trim((string)($cs->fetchColumn() ?: '')));
+                $csRow = $cs->fetch() ?: [];
+                $delCustom = strtolower(trim((string)($csRow['custom_domain'] ?? '')));
+                $delLogo = (string)($csRow['logo_url'] ?? '');
             } catch (Exception $e2) {}
             try {
                 $pdo->prepare("DELETE FROM hosted_stores WHERE slug=?")->execute([$jobSlug]);
+            } catch (Exception $e2) {}
+            try {
+                if ($delLogo !== '' && preg_match('#^https://vexaris\.net/uploads/store-logos/([A-Za-z0-9._-]+)$#', $delLogo, $lmm)) {
+                    $lpath = __DIR__ . '/../uploads/store-logos/' . $lmm[1];
+                    if (is_file($lpath)) @unlink($lpath);
+                }
             } catch (Exception $e2) {}
             try {
                 $delSlug = strtolower($jobSlug);
@@ -281,8 +290,10 @@ try {
             if ($jlang !== 'tr' && $jlang !== 'en') { $jlang = 'en'; }
             $jcat = strtolower(trim((string)($job['category'] ?? 'other')));
             if (!in_array($jcat, ['epin', 'ebook', 'design', 'software', 'other'], true)) { $jcat = 'other'; }
-            $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, site_name, owner, lang, category, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), site_name=VALUES(site_name), owner=VALUES(owner), lang=VALUES(lang), category=VALUES(category), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()")
-                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.app', $jobPlan, $jsite, $jobOwner, $jlang, $jcat, $users, $revenue, $products, $currency]);
+            $jlogo = (string)($job['logo_url'] ?? '');
+            if ($jlogo !== '' && !preg_match('#^https://vexaris\.net/uploads/store-logos/[A-Za-z0-9._-]+$#', $jlogo)) { $jlogo = ''; }
+            $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, site_name, owner, lang, category, logo_url, users, revenue, products, currency, status, reported_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'active',NOW()) ON DUPLICATE KEY UPDATE domain=VALUES(domain), plan=VALUES(plan), site_name=VALUES(site_name), owner=VALUES(owner), lang=VALUES(lang), category=VALUES(category), logo_url=VALUES(logo_url), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), status='active', reported_at=NOW()")
+                ->execute([(int)($job['user_id'] ?? 0), $jobSlug, $jobSlug . '.vexaris.app', $jobPlan, $jsite, $jobOwner, $jlang, $jcat, $jlogo, $users, $revenue, $products, $currency]);
             if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
                 $amode = (string)($_POST['admin_mode'] ?? '');
                 if ($amode !== 'hash' && $amode !== 'generated') $amode = 'hash';
