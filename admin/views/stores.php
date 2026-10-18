@@ -11,7 +11,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action']
             $planMsg = 'Invalid plan.';
         } else {
             try {
-                $st = $db->prepare("SELECT slug, owner, user_id FROM hosted_stores WHERE id=? LIMIT 1");
+                $st = $db->prepare("SELECT slug, owner, user_id, category, lang FROM hosted_stores WHERE id=? LIMIT 1");
                 $st->execute([$sid]);
                 $row = $st->fetch();
                 if (!$row) {
@@ -32,8 +32,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action']
                     $st->execute([(int)($row['user_id'] ?? 0)]);
                     $plOh = (string)$st->fetchColumn();
                     if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $plOh)) $plOh = '';
-                    $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?,?,?,'en','provision','pending',?)")
-                        ->execute([(int)($row['user_id'] ?? 0), $slug, $nplan, (string)($row['owner'] ?? ''), $slug, $plOh]);
+                    $pcat = strtolower(trim((string)($row['category'] ?? 'other')));
+                    if (!in_array($pcat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $pcat = 'other';
+                    $plang = strtolower(trim((string)($row['lang'] ?? 'en')));
+                    if ($plang !== 'tr' && $plang !== 'en') $plang = 'en';
+                    $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?,?,?, ?, 'provision','pending', ?, ?)")
+                        ->execute([(int)($row['user_id'] ?? 0), $slug, $nplan, (string)($row['owner'] ?? ''), $slug, $plang, $plOh, $pcat]);
                     $planMsg = 'OK: plan set to ' . $nplan . ', limits queued.';
                 }
             } catch (Exception $e) {
@@ -53,8 +57,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array(($_POST['store_
             if ($latest === '') {
                 $planMsg = 'No version found.';
             } else {
-                $mkUpd = function ($sid) use ($db) {
-                    $st = $db->prepare("SELECT slug, plan, owner, user_id, app_version FROM hosted_stores WHERE id=? AND status='active' LIMIT 1");
+                $mkUpd = function ($sid) use ($db, $latest) {
+                    $st = $db->prepare("SELECT slug, plan, owner, user_id, app_version, category, lang FROM hosted_stores WHERE id=? AND status='active' LIMIT 1");
                     $st->execute([(int)$sid]);
                     $row = $st->fetch();
                     if (!$row) return false;
@@ -66,8 +70,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array(($_POST['store_
                     $st->execute([(int)($row['user_id'] ?? 0)]);
                     $oh = (string)$st->fetchColumn();
                     if (!preg_match('/^\\$(2y|2a|argon2i|argon2id)\\$/', $oh)) $oh = '';
-                    $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?, ?, '','en','update','pending',?)")
-                        ->execute([(int)($row['user_id'] ?? 0), (string)$row['slug'], (string)($row['plan'] ?? 'free'), (string)($row['owner'] ?? ''), $oh]);
+                    $mcat = strtolower(trim((string)($row['category'] ?? 'other')));
+                    if (!in_array($mcat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $mcat = 'other';
+                    $mlang = strtolower(trim((string)($row['lang'] ?? 'en')));
+                    if ($mlang !== 'tr' && $mlang !== 'en') $mlang = 'en';
+                    $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?, ?, '', ?, 'update','pending', ?, ?)")
+                        ->execute([(int)($row['user_id'] ?? 0), (string)$row['slug'], (string)($row['plan'] ?? 'free'), (string)($row['owner'] ?? ''), $mlang, $oh, $mcat]);
                     return true;
                 };
                 if (($_POST['store_action'] ?? '') === 'update-all') {
