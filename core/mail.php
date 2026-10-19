@@ -365,10 +365,12 @@ function mail_spam_scan_email(\PDO $pdo, int $id): array {
     if ($id <= 0) return ['ok' => false, 'msg' => 'bad id'];
     $aiFile = __DIR__ . '/ai.php';
     if (!function_exists('ai_call_provider') && is_file($aiFile)) { require_once $aiFile; }
-    if (!function_exists('ai_call_provider') || !function_exists('ai_active_provider')) return ['ok' => false, 'msg' => 'ai yok'];
     if (mail_spam_setting($pdo, 'mail_spam_enabled', '1') !== '1') return ['ok' => false, 'msg' => 'kapali'];
-    $prov = ai_active_provider($pdo);
-    if (!$prov) return ['ok' => false, 'msg' => 'AI saglayici yok'];
+    /* EVREN (clef) kullanilabiliyorsa klasik AI saglayicisi zorunlu degil. */
+    $useEvren = mail_spam_use_evren($pdo);
+    if (!$useEvren && (!function_exists('ai_call_provider') || !function_exists('ai_active_provider'))) return ['ok' => false, 'msg' => 'ai yok'];
+    $prov = function_exists('ai_active_provider') ? ai_active_provider($pdo) : null;
+    if (!$prov && !$useEvren) return ['ok' => false, 'msg' => 'AI saglayici yok'];
     $model = (string)($prov['model_id'] ?? '');
     $sysPrompt = mail_spam_setting($pdo, 'mail_spam_prompt', mail_spam_default_prompt());
     if (trim($sysPrompt) === '') { $sysPrompt = mail_spam_default_prompt(); }
@@ -376,11 +378,12 @@ function mail_spam_scan_email(\PDO $pdo, int $id): array {
     $st->execute([$id]);
     $row = $st->fetch();
     if (!$row) return ['ok' => false, 'msg' => 'mail yok'];
-    $res = mail_spam_scan_one($pdo, $prov, $sysPrompt, $model, $row);
+    $res = mail_spam_scan_one($pdo, $prov ?: [], $sysPrompt, $model, $row);
     if (empty($res['ok'])) return $res;
+    $score = isset($res['prob']) ? (int)round((float)$res['prob'] * 100) : ($res['spam'] ? 100 : 0);
     $pdo->prepare("UPDATE inbound_emails SET spam=?, spam_checked=1, spam_score=?, spam_reason=? WHERE id=?")
-        ->execute([$res['spam'], $res['spam'] ? 100 : 0, $res['reason'], $id]);
-    return ['ok' => true, 'id' => $id, 'spam' => $res['spam'], 'reason' => $res['reason'], 'by' => ($res['by'] ?? 'ai'), 'skipped' => !empty($res['skipped']), 'model' => $model];
+        ->execute([$res['spam'], $score, $res['reason'], $id]);
+    return ['ok' => true, 'id' => $id, 'spam' => $res['spam'], 'reason' => $res['reason'], 'by' => ($res['by'] ?? 'ai'), 'prob' => ($res['prob'] ?? null), 'skipped' => !empty($res['skipped']), 'model' => $model];
 }
 
 function mail_promote_stale_pending(\PDO $pdo, int $minutes = 30): int {
