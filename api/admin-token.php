@@ -12,7 +12,7 @@ if ($action === 'issue') {
     boot_session();
     require_login();
     $me = current_user();
-    if ((int)($me['is_admin'] ?? 0) !== 1) {
+    if (!is_admin()) {
         http_response_code(403);
         echo json_encode(['ok' => false, 'msg' => 'admin only']);
         exit;

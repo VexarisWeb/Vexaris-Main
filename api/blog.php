@@ -27,6 +27,8 @@ if ($action === 'blog_view_leave') {
     }
     $viewId = (int)($_POST['view_id'] ?? 0);
     $duration = (int)($_POST['duration'] ?? 0);
+    if ($duration < 0) $duration = 0;
+    if ($duration > 7200) $duration = 7200;
     blog_view_end($pdo, $viewId, $duration);
     echo json_encode(['ok' => true]);
     exit;

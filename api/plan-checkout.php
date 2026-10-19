@@ -40,6 +40,16 @@ if ($upSlug !== '') {
         $st->execute([$upSlug, $uid, $uemail]);
         if (!$st->fetch()) $upSlug = '';
     } catch (Exception $e) { $upSlug = ''; }
+} else {
+    /* Slug gonderilmemisse (pazarlama formu): kullanicinin aktif magazasi
+       otomatik hedeflenir; aksi halde odeme alinip magaza free kaliyordu. */
+    try {
+        $uemail = strtolower(trim((string)(current_user()['email'] ?? '')));
+        $st = $pdo->prepare("SELECT slug FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id ASC LIMIT 1");
+        $st->execute([$uid, $uemail]);
+        $found = (string)($st->fetchColumn() ?: '');
+        if ($found !== '') $upSlug = $found;
+    } catch (Exception $e) { $upSlug = ''; }
 }
 
 try {
@@ -47,15 +57,12 @@ try {
     $pname = 'Vexaris ' . $offers[$plan]['label'] . ' (' . ($cycle === 'yearly' ? 'Yearly' : 'Monthly') . ')';
     $currency = strtoupper(whop_currency());
 
-    $re = $pdo->prepare("SELECT order_no FROM orders WHERE user_id=? AND provider='whop' AND product_id=0 AND status='pending' AND product_name=? AND amount=? AND created_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE) ORDER BY id DESC LIMIT 1");
-    $re->execute([$uid, $pname, $amount]);
-    $orderNo = (string)$re->fetchColumn();
-    if ($orderNo === '') {
-        $pdo->prepare("UPDATE orders SET status='cancelled' WHERE user_id=? AND provider='whop' AND product_id=0 AND status='pending'")->execute([$uid]);
-        $orderNo = 'VEX-' . date('ymdHis') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
-        $pdo->prepare("INSERT INTO orders (user_id, order_no, product_name, amount, status, provider, product_id, currency) VALUES (?,?,?,?, 'pending','whop',0,?)")
-            ->execute([$uid, $orderNo, $pname, $amount, $currency]);
-    }
+    /* Her checkout denemesi kendi siparisini acar: ayni order_no'ya iki odeme
+       yapilirsa ikinci odeme sessizce kayboluyordu. */
+    $pdo->prepare("UPDATE orders SET status='cancelled' WHERE user_id=? AND provider='whop' AND product_id=0 AND status='pending'")->execute([$uid]);
+    $orderNo = 'VEX-' . date('ymdHis') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+    $pdo->prepare("INSERT INTO orders (user_id, order_no, product_name, amount, status, provider, product_id, currency) VALUES (?,?,?,?, 'pending','whop',0,?)")
+        ->execute([$uid, $orderNo, $pname, $amount, $currency]);
 
     $returnUrl = 'https://vexaris.net/dashboard/orders?paid=1&order=' . urlencode($orderNo);
     $res = whop_create_plan_checkout($plan, $cycle,

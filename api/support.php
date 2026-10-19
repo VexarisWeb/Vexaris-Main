@@ -265,6 +265,7 @@ try {
             support_purge_attachments($pdo, $ticketId);
             $pdo->prepare("DELETE FROM support_messages WHERE ticket_id = ?")->execute([$ticketId]);
             $pdo->prepare("DELETE FROM support_tickets WHERE id = ?")->execute([$ticketId]);
+            audit_log($pdo, $uid, 'ticket_delete', 'ticket', (string)$ticketId);
             echo json_encode(['ok' => true, 'msg' => $tx('Talep ve tüm mesajları silindi.', 'Ticket and all its messages deleted.')]);
             exit;
         case 'status':

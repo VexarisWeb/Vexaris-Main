@@ -197,11 +197,13 @@ switch ($action) {
         $id = (int)($_POST['id'] ?? 0);
         if ($id <= 0) { echo json_encode(['ok' => false, 'msg' => 'Geçersiz ID.']); exit; }
         try {
-            $st = $pdo->prepare("SELECT file_path FROM versions WHERE id=?");
+            $st = $pdo->prepare("SELECT version, file_path FROM versions WHERE id=?");
             $st->execute([$id]);
-            $fp = $st->fetchColumn();
+            $vrow = $st->fetch() ?: [];
+            $fp = (string)($vrow['file_path'] ?? '');
             $pdo->prepare("DELETE FROM update_events WHERE version_id=?")->execute([$id]);
             $pdo->prepare("DELETE FROM versions WHERE id=?")->execute([$id]);
+            audit_log($pdo, (int)(current_user()['id'] ?? 0), 'version_delete', 'version', (string)$id, (string)($vrow['version'] ?? ''));
             if ($fp) {
                 $abs = __DIR__ . '/..' . $fp;
                 if (is_file($abs)) @unlink($abs);

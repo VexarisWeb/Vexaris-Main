@@ -154,7 +154,7 @@ function renderTicketList() {
         const isActive = currentTicket && currentTicket.id == t.id;
         const unread = parseInt(t.unread || 0);
         return '<div class="ticket-item' + (isActive ? ' active' : '') + (unread > 0 ? ' unread' : '') + '" onclick="openTicket(' + t.id + ')" id="trow-' + t.id + '">'
-            + '<div class="ticket-avatar">' + avatarLetter(USERS_MAP[t.user_id]) + '</div>'
+            + '<div class="ticket-avatar">' + esc(avatarLetter(USERS_MAP[t.user_id])) + '</div>'
             + '<div class="ticket-item__body">'
             + '<div class="ticket-item__top">'
             + '<span class="ticket-item__name">' + esc(USERS_MAP[t.user_id] || '—') + '</span>'
@@ -162,7 +162,7 @@ function renderTicketList() {
             + '</div>'
             + '<div class="ticket-item__subj">' + esc(t.subject) + '</div>'
             + '<div class="ticket-item__bottom">'
-            + '<span class="ticket-item__last">' + truncate(t.last_msg, 40) + '</span>'
+            + '<span class="ticket-item__last">' + esc(truncate(t.last_msg, 40)) + '</span>'
             + (ticketSource(t) === 'application' ? '<span class="badge" style="background:rgba(79,143,192,.14);color:#7fb3d9;border:1px solid rgba(79,143,192,.4)">Başvuru</span>' : '')
             + ticketStatusBadge(t.status)
             + (unread > 0 ? '<span class="ticket-badge">' + unread + '</span>' : '')

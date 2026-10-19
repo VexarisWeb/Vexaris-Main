@@ -31,13 +31,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $remember   = !empty($_POST['remember']);
     if (!$identifier || !$password) {
         $error = 'Please fill in all fields.';
-    } else if (turnstile_enabled() && !turnstile_verify($_POST['cf-turnstile-response'] ?? $_POST['cf_token'] ?? '', $_SERVER['REMOTE_ADDR'] ?? null)) {
+    } else if (turnstile_enabled() && !turnstile_verify($_POST['cf-turnstile-response'] ?? $_POST['cf_token'] ?? '', client_ip())) {
         $error = 'Security verification failed. Please complete Turnstile.';
     } else {
         $pdo = db();
         if (!$pdo) {
             $error = 'Could not connect to the database. Please try again later.';
         } else {
+            $rlIp = client_ip();
+            $rlUser = 'lu_' . substr(md5(strtolower($identifier)), 0, 24);
+            $rlOk = true;
+            try {
+                $rlOk = api_rate_limit($pdo, 'login', $rlIp, 30, 900);
+                if ($rlOk) $rlOk = api_rate_limit($pdo, $rlUser, $rlIp, 10, 900);
+            } catch (Throwable $eRl) {
+                $rlOk = true;
+            }
+            if (!$rlOk) {
+                $error = 'Too many sign-in attempts. Please try again later.';
+            } else {
             try {
                 $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? OR username = ? LIMIT 1");
                 $stmt->execute([$identifier, $identifier]);
@@ -64,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'sess_ver' => (int)($user['session_version'] ?? 0),
                     ];
                     session_regenerate_id(true);
+                    try { $pdo->prepare("DELETE FROM api_rate_limits WHERE ip=? AND scope IN ('login',?)")->execute([$rlIp, $rlUser]); } catch (Throwable $eRl) {}
                     try { multi_after_login($pdo, (int)$user['id']); } catch (Throwable $e0) {}
                     if ($remember) {
                         try {
@@ -72,7 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $raw = bin2hex(random_bytes(32));
                                 $hash = hash('sha256', $raw);
                                 $exp = date('Y-m-d H:i:s', time()+60*60*24*180);
-                                $pdoR->prepare("CREATE TABLE IF NOT EXISTS remember_tokens (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id INT UNSIGNED NOT NULL, token_hash VARCHAR(64) NOT NULL, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(token_hash), KEY idx_user(user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4")->execute();
                                 $pdoR->prepare("INSERT INTO remember_tokens (user_id, token_hash, expires_at) VALUES (?,?,?)")->execute([$user['id'], $hash, $exp]);
                                 $secure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
                                 setcookie('remember_token', $raw, ['expires'=>time()+60*60*24*180,'path'=>'/','httponly'=>true,'samesite'=>'Lax','secure'=>$secure]);
@@ -88,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Exception $e) {
                 error_log('Login hatası: ' . $e->getMessage());
                 $error = 'Something went wrong. Please try again.';
+            }
             }
         }
     }

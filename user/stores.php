@@ -246,10 +246,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $dom = preg_replace('#^https?://#', '', $dom);
         $dom = trim($dom, " \t\n\r\0\x0B/.");
         if (strpos($dom, ':') !== false) $dom = (string)explode(':', $dom, 2)[0];
-        if ($dom === '') {
-            // Kaldirma: eslesme worker tarafinda slug uzerinden cozulur.
-            $pdo->prepare("UPDATE hosted_stores SET custom_domain='', custom_status='pending' WHERE id=?")->execute([$sid]);
-        } else {
+        if ($dom !== '') {
             if (strlen($dom) > 190 || !filter_var($dom, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) stores_json(['ok' => false, 'msg' => 'Invalid domain name.']);
             if (strpos($dom, '.') === false) stores_json(['ok' => false, 'msg' => 'Invalid domain name.']);
             if (filter_var($dom, FILTER_VALIDATE_IP)) stores_json(['ok' => false, 'msg' => 'IP addresses are not allowed.']);
@@ -260,15 +257,27 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
             $st = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
             $st->execute(['%"' . $dom . '"%']);
             if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'This domain is already licensed elsewhere.']);
-            $pdo->prepare("UPDATE hosted_stores SET custom_domain=?, custom_status='pending' WHERE id=?")->execute([$dom, $sid]);
         }
         $st = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
         $st->execute([$uid]);
         $ohash = (string)$st->fetchColumn();
         if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $ohash)) $ohash = '';
-        $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?, ?, ?,'en','domain','pending',?)");
-        $ins->execute([$uid, $slug, $sp, $uemail, mb_substr($dom, 0, 190), $ohash]);
-        stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId(), 'domain' => $dom]);
+        try {
+            $pdo->beginTransaction();
+            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash) VALUES (?,?,?, ?, ?,'en','domain','pending',?)");
+            $ins->execute([$uid, $slug, $sp, $uemail, mb_substr($dom, 0, 190), $ohash]);
+            $jid = (int)$pdo->lastInsertId();
+            if ($dom === '') {
+                $pdo->prepare("UPDATE hosted_stores SET custom_domain='', custom_status='pending' WHERE id=?")->execute([$sid]);
+            } else {
+                $pdo->prepare("UPDATE hosted_stores SET custom_domain=?, custom_status='pending' WHERE id=?")->execute([$dom, $sid]);
+            }
+            $pdo->commit();
+        } catch (Exception $e2) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            stores_json(['ok' => false, 'msg' => 'A job is already queued for this store.']);
+        }
+        stores_json(['ok' => true, 'job_id' => $jid, 'domain' => $dom]);
     } catch (Exception $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
     }
@@ -277,9 +286,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
 if (isset($_GET['check'])) {
     $slug = strtolower(trim((string)($_GET['slug'] ?? '')));
     $slug = preg_replace('/[^a-z0-9\-]/', '', $slug);
-    if (strlen($slug) < 3 || strlen($slug) > 40) stores_json(['ok' => true, 'available' => false, 'msg' => 'length']);
-    $reserved = ['admin','root','demo','www','mail','api','ftp','shop','store','support','test','info','noreply','status','blog','news','login','register','cdn','static','assets','app','panel','free','starter','professional','enterprise','vexaris','mustafa8907'];
-    if (in_array($slug, $reserved, true)) stores_json(['ok' => true, 'available' => false, 'msg' => 'reserved']);
+    $slugErr = hosting_slug_check($slug);
+    if ($slugErr !== '') stores_json(['ok' => true, 'available' => false, 'msg' => $slugErr]);
+    if (hosting_reserved($slug)) stores_json(['ok' => true, 'available' => false, 'msg' => 'reserved']);
     try {
         $st = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
         $st->execute(['%"' . $slug . '.vexaris.app"%']);

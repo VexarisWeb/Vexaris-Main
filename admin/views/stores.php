@@ -24,8 +24,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action']
                     $planMsg = 'Store not found.';
                 } else {
                     $slug = (string)$row['slug'];
-                    $st = $db->prepare("SELECT id, features FROM licenses WHERE allowed_domains LIKE ? LIMIT 1");
-                    $st->execute(['%' . $slug . '.vexaris.app%']);
+                    $st = $db->prepare("SELECT id, features FROM licenses WHERE allowed_domains LIKE ? AND (user_id=? OR user_id IS NULL) LIMIT 1");
+                    $st->execute(['%"' . $slug . '.vexaris.app"%', (int)($row['user_id'] ?? 0)]);
                     $lic = $st->fetch();
                     if ($lic) {
                         $f = json_decode((string)$lic['features'], true);

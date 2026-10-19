@@ -189,6 +189,7 @@ switch ($action) {
         }
         try {
             $pdo->prepare("UPDATE licenses SET status='suspended', suspended_until=? WHERE id=?")->execute([$until, $id]);
+            audit_log($pdo, (int)(current_user()['id'] ?? 0), 'license_suspend', 'license', (string)$id, 'until ' . $until);
             echo json_encode(['ok' => true, 'msg' => 'Lisans askıya alındı.', 'until' => $until]);
         } catch (Exception $e) {
             echo json_encode(['ok' => false, 'msg' => 'İşlem başarısız.']);
@@ -200,6 +201,7 @@ switch ($action) {
         if ($id <= 0) { echo json_encode(['ok' => false, 'msg' => 'Geçersiz ID.']); exit; }
         try {
             $pdo->prepare("UPDATE licenses SET status='active', suspended_until=NULL WHERE id=?")->execute([$id]);
+            audit_log($pdo, (int)(current_user()['id'] ?? 0), 'license_resume', 'license', (string)$id);
             echo json_encode(['ok' => true, 'msg' => 'Lisans hemen açıldı.']);
         } catch (Exception $e) {
             echo json_encode(['ok' => false, 'msg' => 'İşlem başarısız.']);
@@ -210,7 +212,11 @@ switch ($action) {
         $id = (int)($_POST['id'] ?? 0);
         if ($id <= 0) { echo json_encode(['ok' => false, 'msg' => 'Geçersiz ID.']); exit; }
         try {
+            $st = $pdo->prepare("SELECT customer_name FROM licenses WHERE id=? LIMIT 1");
+            $st->execute([$id]);
+            $delCustomer = (string)$st->fetchColumn();
             $pdo->prepare("DELETE FROM licenses WHERE id=?")->execute([$id]);
+            audit_log($pdo, (int)(current_user()['id'] ?? 0), 'license_delete', 'license', (string)$id, $delCustomer);
             echo json_encode(['ok' => true, 'msg' => 'Lisans silindi.']);
         } catch (Exception $e) {
             echo json_encode(['ok' => false, 'msg' => 'Silme başarısız.']);

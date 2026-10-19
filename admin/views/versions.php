@@ -99,7 +99,7 @@ async function loadVersions() {
     try {
         const res = await fetch('/api/versions?action=list', { headers:{'X-CSRF-Token': VER_CSRF} });
         const d = await res.json();
-        if (!d.ok) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2.5rem" class="text-muted">' + d.msg + '</td></tr>'; return; }
+        if (!d.ok) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2.5rem" class="text-muted">' + verEsc(d.msg) + '</td></tr>'; return; }
         const rows = d.versions || [];
         document.getElementById('verCountLabel').textContent = rows.length + ' sürüm';
         if (!rows.length) {
@@ -111,9 +111,9 @@ async function loadVersions() {
             const active = parseInt(v.is_active) === 1;
             h += '<tr>'
                 + '<td>' + v.id + '</td>'
-                + '<td><strong style="color:#fff">v' + v.version + '</strong></td>'
-                + '<td style="max-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (v.description || '') + '</div></td>'
-                + '<td style="font-size:.8rem">' + v.file_name + '</td>'
+                + '<td><strong style="color:#fff">v' + verEsc(v.version) + '</strong></td>'
+                + '<td style="max-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + verEsc(v.description || '') + '</div></td>'
+                + '<td style="font-size:.8rem">' + verEsc(v.file_name) + '</td>'
                 + '<td>' + v.file_size + '</td>'
                 + '<td><span style="color:#4ade80;font-weight:700">' + (v.installed_count||0) + '</span></td>'
                 + '<td><span style="color:#facc15;font-weight:700">' + (v.delayed_count||0) + '</span></td>'

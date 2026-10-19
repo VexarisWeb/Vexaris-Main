@@ -1,7 +1,11 @@
 <?php
 require_once __DIR__ . '/../../core/blog.php';
 require_once __DIR__ . '/../../core/editor.php';
+require_once __DIR__ . '/../../core/html-sanitize.php';
 $allPosts = $pdo ? blog_list($pdo, 200) : [];
+foreach ($allPosts as $i => $bp) {
+    if (!empty($bp['content'])) $allPosts[$i]['content'] = vx_clean_html((string)$bp['content'], 'rich');
+}
 ?>
 <!-- BLOG -->
 <div class="panel" style="margin-bottom:1.2rem">

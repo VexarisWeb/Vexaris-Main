@@ -29,7 +29,7 @@ if ($pdo) {
             <?php foreach ($products as $p): ?>
                 <tr>
                     <td style="font-weight:600"><i class="fas fa-box-open" style="color:var(--cyan);margin-right:8px"></i><?= htmlspecialchars($p['name']) ?></td>
-                    <td class="hide-m" style="color:rgba(255,255,255,.85);max-width:320px;font-size:.85rem;line-height:1.5"><div class="md-body" style="display:block"><?= $p['description'] ?: '—' ?></div></td>
+                    <td class="hide-m" style="color:rgba(255,255,255,.85);max-width:320px;font-size:.85rem;line-height:1.5"><div class="md-body" style="display:block"><?= htmlspecialchars($p['description'] ?: '—', ENT_QUOTES, 'UTF-8') ?></div></td>
                     <td class="hide-m" style="color:rgba(255,255,255,.55);font-size:.8rem;word-break:break-all"><?= htmlspecialchars($p['file_name']) ?></td>
                     <td class="hide-m" style="color:rgba(255,255,255,.45);font-size:.8rem"><?= htmlspecialchars($p['file_size'] ?: '—') ?></td>
                     <td><?php if (!empty($p['latest_version'])): ?><span class="badge" style="background:rgba(0,212,255,.12);color:var(--cyan);border:1px solid var(--border)">v<?= htmlspecialchars($p['latest_version']) ?></span><?php else: ?><span style="color:var(--muted);font-size:.8rem">—</span><?php endif; ?></td>

@@ -22,19 +22,113 @@ function whop_downgrade_store(PDO $pdo, int $uid): void {
         if (!$srow) return;
         $slug = (string)($srow['slug'] ?? '');
         if ($slug === '') return;
-        $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1");
+        /* Bekleyen job varsa dusurme yutulmasin: mevcut job'a plan yaz (override). */
+        $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') ORDER BY id DESC LIMIT 1");
         $st->execute([$slug]);
-        if ($st->fetch()) return;
+        $pendingJob = $st->fetch();
+        if ($pendingJob) {
+            $pdo->prepare("UPDATE hosting_jobs SET plan='free' WHERE id=?")->execute([(int)$pendingJob['id']]);
+        }
         $dcat = strtolower(trim((string)($srow['category'] ?? 'other')));
         if (!in_array($dcat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $dcat = 'other';
         $dlang = strtolower(trim((string)($srow['lang'] ?? 'en')));
         if ($dlang !== 'tr' && $dlang !== 'en') $dlang = 'en';
         $pdo->prepare("UPDATE hosted_stores SET plan='free' WHERE slug=?")->execute([$slug]);
-        $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?, ?, 'free', ?, ?, ?, 'provision', 'pending', ?, ?)")
-            ->execute([$uid, $slug, (string)($srow['owner'] ?? $uemail), $slug, $dlang, $uhash, $dcat]);
+        if (!$pendingJob) {
+            $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?, ?, 'free', ?, ?, ?, 'provision', 'pending', ?, ?)")
+                ->execute([$uid, $slug, (string)($srow['owner'] ?? $uemail), $slug, $dlang, $uhash, $dcat]);
+        }
     } catch (Throwable $e) {
         error_log('Whop downgrade job: ' . $e->getMessage());
     }
+}
+
+// Odeme sonrasi magazaya plani uygular: domain lisansini guncelleyip
+// hosted_stores.plan'i yazar ve limitlerin uygulanmasi icin provision job acar.
+function whop_apply_store_plan(PDO $pdo, int $uid, string $plan, string $metaSlug): void {
+    if ($uid <= 0 || $plan === '') return;
+    $st = $pdo->prepare("SELECT email, password FROM users WHERE id=? LIMIT 1");
+    $st->execute([$uid]);
+    $urow = $st->fetch() ?: [];
+    $uemail = strtolower(trim((string)($urow['email'] ?? '')));
+    $uhash = (string)($urow['password'] ?? '');
+    if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $uhash)) $uhash = '';
+
+    $stores = [];
+    if ($metaSlug !== '') {
+        $hs = $pdo->prepare("SELECT slug, owner, user_id, category, lang, plan FROM hosted_stores WHERE slug=? LIMIT 1");
+        $hs->execute([$metaSlug]);
+        $hrow = $hs->fetch();
+        $owns = $hrow && ((int)($hrow['user_id'] ?? 0) === $uid || ($uemail !== '' && strtolower((string)($hrow['owner'] ?? '')) === $uemail));
+        if ($owns) $stores[] = $hrow;
+    }
+    if (!$stores) {
+        $all = $pdo->prepare("SELECT slug, owner, user_id, category, lang, plan FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id ASC");
+        $all->execute([$uid, $uemail]);
+        $stores = $all->fetchAll();
+    }
+    foreach ($stores as $hrow) {
+        $slug = (string)($hrow['slug'] ?? '');
+        if ($slug === '') continue;
+        $domain = $slug . '.vexaris.app';
+        /* Magazayi kapsayan lisansi guncelle (tam eslesme; register lisansinda
+           user_id NULL ise baglanir -> abonelik bitince otomatik free'ye duser). */
+        $lq = $pdo->prepare("SELECT id, features, user_id FROM licenses WHERE allowed_domains LIKE ? ORDER BY id ASC LIMIT 1");
+        $lq->execute(['%"' . $domain . '"%']);
+        $lic = $lq->fetch();
+        if ($lic) {
+            $lf = json_decode((string)$lic['features'], true);
+            if (!is_array($lf)) $lf = [];
+            $lf['plan'] = $plan;
+            $lf['plan_auto'] = 1;
+            if (empty($lic['user_id'])) {
+                $pdo->prepare("UPDATE licenses SET features=?, status='active', suspended_until=NULL, user_id=? WHERE id=?")
+                   ->execute([json_encode($lf), $uid, (int)$lic['id']]);
+            } else {
+                $pdo->prepare("UPDATE licenses SET features=?, status='active', suspended_until=NULL WHERE id=?")
+                   ->execute([json_encode($lf), (int)$lic['id']]);
+            }
+        } else {
+            $licKey = bin2hex(random_bytes(24));
+            $pdo->prepare("INSERT INTO licenses (customer_name, license_key, allowed_domains, status, features, suspended_until, user_id) VALUES (?,?,?,'active',?,NULL,?)")
+                ->execute([$slug, $licKey, json_encode([$domain]), json_encode(['plan' => $plan, 'plan_auto' => 1]), $uid]);
+        }
+        $pdo->prepare("UPDATE hosted_stores SET plan=? WHERE slug=?")->execute([$plan, $slug]);
+
+        $cat = strtolower(trim((string)($hrow['category'] ?? 'other')));
+        if (!in_array($cat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $cat = 'other';
+        $lang = strtolower(trim((string)($hrow['lang'] ?? 'en')));
+        if ($lang !== 'tr' && $lang !== 'en') $lang = 'en';
+        $pending = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') ORDER BY id DESC LIMIT 1");
+        $pending->execute([$slug]);
+        $pj = $pending->fetch();
+        if ($pj) {
+            $pdo->prepare("UPDATE hosting_jobs SET plan=? WHERE id=?")->execute([$plan, (int)$pj['id']]);
+        } else {
+            $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?, ?,?, ?, 'provision','pending', ?, ?)")
+                ->execute([$uid, $slug, $plan, (string)($hrow['owner'] ?? $uemail), $slug, $lang, $uhash, $cat]);
+        }
+    }
+}
+
+// Iade/dispute: urun erisimi geri alinir (indirme satirlari silinir).
+function whop_revoke_product_access(PDO $pdo, int $uid, int $productId): void {
+    if ($uid <= 0 || $productId <= 0) return;
+    try {
+        $pdo->prepare("DELETE FROM user_products WHERE user_id=? AND product_id=?")->execute([$uid, $productId]);
+        $pdo->prepare("DELETE FROM download_tokens WHERE user_id=? AND product_id=?")->execute([$uid, $productId]);
+    } catch (Throwable $e) {
+        error_log('Whop iade erisim temizligi: ' . $e->getMessage());
+    }
+}
+
+// Islenen webhook olayini isaretler (tekrar isleme / cift uzatma korumasi).
+function whop_mark_event(PDO $pdo, string $eventId): void {
+    if ($eventId === '') return;
+    try {
+        $pdo->prepare("INSERT IGNORE INTO whop_events (event_id, created_at) VALUES (?, NOW())")->execute([$eventId]);
+        $pdo->prepare("DELETE FROM whop_events WHERE created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)")->execute();
+    } catch (Throwable $e) {}
 }
 
 $payload = file_get_contents('php://input') ?: '';
@@ -57,23 +151,43 @@ $type = (string)($event['type'] ?? '');
 $data = is_array($event['data'] ?? null) ? $event['data'] : [];
 $meta = is_array($data['metadata'] ?? null) ? $data['metadata'] : [];
 $orderNo = (string)($meta['order_no'] ?? '');
-if ($orderNo === '' && stripos($type, 'membership') !== false) {
-    $memId = '';
-    foreach (['membership_id', 'membership'] as $mk) {
-        if (isset($data[$mk]) && is_string($data[$mk]) && $data[$mk] !== '') { $memId = $data[$mk]; break; }
-        if (isset($data[$mk]) && is_array($data[$mk]) && isset($data[$mk]['id']) && is_string($data[$mk]['id'])) { $memId = $data[$mk]['id']; break; }
-    }
-    if ($memId === '') $memId = (string)($data['id'] ?? '');
-    $mStatus = strtolower((string)($data['status'] ?? ''));
-    $mValid = $data['valid'] ?? null;
-    if ($memId !== '' && (in_array($mStatus, ['cancelled', 'canceled', 'expired', 'invalid'], true) || $mValid === false || $mValid === 0 || $mValid === 'false')) {
-        try {
-            $pdo = db();
-            if ($pdo) {
+
+/* Ayni olay iki kez islenmesin (whop_events tablosu). */
+$eventId = $msgId !== '' ? substr($msgId, 0, 64) : '';
+if ($eventId !== '') {
+    try {
+        $evChk = db();
+        if ($evChk) {
+            $evSt = $evChk->prepare("SELECT id FROM whop_events WHERE event_id=? LIMIT 1");
+            $evSt->execute([$eventId]);
+            if ($evSt->fetch()) { error_log('Whop webhook: olay zaten islenmis, atlandi (' . $eventId . ')'); return; }
+        }
+    } catch (Throwable $e) {}
+}
+
+if (stripos($type, 'membership') !== false) {
+    /* Abonelik iptal/olaylari order_no tasimasa da islenmeli. */
+    try {
+        $pdo = db();
+        if ($pdo) {
+            $memId = '';
+            foreach (['membership_id', 'membership'] as $mk) {
+                if (isset($data[$mk]) && is_string($data[$mk]) && $data[$mk] !== '') { $memId = $data[$mk]; break; }
+                if (isset($data[$mk]) && is_array($data[$mk]) && isset($data[$mk]['id']) && is_string($data[$mk]['id'])) { $memId = $data[$mk]['id']; break; }
+            }
+            if ($memId === '') $memId = (string)($data['id'] ?? '');
+            $mStatus = strtolower((string)($data['status'] ?? ''));
+            $mValid = $data['valid'] ?? null;
+            if ($memId !== '' && (in_array($mStatus, ['cancelled', 'canceled', 'expired', 'invalid'], true) || $mValid === false || $mValid === 0 || $mValid === 'false')) {
                 $sq = $pdo->prepare("SELECT user_id, whop_membership_id FROM user_subscriptions WHERE whop_membership_id=? LIMIT 1");
                 $sq->execute([$memId]);
                 $sRow = $sq->fetch();
                 $sUid = $sRow ? (int)$sRow['user_id'] : 0;
+                if ($sUid <= 0 && $orderNo !== '') {
+                    $oq = $pdo->prepare("SELECT user_id FROM orders WHERE order_no=? LIMIT 1");
+                    $oq->execute([$orderNo]);
+                    $sUid = (int)($oq->fetchColumn() ?: 0);
+                }
                 if ($sUid <= 0) {
                     $metaUid = (int)($meta['user_id'] ?? 0);
                     if ($metaUid > 0) {
@@ -98,9 +212,9 @@ if ($orderNo === '' && stripos($type, 'membership') !== false) {
                     whop_downgrade_store($pdo, $sUid);
                 }
             }
-        } catch (Throwable $e) {
-            error_log('Whop cancel işleme: ' . $e->getMessage());
         }
+    } catch (Throwable $e) {
+        error_log('Whop cancel isleme: ' . $e->getMessage());
     }
     return;
 }
@@ -137,13 +251,29 @@ try {
     $payId = (string)($data['id'] ?? '');
 
     if ($type === 'payment.succeeded') {
-        if ($order['status'] === 'completed') return; // tekrar bildirimi
+        if ($order['status'] === 'completed') {
+            if ($eventId !== '') whop_mark_event($pdo, $eventId);
+            return; // tekrar bildirimi
+        }
+        /* Tutar ve para birimi kontrolu: alan geliyorsa dogrulanir. */
         $paidAmt = null;
         foreach (['total', 'amount', 'gross_amount', 'price'] as $ak) {
             if (isset($data[$ak]) && is_numeric($data[$ak])) { $paidAmt = (float)$data[$ak]; break; }
         }
-        if ($paidAmt !== null && $paidAmt < (float)$order['amount'] - 0.01) {
-            error_log('Whop webhook: tutar uyusmazligi (' . $orderNo . ' beklenen=' . $order['amount'] . ' gelen=' . $paidAmt . ')');
+        $expAmt = (float)$order['amount'];
+        if ($paidAmt !== null) {
+            $okAmt = ($paidAmt >= $expAmt - 0.01) || (($paidAmt / 100) >= $expAmt - 0.01);
+            if (!$okAmt) {
+                error_log('Whop webhook: tutar uyusmazligi (' . $orderNo . ' beklenen=' . $expAmt . ' gelen=' . $paidAmt . ')');
+                return;
+            }
+        } else {
+            error_log('Whop webhook: tutar alani yok, dogrulanamadi (' . $orderNo . ')');
+        }
+        $payCur = strtoupper(trim((string)($data['currency'] ?? '')));
+        $ordCur = strtoupper(trim((string)($order['currency'] ?? 'USD')));
+        if ($payCur !== '' && $ordCur !== '' && $payCur !== $ordCur) {
+            error_log('Whop webhook: para birimi uyusmazligi (' . $orderNo . ' beklenen=' . $ordCur . ' gelen=' . $payCur . ')');
             return;
         }
         $pdo->prepare("UPDATE orders SET status = 'completed', provider_ref = ? WHERE id = ?")
@@ -206,26 +336,10 @@ try {
                 }
                 try {
                     $upSlug = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim((string)($meta['store_slug'] ?? ''))));
-                    if ($upSlug !== '' && strlen($upSlug) >= 3 && strlen($upSlug) <= 40) {
-                        $uq2 = $pdo->prepare("SELECT email, password FROM users WHERE id=? LIMIT 1");
-                        $uq2->execute([$uid]);
-                        $urow = $uq2->fetch();
-                        $uemail = strtolower(trim((string)($urow['email'] ?? '')));
-                        $uhash = (string)($urow['password'] ?? '');
-                        if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $uhash)) $uhash = '';
-                        $hs = $pdo->prepare("SELECT slug, owner, user_id, category, lang FROM hosted_stores WHERE slug=? LIMIT 1");
-                        $hs->execute([$upSlug]);
-                        $hrow = $hs->fetch();
-                        $owns = $hrow && ((int)($hrow['user_id'] ?? 0) === $uid || ($uemail !== '' && strtolower((string)($hrow['owner'] ?? '')) === $uemail));
-                        if ($owns) {
-                            $ucat = strtolower(trim((string)($hrow['category'] ?? 'other')));
-                            if (!in_array($ucat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $ucat = 'other';
-                            $ulang = strtolower(trim((string)($hrow['lang'] ?? 'en')));
-                            if ($ulang !== 'tr' && $ulang !== 'en') $ulang = 'en';
-                            $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?, ?,?, ?, 'provision','pending', ?, ?)")
-                                ->execute([$uid, $upSlug, $subPlan, (string)($hrow['owner'] ?? $uemail), (string)$upSlug, $ulang, $uhash, $ucat]);
-                        }
-                    }
+                    /* Magazaya plani uygula: metadata'da slug yoksa kullanicinin
+                       magazalarina otomatik uygulanir (eski akista bu yuzden
+                       odeme alinip magaza free k kaliyordu). */
+                    whop_apply_store_plan($pdo, $uid, $subPlan, $upSlug);
                 } catch (Throwable $e) {
                     error_log('Whop store upgrade job: ' . $e->getMessage());
                 }
@@ -241,6 +355,9 @@ try {
         $pdo->prepare("UPDATE orders SET status = 'refunded' WHERE id = ?")->execute([(int)$order['id']]);
         $rfPlan = strtolower((string)($meta['plan'] ?? ''));
         $rfUid = (int)$order['user_id'];
+        $rfPid = (int)($order['product_id'] ?? 0);
+        /* Iade edilen urunun erisimi geri alinir. */
+        if ($rfUid > 0 && $rfPid > 0) whop_revoke_product_access($pdo, $rfUid, $rfPid);
         if ($rfUid > 0 && isset(whop_plan_offers()[$rfPlan])) {
             $pdo->prepare("UPDATE user_subscriptions SET status='cancelled' WHERE user_id=?")->execute([$rfUid]);
             $lq = $pdo->prepare("SELECT id, features FROM licenses WHERE user_id=?");
@@ -258,12 +375,14 @@ try {
     } elseif (stripos($type, 'dispute') !== false || stripos($type, 'chargeback') !== false) {
         $dpPay = (string)($data['payment_id'] ?? $data['id'] ?? '');
         if ($dpPay !== '') {
-            $dq = $pdo->prepare("SELECT id, user_id FROM orders WHERE provider_ref=? AND provider='whop' LIMIT 1");
+            $dq = $pdo->prepare("SELECT id, user_id, product_id FROM orders WHERE provider_ref=? AND provider='whop' LIMIT 1");
             $dq->execute([$dpPay]);
             $dOrd = $dq->fetch();
             if ($dOrd) {
                 $pdo->prepare("UPDATE orders SET status='disputed' WHERE id=?")->execute([(int)$dOrd['id']]);
                 $dpUid = (int)$dOrd['user_id'];
+                $dpPid = (int)($dOrd['product_id'] ?? 0);
+                if ($dpUid > 0 && $dpPid > 0) whop_revoke_product_access($pdo, $dpUid, $dpPid);
                 $pdo->prepare("UPDATE user_subscriptions SET status='cancelled' WHERE user_id=?")->execute([$dpUid]);
                 $lq = $pdo->prepare("SELECT id, features FROM licenses WHERE user_id=?");
                 $lq->execute([$dpUid]);
@@ -279,6 +398,10 @@ try {
             }
         }
     }
+    if ($eventId !== '') whop_mark_event($pdo, $eventId);
 } catch (Throwable $e) {
-    error_log('Whop webhook işleme: ' . $e->getMessage());
+    error_log('Whop webhook isleme: ' . $e->getMessage());
+    if ($eventId !== '') {
+        try { $pdo = db(); if ($pdo) $pdo->prepare("DELETE FROM whop_events WHERE event_id=?")->execute([$eventId]); } catch (Throwable $e2) {}
+    }
 }

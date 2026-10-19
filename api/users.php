@@ -159,6 +159,14 @@ switch ($action) {
 
     // ── Kullanıcı Adı Değiştir ──────────────────────────────
     case 'rename':
+        if ($myRole !== 'admin') {
+            echo json_encode(['ok' => false, 'msg' => 'Kullanıcı adı değiştirmek için admin yetkisi gerekli.']);
+            exit;
+        }
+        if ($isSysOwner($id)) {
+            echo json_encode(['ok' => false, 'msg' => $denyOwnerMsg]);
+            exit;
+        }
         $newName = trim($_POST['username'] ?? '');
         if (strlen($newName) < 3 || strlen($newName) > 60) {
             echo json_encode(['ok' => false, 'msg' => 'Kullanıcı adı 3–60 karakter olmalı.']);
@@ -204,8 +212,9 @@ switch ($action) {
             exit;
         }
         try {
-            $stmt = $pdo->prepare("UPDATE users SET role = ?, is_admin = ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE users SET role = ?, is_admin = ?, session_version = session_version + 1 WHERE id = ?");
             $stmt->execute([$newRole, $newRole === 'admin' ? 1 : 0, $id]);
+            if (function_exists('audit_log')) audit_log($pdo, (int)($selfId ?? 0), 'set_role', 'users', (string)$id, $newRole);
             echo json_encode([
                 'ok'      => true,
                 'role'    => $newRole,
@@ -263,9 +272,50 @@ switch ($action) {
             exit;
         }
         try {
+            /* Kullanici silinince bagli kayitlar da temizlenir: aksi halde
+               magazası aktif kalir ve ayni e-posta ile yeniden kayit olan
+               kisi magazayi devralir (owner=email eslesmesi). */
+            $pdo->beginTransaction();
+            $delTables = [
+                'DELETE FROM remember_tokens WHERE user_id=?',
+                'DELETE FROM user_sessions WHERE user_id=?',
+                'DELETE FROM oauth_accounts WHERE user_id=?',
+                'DELETE FROM email_change_tokens WHERE user_id=?',
+                'DELETE FROM password_resets WHERE user_id=?',
+                'DELETE FROM activation_tokens WHERE user_id=?',
+                'DELETE FROM user_products WHERE user_id=?',
+                'DELETE FROM user_subscriptions WHERE user_id=?',
+                'DELETE FROM store_tokens WHERE admin_id=?',
+                'DELETE FROM api_rate_limits WHERE ip IN (SELECT email FROM users WHERE id=?)',
+            ];
+            foreach ($delTables as $sql) {
+                try { $pdo->prepare($sql)->execute([$id]); } catch (Exception $e) {}
+            }
+            try {
+                $licDel = $pdo->prepare("SELECT id FROM licenses WHERE user_id=?");
+                $licDel->execute([$id]);
+                foreach ($licDel->fetchAll(PDO::FETCH_COLUMN) as $licId) {
+                    $pdo->prepare("DELETE FROM licenses WHERE id=?")->execute([(int)$licId]);
+                }
+            } catch (Exception $e) {}
+            /* Kullanicinin magazalari aktif kalmasin: silme islemi kuyruga alinir
+               (worker konteyner/DB/volume temizligi yapar). */
+            try {
+                $uEmail = strtolower(trim((string)($pdo->query("SELECT email FROM users WHERE id=" . (int)$id)->fetchColumn() ?: '')));
+                $storeQ = $pdo->prepare("SELECT id, slug, owner, site_name, lang, category FROM hosted_stores WHERE user_id=? OR owner=?");
+                $storeQ->execute([$id, $uEmail]);
+                foreach ($storeQ->fetchAll() as $srow) {
+                    $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?, 'free', ?, ?, ?, 'delete','pending','',?)")
+                        ->execute([$id, (string)$srow['slug'], (string)$srow['owner'], (string)($srow['site_name'] ?: $srow['slug']), (string)($srow['lang'] ?: 'en'), (string)($srow['category'] ?: 'other')]);
+                    $pdo->prepare("UPDATE hosted_stores SET status='deleting' WHERE id=?")->execute([(int)$srow['id']]);
+                }
+            } catch (Exception $e) {}
             $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
+            if (function_exists('audit_log')) audit_log($pdo, (int)($selfId ?? 0), 'delete', 'users', (string)$id, '');
+            $pdo->commit();
             echo json_encode(['ok' => true, 'msg' => 'Kullanıcı silindi.']);
         } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
             echo json_encode(['ok' => false, 'msg' => 'Silme işlemi başarısız.']);
         }
         break;

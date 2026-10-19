@@ -116,7 +116,7 @@ function whop_create_plan_checkout(string $plan, string $cycle, array $metadata,
             'title' => mb_substr($ptitle, 0, 120, 'UTF-8'),
             'plan_type' => 'renewal',
             'billing_period' => $period,
-            'initial_price' => 0,
+            'initial_price' => round($amount, 2),
             'renewal_price' => round($amount, 2),
             'currency' => whop_currency(),
             'product' => [
@@ -171,8 +171,8 @@ function whop_verify_webhook(string $payload, string $msgId, string $msgTs, stri
 }
 
 function whop_base_url(): string {
-    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    return ($https ? 'https://' : 'http://') . $host;
+    /* Host basligina guvenilmez (odeme donus URL'si zehirlenebilir):
+       sabit SITE_URL kullanilir. */
+    $base = defined('SITE_URL') ? rtrim((string)SITE_URL, '/') : 'https://vexaris.net';
+    return $base;
 }

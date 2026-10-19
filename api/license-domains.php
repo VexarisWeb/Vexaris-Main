@@ -24,15 +24,21 @@ function lic_clean_domain(string $d): string {
     $d = strtolower(trim($d));
     $d = preg_replace('#^https?://#i', '', $d);
     $d = rtrim($d, '/');
-    $wild = false;
-    if (str_starts_with($d, '*.')) { $wild = true; $d = substr($d, 2); }
+    if (str_starts_with($d, '*.')) $d = substr($d, 2);
     if ($d === '' || strlen($d) > 253 || strpos($d, '.') === false) return '';
     if (preg_match('/[^a-z0-9.\-]/', $d)) return '';
     foreach (explode('.', $d) as $label) {
         if ($label === '' || strlen($label) > 63) return '';
         if ($label[0] === '-' || substr($label, -1) === '-') return '';
     }
-    return ($wild ? '*.' : '') . $d;
+    return $d;
+}
+
+function lic_platform_domain(string $d): bool {
+    foreach (['vexaris.app', 'vexaris.net', 'vexaris.com.tr'] as $p) {
+        if ($d === $p || substr($d, -(strlen($p) + 1)) === '.' . $p) return true;
+    }
+    return false;
 }
 
 try {
@@ -65,7 +71,11 @@ try {
     }
     $dom = lic_clean_domain((string)($_POST['domain'] ?? ''));
     if ($act === 'add') {
-        if ($dom === '') {
+        if ($dom === '' || strpos(strtolower(trim((string)($_POST['domain'] ?? ''))), '*') !== false) {
+            header('Location: /dashboard/license?err=invalid');
+            exit;
+        }
+        if (lic_platform_domain($dom)) {
             header('Location: /dashboard/license?err=invalid');
             exit;
         }
@@ -77,17 +87,28 @@ try {
             header('Location: /dashboard/license?err=limit');
             exit;
         }
+        $ck = $pdo->prepare("SELECT id FROM licenses WHERE allowed_domains LIKE ? AND id<>? LIMIT 1");
+        $ck->execute(['%"' . $dom . '"%', (int)$lic['id']]);
+        if ($ck->fetch()) {
+            header('Location: /dashboard/license?err=exists');
+            exit;
+        }
         $domains[] = $dom;
         $pdo->prepare("UPDATE licenses SET allowed_domains=? WHERE id=?")->execute([json_encode(array_values($domains)), (int)$lic['id']]);
         header('Location: /dashboard/license?ok=added');
         exit;
     }
     if ($act === 'remove') {
-        if ($dom === '' || !in_array($dom, $domains, true)) {
+        if ($dom === '') {
             header('Location: /dashboard/license?err=fail');
             exit;
         }
-        $domains = array_values(array_filter($domains, fn($x) => $x !== $dom));
+        $domWild = '*.' . $dom;
+        if (!in_array($dom, $domains, true) && !in_array($domWild, $domains, true)) {
+            header('Location: /dashboard/license?err=fail');
+            exit;
+        }
+        $domains = array_values(array_filter($domains, fn($x) => $x !== $dom && $x !== $domWild));
         $pdo->prepare("UPDATE licenses SET allowed_domains=? WHERE id=?")->execute([json_encode($domains), (int)$lic['id']]);
         header('Location: /dashboard/license?ok=removed');
         exit;

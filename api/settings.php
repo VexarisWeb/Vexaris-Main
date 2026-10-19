@@ -61,7 +61,8 @@ if ($act === 'save_multi') {
 if ($act === 'save_turnstile') {
     setting_set('turnstile_enabled', ($_POST['enabled'] ?? '0') === '1' ? '1':'0');
     setting_set('turnstile_site_key', trim((string)($_POST['site_key'] ?? '')));
-    setting_set('turnstile_secret', trim((string)($_POST['secret'] ?? '')));
+    $tsSecretVal = trim((string)($_POST['secret'] ?? ''));
+    if ($tsSecretVal !== '') setting_set('turnstile_secret', $tsSecretVal);
     echo json_encode(['ok'=>true,'msg'=>'Turnstile kaydedildi']);
     exit;
 }

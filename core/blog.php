@@ -1,5 +1,12 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/html-sanitize.php';
+
+function blog_safe_url(string $url): string {
+    $url = trim($url);
+    if ($url !== '' && preg_match('#^(https?://|//|/)#i', $url)) return $url;
+    return '#';
+}
 
 function blog_markdown_to_html(string $md): string {
     $md = str_replace("\r\n", "\n", $md);
@@ -10,8 +17,12 @@ function blog_markdown_to_html(string $md): string {
     $html = preg_replace('/^##\s+(.+)$/m', '<h2>$1</h2>', $html);
     $html = preg_replace('/^#\s+(.+)$/m', '<h1>$1</h1>', $html);
     $html = preg_replace('/^>\s+(.+)$/m', '<blockquote>$1</blockquote>', $html);
-    $html = preg_replace('/!\[([^\]]*)\]\(([^)]+)\)/', '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px">', $html);
-    $html = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '<a href="$2" target="_blank">$1</a>', $html);
+    $html = preg_replace_callback('/!\[([^\]]*)\]\(([^)]+)\)/', function ($m) {
+        return '<img src="' . blog_safe_url($m[2]) . '" alt="' . $m[1] . '" style="max-width:100%;border-radius:8px">';
+    }, $html);
+    $html = preg_replace_callback('/\[([^\]]+)\]\(([^)]+)\)/', function ($m) {
+        return '<a href="' . blog_safe_url($m[2]) . '" target="_blank">' . $m[1] . '</a>';
+    }, $html);
     $html = preg_replace('/\*\*([^*]+)\*\*/', '<strong>$1</strong>', $html);
     $html = preg_replace('/__([^_]+)__/', '<strong>$1</strong>', $html);
     $html = preg_replace('/\*([^*]+)\*/', '<em>$1</em>', $html);
@@ -133,6 +144,9 @@ function blog_save(PDO $pdo, array $d): array {
     if ($content !== '' && strpos($content, '<') === false && preg_match('/(^|\n)\s*(#{1,3}\s|[-*+]\s|>\s|```)/m', $content)) {
         $content = blog_markdown_to_html($content);
     }
+    if ($content !== '') {
+        $content = vx_clean_html($content, 'rich');
+    }
     $cover = trim($d['cover_image'] ?? '');
     if ($cover !== '' && !preg_match('#^/uploads/blog/[a-z0-9-]+\.(jpg|jpeg|png|webp|gif)$#i', $cover)) {
         return ['ok' => false, 'msg' => 'Geçersiz kapak görseli.'];
@@ -222,7 +236,18 @@ function blog_view_start(PDO $pdo, int $postId): int {
 
 function blog_view_end(PDO $pdo, int $viewId, int $duration): void {
     if ($viewId <= 0 || $duration < 0) return;
+    if ($duration > 7200) $duration = 7200;
+    $sessionKey = null;
+    $uid = null;
+    $u = current_user();
+    if ($u) $uid = (int)$u['id'];
+    if (!empty($_COOKIE['vx_session'])) $sessionKey = substr(preg_replace('/[^a-zA-Z0-9]/', '', $_COOKIE['vx_session']), 0, 64);
     try {
+        if ($sessionKey !== null || $uid !== null) {
+            $st = $pdo->prepare("SELECT id FROM blog_post_views WHERE id = ? AND ((session_key IS NOT NULL AND session_key = ?) OR (user_id IS NOT NULL AND user_id = ?)) LIMIT 1");
+            $st->execute([$viewId, $sessionKey, $uid]);
+            if (!$st->fetchColumn()) return;
+        }
         $pdo->prepare("UPDATE blog_post_views SET duration_sec = ?, left_at = NOW() WHERE id = ? AND duration_sec = 0")
             ->execute([(int)$duration, $viewId]);
     } catch (Exception $e) {

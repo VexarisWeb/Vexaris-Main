@@ -40,7 +40,8 @@ function boot_session(): void {
         @ini_set('session.cookie_lifetime', (string)$life);
         @ini_set('session.gc_probability', '1');
         @ini_set('session.gc_divisor', '100');
-        session_set_cookie_params(['lifetime'=>$life,'path'=>'/','httponly'=>true,'samesite'=>'Lax']);
+        session_set_cookie_params(['lifetime'=>$life,'path'=>'/','httponly'=>true,'samesite'=>'Lax','secure'=>!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off']);
+        @ini_set('session.use_strict_mode', '1');
         session_name(SESSION_NAME);
         session_start();
     }
@@ -323,6 +324,38 @@ function run_migrations(): void {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             KEY idx_arl_ip_scope (ip, scope),
             KEY idx_arl_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS audit_log (
+            id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+            action      VARCHAR(40) NOT NULL DEFAULT '',
+            target_type VARCHAR(40) NOT NULL DEFAULT '',
+            target_id   VARCHAR(64) NOT NULL DEFAULT '',
+            details     TEXT,
+            ip          VARCHAR(45) NOT NULL DEFAULT '',
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_audit_user (user_id),
+            KEY idx_audit_target (target_type, target_id),
+            KEY idx_audit_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS remember_tokens (
+            id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            user_id    INT UNSIGNED NOT NULL,
+            token_hash CHAR(64) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_rt_hash (token_hash),
+            KEY idx_rt_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS whop_events (
+            id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            event_id   VARCHAR(80) NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_we_event (event_id),
+            KEY idx_we_created (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS hosted_stores (
@@ -623,7 +656,8 @@ function run_migrations(): void {
             ('moderator','dashboard'),('moderator','users'),('moderator','tickets'),
             ('destek_ekibi','dashboard'),('destek_ekibi','tickets')");
 
-        $pdo->exec("UPDATE users SET role = 'admin' WHERE is_admin = 1 AND role = 'user'");
+        /* onceki surum: $pdo->exec("UPDATE users SET role = 'admin' WHERE is_admin = 1 AND role = 'user'");
+           bu yikici satIR her istekte calisiyor ve bilerek dusurulen admin rolunu geri getiriyordu; kaldirildi. */
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS balance_log (
             id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -750,20 +784,21 @@ function is_logged_in(): bool {
 function is_admin(): bool {
     $u = current_user();
     if (!$u) return false;
-    // Session'daki değer 1 ise hemen döndür
-    if ((int)($u['is_admin'] ?? 0) === 1) return true;
-    // Session eski olabilir — DB'den taze kontrol et
+    /* Oturumdaki is_admin bayragi bayat olabilir (rol dusurulmus olabilir):
+       ONCE her zaman DB'den taze kontrol et, session'a guvenme. */
     $pdo = db();
     if (!$pdo) return false;
     try {
         $stmt = $pdo->prepare("SELECT is_admin FROM users WHERE id = ? LIMIT 1");
-        $stmt->execute([$u['id']]);
+        $stmt->execute([(int)$u['id']]);
         $row = $stmt->fetch();
-        if ($row && (int)$row['is_admin'] === 1) {
-            // Session'ı güncelle
-            $_SESSION['user']['is_admin'] = 1;
-            return true;
+        if ($row) {
+            $fresh = (int)$row['is_admin'] === 1;
+            if ($fresh) $_SESSION['user']['is_admin'] = 1;
+            else unset($_SESSION['user']['is_admin']);
+            return $fresh;
         }
+        return false;
     } catch (Exception $e) { /* sessiz */ }
     return false;
 }
@@ -967,18 +1002,66 @@ function submission_domain_patterns(string $host): array {
 }
 
 function client_ip(): string {
-    $cands = [
-        $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
-        $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
-        $_SERVER['HTTP_X_REAL_IP'] ?? '',
-        $_SERVER['REMOTE_ADDR'] ?? '',
-    ];
-    foreach ($cands as $c) {
-        $parts = explode(',', (string)$c);
-        $ip = trim($parts[0]);
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return $ip;
+    /* Forwarded basliklari istemci tarafindan taklit edilebilir; yalnizca
+       REMOTE_ADDR guvenilir bir proxy (Cloudflare) ise kullanilir. */
+    $remote = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
+    if (!filter_var($remote, FILTER_VALIDATE_IP)) return $remote;
+    if (vx_is_trusted_proxy($remote)) {
+        $cf = trim((string)($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''));
+        if (filter_var($cf, FILTER_VALIDATE_IP)) return $cf;
+        $xff = trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]);
+        if (filter_var($xff, FILTER_VALIDATE_IP)) return $xff;
+        $xr = trim((string)($_SERVER['HTTP_X_REAL_IP'] ?? ''));
+        if (filter_var($xr, FILTER_VALIDATE_IP)) return $xr;
     }
-    return trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
+    return $remote;
+}
+
+function vx_is_trusted_proxy(string $ip): bool {
+    $ip = trim($ip);
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) return false;
+    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return true; // lokal/ozel
+    $v4 = [
+        '173.245.48.0/20','103.21.244.0/22','103.22.200.0/22','103.31.4.0/22','141.101.64.0/18',
+        '108.162.192.0/18','190.93.240.0/20','188.114.96.0/20','197.234.240.0/22','198.41.128.0/17',
+        '162.158.0.0/16','104.16.0.0/13','104.24.0.0/14','172.64.0.0/13','131.0.72.0/22',
+    ];
+    $v6 = ['2400:cb00::/32','2606:4700::/32','2803:f800::/32','2405:b500::/32','2405:8100::/32','2a06:98c0::/29','2c0f:f248::/32'];
+    foreach (($ipContains6 = strpos($ip, ':') !== false ? $v6 : $v4) as $cidr) {
+        [$net, $bits] = explode('/', $cidr);
+        $ipBin = @inet_pton($ip);
+        $netBin = @inet_pton($net);
+        if ($ipBin === false || $netBin === false) continue;
+        $len = (int)$bits * 8;
+        if (strlen($ipBin) !== strlen($netBin)) continue;
+        if (substr($ipBin, 0, (int)ceil($len / 8)) === substr($netBin, 0, (int)ceil($len / 8))) return true;
+    }
+    return false;
+}
+
+/* Genel amacli API hiz limiti (api_rate_limits tablosu). True = devam et. */
+function api_rate_limit(?PDO $pdo, string $scope, string $ip, int $max, int $windowSec = 60): bool {
+    if (!$pdo) return true;
+    $ip = $ip !== '' ? $ip : '0.0.0.0';
+    try {
+        $pdo->prepare("DELETE FROM api_rate_limits WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)")->execute();
+        $c = $pdo->prepare("SELECT COUNT(*) FROM api_rate_limits WHERE ip=? AND scope=? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)");
+        $c->execute([$ip, $scope, (int)$windowSec]);
+        if ((int)$c->fetchColumn() >= $max) return false;
+        $pdo->prepare("INSERT INTO api_rate_limits (ip, scope) VALUES (?,?)")->execute([$ip, $scope]);
+        return true;
+    } catch (Throwable $e) {
+        return true; // DB hatasi: akisi bloklamama (fail-open, mevcut davranis)
+    }
+}
+
+/* Yonetici islemleri icin denetim kaydi. */
+function audit_log(?PDO $pdo, int $userId, string $action, string $targetType = '', string $targetId = '', string $details = ''): void {
+    if (!$pdo) return;
+    try {
+        $pdo->prepare("INSERT INTO audit_log (user_id, action, target_type, target_id, details, ip) VALUES (?,?,?,?,?,?)")
+           ->execute([$userId, mb_substr($action, 0, 40), mb_substr($targetType, 0, 40), mb_substr($targetId, 0, 64), mb_substr($details, 0, 500), client_ip()]);
+    } catch (Throwable $e) {}
 }
 
 function store_money(float $amount, string $cur = 'TRY'): string {

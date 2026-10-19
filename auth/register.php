@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../core/db.php';
+require_once __DIR__ . '/../core/turnstile.php';
 require_once __DIR__ . '/../core/oauth.php';
 require_once __DIR__ . '/../core/multi.php';
 boot_session();
@@ -17,19 +18,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password  = $_POST['password']       ?? '';
     $password2 = $_POST['password2']      ?? '';
     $accepted  = !empty($_POST['accept_terms']);
+    $pdo = db();
+    $rlOk = $pdo ? api_rate_limit($pdo, 'register', client_ip(), 5, 3600) : true;
 
-    if (!$accepted) {
+    if (!$pdo) {
+        $error = 'Could not connect to the database. Please try again later.';
+    } elseif (!$rlOk) {
+        $error = 'Too many registration attempts. Please try again later.';
+    } elseif (!$accepted) {
         $error = 'To continue, you must accept the Terms of Use and Privacy Policy.';
     } elseif (!$username || !$email || !$password || !$password2) {
         $error = 'Please fill in all fields.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
-    } elseif (strlen($password) < 6) {
-        $error = 'Password must be at least 6 characters.';
+    } elseif (turnstile_enabled() && !turnstile_verify($_POST['cf-turnstile-response'] ?? $_POST['cf_token'] ?? '', client_ip())) {
+        $error = 'Security verification failed. Please complete Turnstile.';
+    } elseif (strlen($password) < 8) {
+        $error = 'Password must be at least 8 characters.';
+    } elseif (!preg_match('/[A-Z]/', $password) || !preg_match('/[a-z]/', $password) || !preg_match('/[0-9]/', $password)) {
+        $error = 'Password must include at least one uppercase letter, one lowercase letter and one number.';
     } elseif ($password !== $password2) {
         $error = 'Passwords do not match.';
     } else {
-        $pdo = db();
         if (!$pdo) {
             $error = 'Could not connect to the database. Please try again later.';
         } else {
@@ -236,7 +246,7 @@ body{font-family:var(--fb);background:var(--ink);color:var(--text);min-height:10
 <label for="password">Password</label>
 <div class="input-wrap">
 <i class="fa-solid fa-lock"></i>
-<input type="password" id="password" name="password" placeholder="At least 6 characters" required autocomplete="new-password">
+<input type="password" id="password" name="password" placeholder="At least 8 characters" required autocomplete="new-password">
 <button type="button" class="pass-toggle" id="passToggle" aria-label="Show/hide password"><i class="fas fa-eye" id="eyeIcon"></i></button>
 </div>
 <div class="strength">
@@ -256,6 +266,7 @@ body{font-family:var(--fb);background:var(--ink);color:var(--text);min-height:10
 <input type="checkbox" name="accept_terms" value="1" <?= !empty($_POST['accept_terms']) ? 'checked' : '' ?>>
 <span>By signing up, I confirm that I have read, understood and accept the <a href="/terms-of-use" target="_blank">Terms of Use</a> and <a href="/privacy-policy" target="_blank">Privacy Policy</a>.</span>
 </label>
+<?php if (turnstile_enabled()): ?><?php echo turnstile_widget(); echo turnstile_script(); ?><?php endif; ?>
 <button type="submit" class="btn-submit"><i class="fa-solid fa-user-plus"></i> Sign Up</button>
 <input type="hidden" name="fp" id="fpField" value="">
 </form>
@@ -284,7 +295,7 @@ function bindToggle(btnId,inputId,iconId){var btn=document.getElementById(btnId)
 bindToggle('passToggle','password','eyeIcon');
 bindToggle('passToggle2','password2','eyeIcon2');
 var pw=document.getElementById('password'),fill=document.getElementById('strengthFill'),label=document.getElementById('strengthLabel');
-if(pw&&fill&&label){pw.addEventListener('input',function(){var v=pw.value,score=0;if(v.length>=6)score++;if(v.length>=10)score++;if(/[A-Z]/.test(v)&&/[a-z]/.test(v))score++;if(/\d/.test(v))score++;if(/[^A-Za-z0-9]/.test(v))score++;var names=['Weak','Fair','Medium','Good','Strong','Very Strong'],idx=Math.min(score,5),colors=['#ff4757','#ff6b81','#ffa502','#2ed573','#4f8fc0','#4f8fc0'];fill.style.width=(idx/5*100)+'%';fill.style.background=colors[idx];label.textContent=names[idx];label.style.color=colors[idx];});}
+if(pw&&fill&&label){pw.addEventListener('input',function(){var v=pw.value,score=0;if(v.length>=8)score++;if(v.length>=12)score++;if(/[A-Z]/.test(v)&&/[a-z]/.test(v))score++;if(/\d/.test(v))score++;if(/[^A-Za-z0-9]/.test(v))score++;var names=['Weak','Fair','Medium','Good','Strong','Very Strong'],idx=Math.min(score,5),colors=['#ff4757','#ff6b81','#ffa502','#2ed573','#4f8fc0','#4f8fc0'];fill.style.width=(idx/5*100)+'%';fill.style.background=colors[idx];label.textContent=names[idx];label.style.color=colors[idx];});}
 var feats=[
 {icon:'fa-box',title:'Product & Stock Management',desc:'Unlimited and single-stock modes, zip uploads, auto-pause when out of stock.'},
 {icon:'fa-palette',title:'3 Ready-made Themes',desc:'Switch between Default, Azure and Ember theme sets with one click.'},

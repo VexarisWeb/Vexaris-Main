@@ -51,27 +51,31 @@ if (abs(time() - $timestamp) > 300) {
     exit;
 }
 
-try {
-    $n = $pdo->prepare("SELECT id FROM license_nonces WHERE nonce=? LIMIT 1");
-    $n->execute([$nonce]);
-    if ($n->fetch()) {
-        http_response_code(400);
-        echo json_encode(['ok' => false, 'msg' => 'nonce used']);
-        exit;
-    }
-    $pdo->prepare("INSERT INTO license_nonces (nonce) VALUES (?)")->execute([$nonce]);
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'msg' => 'server error']);
-    exit;
-}
-
 $exp = hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, _vx_k());
 if (!hash_equals($exp, $signature)) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'msg' => 'bad signature']);
     exit;
 }
+
+/* Nonce imzadan SONRA yazilir: imzasiz istekler tabloyu doldurup gecerli
+   nonce'lari yakmasin. Atomik insert ile replay engellenir. */
+try {
+    $pdo->prepare("INSERT IGNORE INTO license_nonces (nonce) VALUES (?)")->execute([$nonce]);
+    if ($pdo->query("SELECT ROW_COUNT()")->fetchColumn() == 0) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'msg' => 'nonce used']);
+        exit;
+    }
+    if (mt_rand(1, 50) === 1) {
+        $pdo->prepare("DELETE FROM license_nonces WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)")->execute();
+    }
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'msg' => 'server error']);
+    exit;
+}
+
 $domain = preg_replace('/^www\./', '', $domain);
 $domainWww = 'www.' . $domain;
 
@@ -79,36 +83,52 @@ $features = _vx_f();
 $planSlug = 'free';
 
 try {
+    /* Lisans eslesmesi: en SPESIFIK eslesme kazanir (tam alan adi > wildcard).
+       Eski davranis id-ASC ilk eslesmeyi secuyordu; wildcard'li bir lisans
+       tum yeni magazalarin onune gecip plan gölgelemesi yapabiliyordu. */
     $rows = $pdo->query("SELECT id, user_id, allowed_domains, features FROM licenses WHERE status='active' AND (suspended_until IS NULL OR suspended_until <= NOW()) ORDER BY id ASC")->fetchAll();
+    $best = null;
+    $bestScore = -1;
     foreach ($rows as $row) {
         $list = json_decode((string)$row['allowed_domains'], true);
         if (!is_array($list)) continue;
         foreach ($list as $pattern) {
-            if (!_vx_d($domain, (string)$pattern) && !_vx_d($domainWww, (string)$pattern)) continue;
-            $f = json_decode((string)$row['features'], true);
-            if (is_array($f)) {
-                foreach ($features as $k => $v) {
-                    $features[$k] = array_key_exists($k, $f) ? (bool)$f[$k] : $v;
-                }
-                if (isset($f['plan'])) {
-                    $ps = strtolower(trim((string)$f['plan']));
-                    if (in_array($ps, ['free', 'starter', 'professional', 'enterprise'], true)) $planSlug = $ps;
-                }
-                if (!empty($row['user_id']) && !empty($f['plan_auto']) && $planSlug !== 'free') {
-                    try {
-                        $sq = $pdo->prepare("SELECT plan, status, current_period_end FROM user_subscriptions WHERE user_id=? LIMIT 1");
-                        $sq->execute([(int)$row['user_id']]);
-                        $sub = $sq->fetch();
-                        $subOk = $sub && ($sub['status'] ?? '') === 'active' && (int)($sub['current_period_end'] ?? 0) > time();
-                        if (!$subOk && $planSlug !== 'free') {
-                            $planSlug = 'free';
-                            $f['plan'] = 'free';
-                            $pdo->prepare("UPDATE licenses SET features=? WHERE id=?")->execute([json_encode($f), (int)$row['id']]);
-                        }
-                    } catch (Exception $e2) {}
-                }
+            $pattern = (string)$pattern;
+            $exact = (strtolower($pattern) === $domain || strtolower($pattern) === $domainWww);
+            $wild  = (strncmp($pattern, '*.', 2) === 0);
+            if (!$exact && !$wild) continue;
+            if (!$exact && !(_vx_d($domain, $pattern) || _vx_d($domainWww, $pattern))) continue;
+            $score = $exact ? 100 : 10;
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $row;
             }
-            break 2;
+        }
+    }
+    if ($best) {
+        $row = $best;
+        $f = json_decode((string)$row['features'], true);
+        if (is_array($f)) {
+            foreach ($features as $k => $v) {
+                $features[$k] = array_key_exists($k, $f) ? (bool)$f[$k] : $v;
+            }
+            if (isset($f['plan'])) {
+                $ps = strtolower(trim((string)$f['plan']));
+                if (in_array($ps, ['free', 'starter', 'professional', 'enterprise'], true)) $planSlug = $ps;
+            }
+            if (!empty($row['user_id']) && !empty($f['plan_auto']) && $planSlug !== 'free') {
+                try {
+                    $sq = $pdo->prepare("SELECT plan, status, current_period_end FROM user_subscriptions WHERE user_id=? LIMIT 1");
+                    $sq->execute([(int)$row['user_id']]);
+                    $sub = $sq->fetch();
+                    $subOk = $sub && ($sub['status'] ?? '') === 'active' && (int)($sub['current_period_end'] ?? 0) > time();
+                    if (!$subOk && $planSlug !== 'free') {
+                        $planSlug = 'free';
+                        $f['plan'] = 'free';
+                        $pdo->prepare("UPDATE licenses SET features=? WHERE id=?")->execute([json_encode($f), (int)$row['id']]);
+                    }
+                } catch (Exception $e2) {}
+            }
         }
     }
 } catch (Exception $e) {}

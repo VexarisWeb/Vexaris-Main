@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/html-sanitize.php';
 
 function legal_slugs(): array {
     return ['terms-of-use', 'privacy-policy', 'cookie-policy'];
@@ -602,6 +603,10 @@ function legal_save(string $slug, string $content): void {
     if (!legal_slug_valid($slug)) return;
     $title  = legal_titles()[$slug] ?? $slug;
     $content = trim($content);
+    if ($content !== '') {
+        $content = vx_clean_html($content, 'rich');
+        $content = trim($content);
+    }
     $pdo = db();
     if (!$pdo) return;
     try {

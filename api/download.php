@@ -38,14 +38,20 @@ if ($pdo && isset($_GET['token'])) {
                 $uploadsBase = realpath(dirname(__DIR__) . '/uploads');
                 $realPath = ($filePath !== '' && $uploadsBase !== false) ? realpath($filePath) : false;
                 if ($realPath === false || strpos($realPath, $uploadsBase) !== 0 || !is_file($realPath)) {
-                    $pdo->prepare("UPDATE download_tokens SET used = 1 WHERE id = ?")->execute([(int)$tok['id']]);
+                    $pdo->prepare("UPDATE download_tokens SET used = 1 WHERE token = ? AND used = 0")->execute([$token]);
                     http_response_code(404);
                     echo 'Download not found or the link has expired.';
                     exit;
                 }
                 $filePath = $realPath;
                 if (is_file($filePath)) {
-                    $pdo->prepare("UPDATE download_tokens SET used = 1 WHERE id = ?")->execute([(int)$tok['id']]);
+                    $updTok = $pdo->prepare("UPDATE download_tokens SET used = 1 WHERE token = ? AND used = 0 AND expires_at > NOW()");
+                    $updTok->execute([$token]);
+                    if ($updTok->rowCount() !== 1) {
+                        http_response_code(403);
+                        echo 'This download link has already been used.';
+                        exit;
+                    }
                     $ext = strtolower(pathinfo($prod['file_name'], PATHINFO_EXTENSION));
                     $map = [
                         'zip' => 'application/zip', 'rar' => 'application/vnd.rar',
@@ -66,7 +72,7 @@ if ($pdo && isset($_GET['token'])) {
                     readfile($filePath);
                     exit;
                 }
-                $pdo->prepare("UPDATE download_tokens SET used = 1 WHERE id = ?")->execute([(int)$tok['id']]);
+                $pdo->prepare("UPDATE download_tokens SET used = 1 WHERE token = ? AND used = 0")->execute([$token]);
             }
         }
     }

@@ -12,6 +12,7 @@ $act = $_POST['action'] ?? '';
 $uid = (int)current_user()['id'];
 
 if ($act === 'request_email_change') {
+    if (!api_rate_limit($pdo, 'emailchg', client_ip(), 5, 3600)) { echo json_encode(['ok'=>false,'msg'=>'Too many requests. Please try again later.']); exit; }
     $new = strtolower(trim($_POST['new_email'] ?? ''));
     if (!filter_var($new, FILTER_VALIDATE_EMAIL)) { echo json_encode(['ok'=>false,'msg'=>'Invalid email address']); exit; }
     $st = $pdo->prepare("SELECT id FROM users WHERE email=? AND id<>? LIMIT 1");
@@ -39,6 +40,17 @@ if ($act === 'request_email_change') {
         }
     } catch (Throwable $e) {}
     if (!mail_is_configured($pdo)) {
+        $curPw = (string)($_POST['current_password'] ?? $_POST['current'] ?? '');
+        if ($curPw === '') {
+            echo json_encode(['ok'=>false,'msg'=>'Current password is required to change email while email verification is disabled.']);
+            exit;
+        }
+        $stPw = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
+        $stPw->execute([$uid]);
+        if (!password_verify($curPw, (string)($stPw->fetchColumn()))) {
+            echo json_encode(['ok'=>false,'msg'=>'Current password is incorrect']);
+            exit;
+        }
         $pdo->prepare("UPDATE users SET email=? WHERE id=?")->execute([$new,$uid]);
         $_SESSION['user']['email']=$new;
         echo json_encode(['ok'=>true,'msg'=>'Email updated directly (email verification is disabled).','popup'=>true]);
@@ -60,7 +72,19 @@ if ($act === 'verify_email_change') {
     $row = $st->fetch();
     if (!$row) { echo json_encode(['ok'=>false,'msg'=>'Code is invalid or has expired']); exit; }
     $new = $row['new_email'];
-    $pdo->prepare("UPDATE users SET email=? WHERE id=?")->execute([$new,$uid]);
+    $stD = $pdo->prepare("SELECT id FROM users WHERE email=? AND id<>? LIMIT 1");
+    $stD->execute([$new,$uid]);
+    if ($stD->fetch()) { echo json_encode(['ok'=>false,'msg'=>'This email is already in use']); exit; }
+    try {
+        $pdo->prepare("UPDATE users SET email=? WHERE id=?")->execute([$new,$uid]);
+    } catch (PDOException $eDup) {
+        if ((string)$eDup->getCode() === '23000') {
+            echo json_encode(['ok'=>false,'msg'=>'This email is already in use']);
+            exit;
+        }
+        echo json_encode(['ok'=>false,'msg'=>'Could not update email. Please try again later.']);
+        exit;
+    }
     $pdo->prepare("DELETE FROM email_change_tokens WHERE user_id=?")->execute([$uid]);
     $_SESSION['user']['email'] = $new;
     echo json_encode(['ok'=>true,'msg'=>'Email updated: '.$new]);
@@ -74,9 +98,11 @@ if ($act === 'unlink_oauth') {
     exit;
 }
 if ($act === 'change_password') {
+    if (!api_rate_limit($pdo, 'chpass', client_ip(), 5, 300)) { echo json_encode(['ok'=>false,'msg'=>'Too many attempts. Please try again later.']); exit; }
     $cur = $_POST['current'] ?? '';
     $nw = $_POST['new'] ?? '';
-    if (strlen($nw) < 6) { echo json_encode(['ok'=>false,'msg'=>'New password must be at least 6 characters']); exit; }
+    if (strlen($nw) < 8) { echo json_encode(['ok'=>false,'msg'=>'New password must be at least 8 characters']); exit; }
+    if (!preg_match('/[A-Z]/', $nw) || !preg_match('/[a-z]/', $nw) || !preg_match('/[0-9]/', $nw)) { echo json_encode(['ok'=>false,'msg'=>'New password must include uppercase, lowercase and a number']); exit; }
     $st = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
     $st->execute([$uid]);
     $hash = (string)$st->fetchColumn();
@@ -145,8 +171,8 @@ if ($act === 'sessions_terminate') {
     exit;
 }
 if ($act === 'sessions_terminate_all') {
-    $cur = (string)session_id();
-    try { $pdo->prepare("UPDATE user_sessions SET revoked=1 WHERE user_id=? AND session_key<>?")->execute([$uid, $cur]); } catch (Throwable $e) {}
+    $newVer = sessions_kill_all($pdo, $uid, true);
+    $_SESSION['user']['sess_ver'] = $newVer;
     echo json_encode(['ok' => true, 'msg' => 'Other sessions signed out.']);
     exit;
 }

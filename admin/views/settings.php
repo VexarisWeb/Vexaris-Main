@@ -30,6 +30,12 @@ $whSandbox = setting_get('whop_sandbox','0')==='1';
 $muEnabled = setting_get('multi_enabled','1')==='1';
 $muExtra = setting_get('multi_extra_domains','');
 $muAutoban = setting_get('multi_autoban','1')==='1';
+$tsHas = trim($tsSecret) !== '';
+$goHas = trim($goSec) !== '';
+$dcHas = trim($dcSec) !== '';
+$ghHas = trim($ghSec) !== '';
+$msHas = trim($msSec) !== '';
+$secPh = 'Kayıtlı — değiştirmek için yazın, boş bırakılırsa korunur';
 ?>
     <div class="table-card" style="padding:1.4rem;margin-bottom:1.2rem">
         <div style="font-weight:800;color:#fff;margin-bottom:.8rem"><i class="fas fa-shield-halved" style="color:var(--cyan)"></i> Güvenlik & Entegrasyonlar</div>
@@ -90,7 +96,7 @@ $muAutoban = setting_get('multi_autoban','1')==='1';
             <h3 style="font-weight:800;color:#fff;margin-bottom:1rem"><i class="fas fa-shield" style="color:var(--cyan)"></i> Cloudflare Turnstile</h3>
             <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;margin-bottom:.6rem"><input type="checkbox" id="tsEnabled" <?= $tsEnabled?'checked':'' ?>> Aktif</label>
             <input id="tsSite" placeholder="Site Key" value="<?= htmlspecialchars($tsSite) ?>" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.5rem">
-            <input id="tsSecret" placeholder="Secret Key" value="<?= htmlspecialchars($tsSecret) ?>" type="password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.7rem">
+            <input id="tsSecret" placeholder="<?= $tsHas ? '•••••• ' . $secPh : 'Secret Key' ?>" type="password" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.7rem">
             <button onclick="saveTurnstile()" class="btn" style="width:100%;justify-content:center"><i class="fas fa-floppy-disk"></i> Kaydet</button>
             <button onclick="testTurnstile()" class="btn" style="width:100%;justify-content:center;margin-top:.4rem;background:rgba(0,212,255,.08)"><i class="fas fa-vial"></i> Test</button>
             <div id="tsMsg" style="font-size:.78rem;margin-top:.4rem;display:none"></div><div id="tsPreview" style="margin-top:.6rem"></div>
@@ -103,8 +109,8 @@ $muAutoban = setting_get('multi_autoban','1')==='1';
             <h3 style="font-weight:800;color:#fff;margin-bottom:1rem"><i class="fab fa-google" style="color:#ea4335"></i> Google OAuth</h3>
             <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;margin-bottom:.5rem"><input type="checkbox" id="goEnabled" <?= $goEnabled?'checked':'' ?>> Aktif</label>
             <input id="goId" placeholder="Client ID" value="<?= htmlspecialchars($goId) ?>" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
-            <input id="goSec" placeholder="Client Secret" value="<?= htmlspecialchars($goSec) ?>" type="password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
-            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Redirect: <code>https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'vexaris.net') ?>/api/oauth?provider=google&action=callback</code></div>
+            <input id="goSec" placeholder="<?= $goHas ? '•••••• ' . $secPh : 'Client Secret' ?>" type="password" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Redirect: <code><?= htmlspecialchars(SITE_URL) ?>/api/oauth?provider=google&action=callback</code></div>
             <button onclick="saveOAuth('google')" class="btn" style="width:100%;justify-content:center"><i class="fas fa-floppy-disk"></i> Kaydet</button>
             <a href="/api/oauth?provider=google&action=login" target="_blank" class="btn" style="width:100%;justify-content:center;margin-top:.4rem;text-decoration:none;display:inline-flex"><i class="fas fa-link"></i> Hesabına Bağla</a>
         </div>
@@ -116,8 +122,8 @@ $muAutoban = setting_get('multi_autoban','1')==='1';
             <h3 style="font-weight:800;color:#fff;margin-bottom:1rem"><i class="fab fa-discord" style="color:#5865f2"></i> Discord OAuth</h3>
             <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;margin-bottom:.5rem"><input type="checkbox" id="dcEnabled" <?= $dcEnabled?'checked':'' ?>> Aktif</label>
             <input id="dcId" placeholder="Client ID" value="<?= htmlspecialchars($dcId) ?>" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
-            <input id="dcSec" placeholder="Client Secret" value="<?= htmlspecialchars($dcSec) ?>" type="password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
-            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Redirect: <code>https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'vexaris.net') ?>/api/oauth?provider=discord&action=callback</code></div>
+            <input id="dcSec" placeholder="<?= $dcHas ? '•••••• ' . $secPh : 'Client Secret' ?>" type="password" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Redirect: <code><?= htmlspecialchars(SITE_URL) ?>/api/oauth?provider=discord&action=callback</code></div>
             <button onclick="saveOAuth('discord')" class="btn" style="width:100%;justify-content:center"><i class="fas fa-floppy-disk"></i> Kaydet</button>
             <a href="/api/oauth?provider=discord&action=login" target="_blank" class="btn" style="width:100%;justify-content:center;margin-top:.4rem;text-decoration:none;display:inline-flex"><i class="fas fa-link"></i> Hesabına Bağla</a>
         </div>
@@ -129,8 +135,8 @@ $muAutoban = setting_get('multi_autoban','1')==='1';
             <h3 style="font-weight:800;color:#fff;margin-bottom:1rem"><i class="fab fa-github" style="color:#fff"></i> GitHub OAuth</h3>
             <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;margin-bottom:.5rem"><input type="checkbox" id="ghEnabled" <?= $ghEnabled?'checked':'' ?>> Aktif</label>
             <input id="ghId" placeholder="Client ID" value="<?= htmlspecialchars($ghId) ?>" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
-            <input id="ghSec" placeholder="Client Secret" value="<?= htmlspecialchars($ghSec) ?>" type="password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
-            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Redirect: <code>https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'vexaris.net') ?>/api/oauth?provider=github&action=callback</code></div>
+            <input id="ghSec" placeholder="<?= $ghHas ? '•••••• ' . $secPh : 'Client Secret' ?>" type="password" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Redirect: <code><?= htmlspecialchars(SITE_URL) ?>/api/oauth?provider=github&action=callback</code></div>
             <button onclick="saveOAuth('github')" class="btn" style="width:100%;justify-content:center"><i class="fas fa-floppy-disk"></i> Kaydet</button>
             <a href="/api/oauth?provider=github&action=login" target="_blank" class="btn" style="width:100%;justify-content:center;margin-top:.4rem;text-decoration:none;display:inline-flex"><i class="fas fa-link"></i> Hesabına Bağla</a>
         </div>
@@ -142,8 +148,8 @@ $muAutoban = setting_get('multi_autoban','1')==='1';
             <h3 style="font-weight:800;color:#fff;margin-bottom:1rem"><i class="fab fa-microsoft" style="color:#2b88d8"></i> Microsoft OAuth</h3>
             <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;margin-bottom:.5rem"><input type="checkbox" id="msEnabled" <?= $msEnabled?'checked':'' ?>> Aktif</label>
             <input id="msId" placeholder="Client (Application) ID" value="<?= htmlspecialchars($msId) ?>" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
-            <input id="msSec" placeholder="Client Secret" value="<?= htmlspecialchars($msSec) ?>" type="password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
-            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Redirect: <code>https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'vexaris.net') ?>/api/oauth?provider=microsoft&action=callback</code></div>
+            <input id="msSec" placeholder="<?= $msHas ? '•••••• ' . $secPh : 'Client Secret' ?>" type="password" autocomplete="new-password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Redirect: <code><?= htmlspecialchars(SITE_URL) ?>/api/oauth?provider=microsoft&action=callback</code></div>
             <button onclick="saveOAuth('microsoft')" class="btn" style="width:100%;justify-content:center"><i class="fas fa-floppy-disk"></i> Kaydet</button>
             <a href="/api/oauth?provider=microsoft&action=login" target="_blank" class="btn" style="width:100%;justify-content:center;margin-top:.4rem;text-decoration:none;display:inline-flex"><i class="fas fa-link"></i> Hesabına Bağla</a>
         </div>
@@ -164,7 +170,7 @@ $muAutoban = setting_get('multi_autoban','1')==='1';
             <input id="whHook" placeholder="Webhook Secret — whsec_... / ws_... (boş bırakılırsa değişmez)" type="password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
             <div style="font-size:.7rem;color:var(--muted);margin:-.2rem 0 .4rem"><?= $whHookHas?'<span style="color:#4ade80">● Webhook anahtarı kayıtlı</span>':'<span style="color:var(--muted)">○ Webhook anahtarı girilmedi</span>' ?> — <span style="color:var(--muted)">payment.succeeded vb. olaylar için</span></div>
             <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;margin-bottom:.5rem"><input type="checkbox" id="whSandbox" <?= $whSandbox?'checked':'' ?>> Sandbox modu (sandbox-api.whop.com)</label>
-            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Webhook URL: <code>https://<?= htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'vexaris.net') ?>/api/whop-webhook</code> — olaylar: <code>payment.succeeded</code>, <code>payment.failed</code></div>
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Webhook URL: <code><?= htmlspecialchars(SITE_URL) ?>/api/whop-webhook</code> — olaylar: <code>payment.succeeded</code>, <code>payment.failed</code></div>
             <button onclick="saveWhop()" class="btn" style="width:100%;justify-content:center"><i class="fas fa-floppy-disk"></i> Kaydet</button>
             <button onclick="testWhop()" class="btn" style="width:100%;justify-content:center;margin-top:.4rem;background:rgba(0,212,255,.08)"><i class="fas fa-vial"></i> API Bağlantısını Test Et</button>
             <div id="whMsg" style="font-size:.78rem;margin-top:.4rem;display:none"></div>
@@ -187,7 +193,8 @@ $muAutoban = setting_get('multi_autoban','1')==='1';
         function openIntModal(id){document.getElementById('int-'+id).style.display='flex';}
         function closeIntModal(id){document.getElementById('int-'+id).style.display='none';}
         async function saveTurnstile(){
-            const fd=new FormData(); fd.append('action','save_turnstile'); fd.append('enabled',document.getElementById('tsEnabled').checked?'1':'0'); fd.append('site_key',document.getElementById('tsSite').value.trim()); fd.append('secret',document.getElementById('tsSecret').value.trim());
+            const fd=new FormData(); fd.append('action','save_turnstile'); fd.append('enabled',document.getElementById('tsEnabled').checked?'1':'0'); fd.append('site_key',document.getElementById('tsSite').value.trim());
+            const tsSec=document.getElementById('tsSecret').value.trim(); if(tsSec) fd.append('secret',tsSec);
             const r=await fetch('/api/settings',{method:'POST',headers:{'X-CSRF-Token':VX_CSRF},body:fd}); const d=await r.json(); const m=document.getElementById('tsMsg'); m.style.display='block'; m.style.color=d.ok?'#4ade80':'#f87171'; m.textContent=d.msg||(d.ok?'Kaydedildi':'Hata'); setTimeout(()=>m.style.display='none',3000); if(d.ok) setTimeout(()=>location.reload(),800);
         }
         async function testTurnstile(){
@@ -203,10 +210,11 @@ $muAutoban = setting_get('multi_autoban','1')==='1';
         }
         async function saveOAuth(p){
             const fd=new FormData(); fd.append('action','save_oauth'); fd.append('provider',p);
-            if(p==='google'){ fd.append('enabled',document.getElementById('goEnabled').checked?'1':'0'); fd.append('client_id',document.getElementById('goId').value.trim()); fd.append('client_secret',document.getElementById('goSec').value.trim()); }
-            else if(p==='github'){ fd.append('enabled',document.getElementById('ghEnabled').checked?'1':'0'); fd.append('client_id',document.getElementById('ghId').value.trim()); fd.append('client_secret',document.getElementById('ghSec').value.trim()); }
-            else if(p==='microsoft'){ fd.append('enabled',document.getElementById('msEnabled').checked?'1':'0'); fd.append('client_id',document.getElementById('msId').value.trim()); fd.append('client_secret',document.getElementById('msSec').value.trim()); }
-            else { fd.append('enabled',document.getElementById('dcEnabled').checked?'1':'0'); fd.append('client_id',document.getElementById('dcId').value.trim()); fd.append('client_secret',document.getElementById('dcSec').value.trim()); }
+            const secVal=(id)=>document.getElementById(id).value.trim();
+            if(p==='google'){ fd.append('enabled',document.getElementById('goEnabled').checked?'1':'0'); fd.append('client_id',document.getElementById('goId').value.trim()); if(secVal('goSec')) fd.append('client_secret',secVal('goSec')); }
+            else if(p==='github'){ fd.append('enabled',document.getElementById('ghEnabled').checked?'1':'0'); fd.append('client_id',document.getElementById('ghId').value.trim()); if(secVal('ghSec')) fd.append('client_secret',secVal('ghSec')); }
+            else if(p==='microsoft'){ fd.append('enabled',document.getElementById('msEnabled').checked?'1':'0'); fd.append('client_id',document.getElementById('msId').value.trim()); if(secVal('msSec')) fd.append('client_secret',secVal('msSec')); }
+            else { fd.append('enabled',document.getElementById('dcEnabled').checked?'1':'0'); fd.append('client_id',document.getElementById('dcId').value.trim()); if(secVal('dcSec')) fd.append('client_secret',secVal('dcSec')); }
             const r=await fetch('/api/settings',{method:'POST',headers:{'X-CSRF-Token':VX_CSRF},body:fd}); const d=await r.json(); alert(d.msg||(d.ok?'Kaydedildi':'Hata')); if(d.ok) setTimeout(()=>location.reload(),800);
         }
         async function saveWhop(){

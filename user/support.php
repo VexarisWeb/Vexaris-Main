@@ -145,7 +145,7 @@ function renderTicketList() {
             + '<span class="ticket-item__time">' + ticketTime(t.last_msg_at) + '</span>'
             + '</div>'
             + '<div class="ticket-item__bottom">'
-            + '<span class="ticket-item__last">' + truncate(t.last_msg, 44) + '</span>'
+            + '<span class="ticket-item__last">' + escMsg(truncate(t.last_msg, 44)) + '</span>'
             + ((t.source || 'support') === 'application' ? '<span class="badge" style="background:rgba(79,143,192,.14);color:#7fb3d9;border:1px solid rgba(79,143,192,.4)">Application</span>' : '')
             + ticketStatusBadge(t.status)
             + (unread > 0 ? '<span class="ticket-badge">' + unread + '</span>' : '')

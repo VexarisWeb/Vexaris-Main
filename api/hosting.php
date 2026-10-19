@@ -182,13 +182,29 @@ try {
         exit;
     }
     if ($action === 'jobs') {
-        $st = $pdo->prepare("SELECT id, slug, plan, owner, site_name, lang, kind, owner_hash, category, logo_url FROM hosting_jobs WHERE status='pending' OR (status='claimed' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)) ORDER BY id ASC LIMIT 5");
-        $st->execute();
-        $rows = $st->fetchAll();
-        $ids = [];
-        foreach ($rows as $r) $ids[] = (int)$r['id'];
-        if ($ids) {
-            $pdo->prepare("UPDATE hosting_jobs SET status='claimed', attempts=attempts+1 WHERE id IN (" . implode(',', $ids) . ")")->execute();
+        $rows = [];
+        try {
+            $pdo->beginTransaction();
+            $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE status='pending' OR (status='claimed' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)) ORDER BY id ASC LIMIT 5 FOR UPDATE");
+            $st->execute();
+            $ids = $st->fetchAll(PDO::FETCH_COLUMN);
+            if ($ids) {
+                $claim = $pdo->prepare("UPDATE hosting_jobs SET status='claimed', attempts=attempts+1, updated_at=NOW() WHERE id=? AND (status='pending' OR (status='claimed' AND updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)))");
+                $get = $pdo->prepare("SELECT id, slug, plan, owner, site_name, lang, kind, owner_hash, category, logo_url FROM hosting_jobs WHERE id=? LIMIT 1");
+                foreach ($ids as $jid) {
+                    $claim->execute([$jid]);
+                    if ($claim->rowCount() !== 1) continue;
+                    $get->execute([$jid]);
+                    $r = $get->fetch();
+                    if ($r) $rows[] = $r;
+                }
+            }
+            $pdo->commit();
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'msg' => 'server error']);
+            exit;
         }
         echo json_encode(['ok' => true, 'jobs' => $rows]);
         exit;
@@ -210,12 +226,20 @@ try {
             echo json_encode(['ok' => false, 'msg' => 'not found']);
             exit;
         }
-        $pdo->prepare("UPDATE hosting_jobs SET status=?, last_msg=? WHERE id=?")
-            ->execute([$ok ? 'done' : 'failed', $msg, $jobId]);
-        $jobKind = (string)($job['kind'] ?? 'provision');
+        $jobKind = strtolower(trim((string)($job['kind'] ?? '')));
+        if (!in_array($jobKind, ['provision', 'delete', 'update', 'domain'], true)) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'msg' => 'bad kind']);
+            exit;
+        }
         $jobOwner = (string)($job['owner'] ?? '');
         $jobSlug = (string)($job['slug'] ?? '');
         $jobPlan = (string)($job['plan'] ?? 'free');
+        if ($jobSlug === '' || $domain !== $jobSlug . '.vexaris.app') {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'msg' => 'bad domain']);
+            exit;
+        }
         if (!$ok && $jobKind === 'domain') {
             try {
                 $pdo->prepare("UPDATE hosted_stores SET custom_status='failed' WHERE slug=?")->execute([$jobSlug]);
@@ -225,22 +249,14 @@ try {
             $delCustom = '';
             $delLogo = '';
             try {
+                $pdo->beginTransaction();
+                $pdo->prepare("UPDATE hosting_jobs SET status='done', last_msg=? WHERE id=?")->execute([$msg, $jobId]);
                 $cs = $pdo->prepare("SELECT custom_domain, logo_url FROM hosted_stores WHERE slug=? LIMIT 1");
                 $cs->execute([$jobSlug]);
                 $csRow = $cs->fetch() ?: [];
                 $delCustom = strtolower(trim((string)($csRow['custom_domain'] ?? '')));
                 $delLogo = (string)($csRow['logo_url'] ?? '');
-            } catch (Exception $e2) {}
-            try {
                 $pdo->prepare("DELETE FROM hosted_stores WHERE slug=?")->execute([$jobSlug]);
-            } catch (Exception $e2) {}
-            try {
-                if ($delLogo !== '' && preg_match('#^https://vexaris\.net/uploads/store-logos/([A-Za-z0-9._-]+)$#', $delLogo, $lmm)) {
-                    $lpath = __DIR__ . '/../uploads/store-logos/' . $lmm[1];
-                    if (is_file($lpath)) @unlink($lpath);
-                }
-            } catch (Exception $e2) {}
-            try {
                 $delSlug = strtolower($jobSlug);
                 $delDoms = [$delSlug . '.vexaris.app', $delSlug . '.vexaris.net'];
                 if ($delCustom !== '' && !in_array($delCustom, $delDoms, true)) $delDoms[] = $delCustom;
@@ -260,11 +276,31 @@ try {
                         $pdo->prepare("UPDATE licenses SET allowed_domains=? WHERE id=?")->execute([json_encode($keptDoms, JSON_UNESCAPED_UNICODE), (int)$lic['id']]);
                     }
                 }
-            } catch (Exception $e2) {}
-            if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
-                hosting_mail($pdo, $jobOwner, 'Your store has been deleted — Vexaris', hosting_deleted_html($jobSlug));
+                if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
+                    hosting_mail($pdo, $jobOwner, 'Your store has been deleted — Vexaris', hosting_deleted_html($jobSlug));
+                }
+                $pdo->commit();
+            } catch (Exception $e2) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                try {
+                    $pdo->prepare("UPDATE hosting_jobs SET status='pending', last_msg='cleanup failed' WHERE id=?")->execute([$jobId]);
+                } catch (Exception $e3) {}
+                http_response_code(500);
+                echo json_encode(['ok' => false, 'msg' => 'server error']);
+                exit;
             }
-        } elseif ($ok) {
+            try {
+                if ($delLogo !== '' && preg_match('#^https://vexaris\.net/uploads/store-logos/([A-Za-z0-9._-]+)$#', $delLogo, $lmm)) {
+                    $lpath = __DIR__ . '/../uploads/store-logos/' . $lmm[1];
+                    if (is_file($lpath)) @unlink($lpath);
+                }
+            } catch (Exception $e2) {}
+            echo json_encode(['ok' => true, 'msg' => 'recorded']);
+            exit;
+        }
+        $pdo->prepare("UPDATE hosting_jobs SET status=?, last_msg=? WHERE id=?")
+            ->execute([$ok ? 'done' : 'failed', $msg, $jobId]);
+        if ($ok) {
             $averDone = preg_replace('/[^A-Za-z0-9.\-+]/', '', substr((string)($_POST['app_ver'] ?? ''), 0, 30));
             try {
                 $pdo->prepare("UPDATE hosted_stores SET app_version=? WHERE slug=?")->execute([$averDone, $jobSlug]);
@@ -389,10 +425,20 @@ try {
             exit;
         }
         try {
-            $st = $pdo->prepare("UPDATE users SET ban_reason='abuse' WHERE email=? AND ban_reason=''");
+            $st = $pdo->prepare("SELECT id FROM users WHERE email=? AND ban_reason='' LIMIT 1");
             $st->execute([$email]);
-            echo json_encode(['ok' => true, 'msg' => 'banned', 'count' => $st->rowCount()]);
+            $banId = (int)$st->fetchColumn();
+            if ($banId <= 0) {
+                echo json_encode(['ok' => true, 'msg' => 'banned', 'count' => 0]);
+                exit;
+            }
+            $pdo->beginTransaction();
+            $pdo->prepare("UPDATE users SET ban_reason='abuse' WHERE id=?")->execute([$banId]);
+            $pdo->prepare("UPDATE user_subscriptions SET status='cancelled' WHERE user_id=?")->execute([$banId]);
+            $pdo->commit();
+            echo json_encode(['ok' => true, 'msg' => 'banned', 'count' => 1]);
         } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
             http_response_code(500);
             echo json_encode(['ok' => false, 'msg' => 'server error']);
         }
@@ -402,20 +448,18 @@ try {
         $list = json_decode((string)($_POST['stores'] ?? '[]'), true);
         if (!is_array($list)) $list = [];
         $n = 0;
-        $up = $pdo->prepare("INSERT INTO hosted_stores (slug, domain, plan, owner, users, revenue, products, currency, traffic_bytes, app_version, status, reported_at, traffic_updated) VALUES (?,?,?,?,?,?,?,?,?,?, 'active',NOW(),NOW()) ON DUPLICATE KEY UPDATE plan=VALUES(plan), owner=VALUES(owner), users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), traffic_bytes=VALUES(traffic_bytes), app_version=VALUES(app_version), status='active', reported_at=NOW(), traffic_updated=NOW()");
+        $up = $pdo->prepare("INSERT INTO hosted_stores (slug, domain, users, revenue, products, currency, traffic_bytes, app_version, status, reported_at, traffic_updated) VALUES (?,?,?,?,?,?,?,?,'active',NOW(),NOW()) ON DUPLICATE KEY UPDATE users=VALUES(users), revenue=VALUES(revenue), products=VALUES(products), currency=VALUES(currency), traffic_bytes=VALUES(traffic_bytes), app_version=VALUES(app_version), status='active', reported_at=NOW(), traffic_updated=NOW()");
         $upDay = $pdo->prepare("INSERT INTO store_traffic_daily (slug, day, bytes) VALUES (?,?,?) ON DUPLICATE KEY UPDATE bytes=VALUES(bytes)");
         foreach (array_slice($list, 0, 200) as $s) {
             if (!is_array($s)) continue;
             $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower((string)($s['slug'] ?? '')));
             if ($slug === '') continue;
-            $plan = strtolower((string)($s['plan'] ?? 'free'));
-            if (!in_array($plan, $plans, true)) $plan = 'free';
             $scur = strtoupper(trim((string)($s['currency'] ?? 'TRY')));
             if (!in_array($scur, ['TRY', 'USD', 'EUR'], true)) $scur = 'TRY';
             $tmon = max(0, (int)($s['traf_month'] ?? 0));
             $tday = max(0, (int)($s['traf_today'] ?? 0));
             $aver = preg_replace('/[^A-Za-z0-9.\-+]/', '', substr((string)($s['app_ver'] ?? ''), 0, 30));
-            $up->execute([$slug, $slug . '.vexaris.app', $plan, mb_substr((string)($s['owner'] ?? ''), 0, 190), max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0)), max(0, (int)($s['products'] ?? 0)), $scur, $tmon, $aver]);
+            $up->execute([$slug, $slug . '.vexaris.app', max(0, (int)($s['users'] ?? 0)), max(0, (float)($s['revenue'] ?? 0)), max(0, (int)($s['products'] ?? 0)), $scur, $tmon, $aver]);
             try { $upDay->execute([$slug, date('Y-m-d'), $tday]); } catch (Exception $e2) {}
             $n++;
         }

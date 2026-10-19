@@ -10,14 +10,9 @@ if (!$pdo) { http_response_code(503); echo json_encode(['ok' => false, 'msg' => 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok' => false, 'msg' => 'POST only']); exit; }
 ai_tables();
 
-$ip = $_SERVER['REMOTE_ADDR'] ?? '';
 try {
-    $pdo->prepare("DELETE FROM api_rate_limits WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)")->execute();
-    $cnt = $pdo->prepare("SELECT COUNT(*) FROM api_rate_limits WHERE ip=? AND scope='ai' AND created_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE)");
-    $cnt->execute([$ip]);
-    if ((int)$cnt->fetchColumn() >= 30) { http_response_code(429); echo json_encode(['ok' => false, 'msg' => 'rate']); exit; }
-    $pdo->prepare("INSERT INTO api_rate_limits (ip, scope) VALUES (?,'ai')")->execute([$ip]);
-} catch (Exception $e) {}
+    if (!api_rate_limit($pdo, 'ai', client_ip(), 30, 60)) { http_response_code(429); echo json_encode(['ok' => false, 'msg' => 'rate']); exit; }
+} catch (Throwable $e) {}
 
 $domain = strtolower(trim((string)($_POST['domain'] ?? '')));
 $timestamp = (int)($_POST['timestamp'] ?? 0);
@@ -28,15 +23,18 @@ if ($domain === '' || strlen($domain) > 253 || $timestamp <= 0 || !preg_match('/
     http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'invalid request']); exit;
 }
 if (abs(time() - $timestamp) > 300) { http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'stale']); exit; }
-try {
-    $n = $pdo->prepare("SELECT id FROM license_nonces WHERE nonce=? LIMIT 1");
-    $n->execute([$nonce]);
-    if ($n->fetch()) { http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'nonce used']); exit; }
-    $pdo->prepare("INSERT INTO license_nonces (nonce) VALUES (?)")->execute([$nonce]);
-} catch (Exception $e) { http_response_code(500); echo json_encode(['ok' => false, 'msg' => 'server error']); exit; }
 
 $exp = hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, _vx_k());
 if (!hash_equals($exp, $signature)) { http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'bad signature']); exit; }
+
+try {
+    if (random_int(1, 50) === 1) {
+        $pdo->exec("DELETE FROM license_nonces WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+    }
+    $n = $pdo->prepare("INSERT IGNORE INTO license_nonces (nonce) VALUES (?)");
+    $n->execute([$nonce]);
+    if ($n->rowCount() === 0) { http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'nonce used']); exit; }
+} catch (Exception $e) { http_response_code(500); echo json_encode(['ok' => false, 'msg' => 'server error']); exit; }
 $domain = preg_replace('/^www\./', '', $domain);
 $domainWww = 'www.' . $domain;
 
