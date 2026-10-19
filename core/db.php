@@ -587,7 +587,13 @@ function run_migrations(): void {
             ('mail_spam_enabled', '1'),
             ('mail_spam_prompt', 'Sen bir e-posta spam filtresisin. Sana verilen e-postayi incele ve SADECE \"Yes\" ya da \"No\" yaz. Reklam, phishing, dolandiricilik, istenmeyen toplu gonderim veya supheli ise \"Yes\"; gercek, kisisel veya mesru bir yazisma ise \"No\". Baska hicbir sey yazma.'),
             ('mail_spam_words', ''),
-            ('mail_spam_maxlen', '10000')");
+            ('mail_spam_maxlen', '10000'),
+            ('mail_spam_evren', '0'),
+            ('mail_spam_evren_model', 'clef'),
+            ('mail_spam_threshold', '0.7'),
+            ('mail_spam_clef_prompt', ''),
+            ('evren_llm_api_key', ''),
+            ('evren_llm_base_url', 'https://evren-llmapi.ssyz.org.tr')");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS legal_pages (
             slug       VARCHAR(60) NOT NULL PRIMARY KEY,
