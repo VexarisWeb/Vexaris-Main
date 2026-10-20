@@ -196,7 +196,16 @@ try {
                     if ($claim->rowCount() !== 1) continue;
                     $get->execute([$jid]);
                     $r = $get->fetch();
-                    if ($r) $rows[] = $r;
+                    if ($r) {
+                        /* Mağazaya özel AI relay sırrı işle birlikte gider (konteynere
+                           VX_RELAY_SECRET olarak yazılır). */
+                        try {
+                            $rs = $pdo->prepare("SELECT relay_secret FROM hosted_stores WHERE slug=? LIMIT 1");
+                            $rs->execute([(string)$r['slug']]);
+                            $r['relay_secret'] = trim((string)($rs->fetchColumn() ?: ''));
+                        } catch (Throwable $e) { $r['relay_secret'] = ''; }
+                        $rows[] = $r;
+                    }
                 }
             }
             $pdo->commit();

@@ -372,11 +372,16 @@ function run_migrations(): void {
             revenue    DECIMAL(14,2) NOT NULL DEFAULT 0.00,
             status     VARCHAR(20) NOT NULL DEFAULT 'active',
             reported_at DATETIME NULL,
+            relay_secret VARCHAR(64) NOT NULL DEFAULT '',
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY uq_hs_slug (slug),
             KEY idx_hs_user (user_id),
             KEY idx_hs_domain (domain)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        ensure_column($pdo, 'hosted_stores', 'relay_secret', "`relay_secret` VARCHAR(64) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosted_stores', 'custom_domain', "`custom_domain` VARCHAR(190) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosted_stores', 'custom_status', "`custom_status` VARCHAR(20) NOT NULL DEFAULT ''");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS hosting_jobs (
             id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

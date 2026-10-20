@@ -146,6 +146,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
             if ($logoErr !== '') stores_json(['ok' => false, 'msg' => $logoErr]);
         }
         try {
+            /* Mağazaya özel AI relay sırrı: AI istekleri bu sırla imzalanır,
+               böylece başka bir mağaza bu mağazanın kotasını/kredisini tüketemez.
+               (Sır konteynere provisioning ile VX_RELAY_SECRET olarak gider.) */
+            $relaySecret = bin2hex(random_bytes(32));
+            $dom = $slug . '.vexaris.app';
+            $stR = $pdo->prepare("SELECT id, relay_secret FROM hosted_stores WHERE slug=? LIMIT 1");
+            $stR->execute([$slug]);
+            $rowR = $stR->fetch();
+            if ($rowR) {
+                $pdo->prepare("UPDATE hosted_stores SET relay_secret=COALESCE(NULLIF(relay_secret,''),?), status=CASE WHEN status='deleted' THEN 'provisioning' ELSE status END WHERE id=?")
+                    ->execute([$relaySecret, (int)$rowR['id']]);
+            } else {
+                $pdo->prepare("INSERT INTO hosted_stores (user_id, slug, domain, plan, owner, status, relay_secret, created_at) VALUES (?,?,?,?,?,'provisioning',?,NOW())")
+                    ->execute([$uid, $slug, $dom, $effPlan, $uemail, $relaySecret]);
+            }
             $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category, logo_url) VALUES (?,?, ?,?,?, ?, 'provision','pending', ?, ?, ?)");
             $ins->execute([$uid, $slug, $effPlan, $uemail, $name, $langSel, $ohash, $cat, $logoUrl]);
             $jid = (int)$pdo->lastInsertId();

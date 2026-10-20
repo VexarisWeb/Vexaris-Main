@@ -24,8 +24,32 @@ if ($domain === '' || strlen($domain) > 253 || $timestamp <= 0 || !preg_match('/
 }
 if (abs(time() - $timestamp) > 300) { http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'stale']); exit; }
 
-$exp = hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, _vx_k());
-if (!hash_equals($exp, $signature)) { http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'bad signature']); exit; }
+/* İmza doğrulama: mağazaya özel sır (VX_RELAY_SECRET) varsa **yalnız onunla**
+   doğrulanır (paylaşılan anahtar kabul edilmez → başka mağazanın kotası
+   tüketilemez). Sırı olmayan eski/self-hosted mağazalar geriye uyumluluk için
+   ortak anahtarla çalışmaya devam eder. */
+$relayKeys = [];
+$hasStoreSecret = false;
+try {
+    $domLookup = $domain;
+    $stSec = $pdo->prepare("SELECT relay_secret FROM hosted_stores WHERE domain=? LIMIT 1");
+    $stSec->execute([$domLookup]);
+    $sec = trim((string)($stSec->fetchColumn() ?: ''));
+    if ($sec === '') {
+        $alt = preg_replace('/^www\./', '', $domain);
+        if ($alt !== $domain) {
+            $stSec->execute([$alt]);
+            $sec = trim((string)($stSec->fetchColumn() ?: ''));
+        }
+    }
+    if ($sec !== '') { $relayKeys[] = $sec; $hasStoreSecret = true; }
+} catch (Throwable $e) {}
+if (!$hasStoreSecret) $relayKeys[] = _vx_k();
+$sigOk = false;
+foreach ($relayKeys as $rk) {
+    if (hash_equals(hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, $rk), $signature)) { $sigOk = true; break; }
+}
+if (!$sigOk) { http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'bad signature']); exit; }
 
 try {
     if (random_int(1, 50) === 1) {
@@ -39,19 +63,28 @@ $domain = preg_replace('/^www\./', '', $domain);
 $domainWww = 'www.' . $domain;
 
 try {
+    /* Lisans eşleşmesi: en SPESIFIK eşleşme kazanır (tam alan adı > wildcard).
+       id-ASC ilk eşleşme, wildcard lisansların mağazanın kendi lisansını gölgelemesine
+       ve yanlış plan/kota uygulanmasına yol açıyordu. */
     $rows = $pdo->query("SELECT allowed_domains, features FROM licenses WHERE status='active' AND (suspended_until IS NULL OR suspended_until <= NOW()) ORDER BY id ASC")->fetchAll();
     $licensed = false;
     $licPlan = '';
+    $bestScore = -1;
     foreach ($rows as $row) {
         $list = json_decode((string)$row['allowed_domains'], true);
         if (!is_array($list)) continue;
         foreach ($list as $pattern) {
-            if (_vx_d($domain, (string)$pattern) || _vx_d($domainWww, (string)$pattern)) {
-                $licensed = true;
-                $lf = json_decode((string)($row['features'] ?? ''), true);
-                if (is_array($lf) && isset($lf['plan'])) $licPlan = strtolower(trim((string)$lf['plan']));
-                break 2;
-            }
+            $pattern = (string)$pattern;
+            $exact = (strtolower($pattern) === $domain || strtolower($pattern) === $domainWww);
+            $wild = (strncmp($pattern, '*.', 2) === 0);
+            if (!$exact && !$wild) continue;
+            if (!$exact && !(_vx_d($domain, $pattern) || _vx_d($domainWww, $pattern))) continue;
+            $score = $exact ? 100 : 10;
+            if ($score <= $bestScore) continue;
+            $bestScore = $score;
+            $licensed = true;
+            $lf = json_decode((string)($row['features'] ?? ''), true);
+            $licPlan = (is_array($lf) && isset($lf['plan'])) ? strtolower(trim((string)$lf['plan'])) : '';
         }
     }
 } catch (Exception $e) { $licensed = false; }
