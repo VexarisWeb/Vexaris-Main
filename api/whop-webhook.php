@@ -148,6 +148,18 @@ echo 'OK';
 
 if (!is_array($event)) return;
 $type = (string)($event['type'] ?? '');
+
+/* Son webhook teslimini kaydet (panelde "son webhook" gosterilir; teslim
+   gelmiyorsa sorun kaynagi tek bakista gorulur). */
+try {
+    $pdoTrack = db();
+    if ($pdoTrack) {
+        $up = $pdoTrack->prepare("INSERT INTO settings (`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)");
+        $up->execute(['whop_last_webhook_at', (string)time()]);
+        $up->execute(['whop_last_webhook_type', mb_substr($type, 0, 60)]);
+    }
+} catch (Throwable $e) {}
+
 $data = is_array($event['data'] ?? null) ? $event['data'] : [];
 $meta = is_array($data['metadata'] ?? null) ? $data['metadata'] : [];
 $orderNo = (string)($meta['order_no'] ?? '');

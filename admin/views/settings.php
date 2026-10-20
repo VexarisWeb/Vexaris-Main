@@ -170,7 +170,15 @@ $secPh = 'Kayıtlı — değiştirmek için yazın, boş bırakılırsa korunur'
             <input id="whHook" placeholder="Webhook Secret — whsec_... / ws_... (boş bırakılırsa değişmez)" type="password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-bottom:.4rem">
             <div style="font-size:.7rem;color:var(--muted);margin:-.2rem 0 .4rem"><?= $whHookHas?'<span style="color:#4ade80">● Webhook anahtarı kayıtlı</span>':'<span style="color:var(--muted)">○ Webhook anahtarı girilmedi</span>' ?> — <span style="color:var(--muted)">payment.succeeded vb. olaylar için</span></div>
             <label style="display:flex;gap:8px;align-items:center;font-size:.85rem;margin-bottom:.5rem"><input type="checkbox" id="whSandbox" <?= $whSandbox?'checked':'' ?>> Sandbox modu (sandbox-api.whop.com)</label>
-            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Webhook URL: <code><?= htmlspecialchars(SITE_URL) ?>/api/whop-webhook</code> — olaylar: <code>payment.succeeded</code>, <code>payment.failed</code></div>
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.6rem">Webhook URL: <code><?= htmlspecialchars(SITE_URL) ?>/api/whop-webhook</code> — olaylar: <code>payment.succeeded</code>, <code>payment.failed</code>, <code>payment.refunded</code>, <code>membership.*</code>, <code>dispute.*</code></div>
+            <?php $whLast = (int)setting_get('whop_last_webhook_at','0'); $whLastType = (string)setting_get('whop_last_webhook_type',''); ?>
+            <div style="font-size:.7rem;color:<?= $whLast > 0 ? 'var(--text)' : '#f0a04b' ?>;margin-bottom:.6rem">
+                <?php if ($whLast > 0): ?>
+                    <i class="fas fa-circle-check" style="color:#4ade80"></i> Son webhook: <b><?= date('d.m.Y H:i:s', $whLast) ?></b><?= $whLastType !== '' ? ' · <code>' . htmlspecialchars($whLastType) . '</code>' : '' ?>
+                <?php else: ?>
+                    <i class="fas fa-triangle-exclamation" style="color:#f0a04b"></i> <b>Henüz webhook gelmedi</b> — Whop Dashboard → Create Webhook kaydı yapılmamış (ödeme alınsa bile plan verilmez).
+                <?php endif; ?>
+            </div>
             <button onclick="saveWhop()" class="btn" style="width:100%;justify-content:center"><i class="fas fa-floppy-disk"></i> Kaydet</button>
             <button onclick="testWhop()" class="btn" style="width:100%;justify-content:center;margin-top:.4rem;background:rgba(0,212,255,.08)"><i class="fas fa-vial"></i> API Bağlantısını Test Et</button>
             <div id="whMsg" style="font-size:.78rem;margin-top:.4rem;display:none"></div>
