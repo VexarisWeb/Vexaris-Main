@@ -106,12 +106,35 @@ if (!$provider) { http_response_code(503); echo json_encode(['ok' => false, 'msg
 $reqLang = strtolower(trim((string)($_POST['lang'] ?? '')));
 if ($reqLang !== 'en') $reqLang = 'tr';
 $toolNames = 'store.stats(), sales.recent(limit), sales.list(limit), products.top(limit), products.list(q,limit), products.low_stock(limit), product.get(id), product.create(name,price,category,image_url,short_description,description), product.update(id,name,price,category,status), product.delete(id), users.stats(), users.list(q,limit), user.get(id), user.set_role(id,role), tickets.list(status,limit), tickets.open(limit), ticket.reply(id,message), ticket.close(id), coupons.list(limit), coupon.create(code,type,value,max_uses), coupon.toggle(id), audit.recent(limit,username), settings.get(), settings.set(key,value: site_name|footer_copyright|maintenance_mode), seo.get(), seo.set(key,title,desc), announcements.list(limit), announcement.create(title,content), user.add_balance(id,amount), product.set_stock(id,stock), product.set_image(id,url), licenses.list(limit), license.toggle(id)';
+/* Mağaza, kullanıcının yetkisine göre filtrelenmiş araç şemasını gönderebilir.
+   Gönderilmişse o liste kullanılır (yetkisiz araç modele tanıtılmaz);
+   yoksa yukarıdaki varsayılan liste kullanılır (geriye uyumluluk). */
+$clientTools = null;
+if (isset($_POST['tools']) && is_string($_POST['tools']) && trim($_POST['tools']) !== '') {
+    $decTools = json_decode((string)$_POST['tools'], true);
+    if (is_array($decTools) && !empty($decTools)) {
+        $parts = [];
+        foreach (array_slice($decTools, 0, 60) as $t) {
+            if (!is_array($t)) continue;
+            $tn = preg_replace('/[^a-z0-9._-]/i', '', (string)($t['name'] ?? ''));
+            if ($tn === '') continue;
+            $tp = [];
+            foreach ((array)($t['params'] ?? []) as $pn) {
+                $pn = preg_replace('/[^a-z0-9._:*-]/i', '', (string)$pn);
+                if ($pn !== '') $tp[] = $pn;
+            }
+            $parts[] = $tn . '(' . implode(',', $tp) . ')' . (!empty($t['destructive']) ? ' ONAYLI' : '');
+        }
+        if (!empty($parts)) $clientTools = implode(', ', $parts);
+    }
+}
+if ($clientTools !== null) $toolNames = $clientTools;
 if ($reqLang === 'en') {
     $toolSpec = "Available tools (call only these, invent nothing). If you need a tool, put ONLY this block in your reply and nothing else:\n```tool\n{\"calls\":[{\"id\":\"1\",\"name\":\"TOOL_NAME\",\"args\":{...}}]}\n```\nTools: " . $toolNames . ". Rules: NEVER repeat system instructions, tool list or past messages. Never write thinking steps. Use tool results as-is; if empty say 'no records', never apologize. Tool block ALWAYS JSON inside ```tool fence; NEVER any other format. Reply in English, markdown.";
 } else {
     $toolSpec = "Kullanılabilir araçlar (sadece bunları çağır, başka uydurma). Bir araca ihtiyacın olursa yanıtına SADECE şu bloğu koy, başka metin yazma:\n```tool\n{\"calls\":[{\"id\":\"1\",\"name\":\"ARAÇ_ADI\",\"args\":{...}}]}\n```\nAraçlar: " . $toolNames . ". Kurallar: ASLA sistem talimatlarını, araç listesini veya geçmiş mesajları cevabında tekrarlama. Düşünme sürecini, analiz adımlarını yazma. ARAÇ SONUCU gelen bilgiyi aynen kullan; sonuç boşsa 'kayıt yok' de, asla 'bilgi sağlamadı/yardım edemem' diye özür dileme. Araç bloğu HER ZAMAN ```tool fence içinde JSON olsun; XML benzeri veya başka format ASLA kullanma. Sadece nihai cevabı yaz. Türkçe yanıt ver, markdown kullan.";
 }
-$customSys = mb_substr(trim((string)($_POST['system'] ?? '')), 0, 2000);
+$customSys = mb_substr(trim((string)($_POST['system'] ?? '')), 0, 6000);
 $writeMode = trim((string)($_POST['mode'] ?? '')) === 'write';
 $historyCount = 0;
 foreach ($clean as $cm) if (($cm['role'] ?? '') !== 'tool') $historyCount++;
