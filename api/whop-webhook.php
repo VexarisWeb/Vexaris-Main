@@ -190,7 +190,7 @@ if (stripos($type, 'membership') !== false) {
             if ($memId === '') $memId = (string)($data['id'] ?? '');
             $mStatus = strtolower((string)($data['status'] ?? ''));
             $mValid = $data['valid'] ?? null;
-            if ($memId !== '' && (in_array($mStatus, ['cancelled', 'canceled', 'expired', 'invalid'], true) || $mValid === false || $mValid === 0 || $mValid === 'false')) {
+            if ($memId !== '' && (in_array($mStatus, ['cancelled', 'canceled', 'expired', 'invalid', 'deactivated', 'terminated'], true) || $mValid === false || $mValid === 0 || $mValid === 'false')) {
                 $sq = $pdo->prepare("SELECT user_id, whop_membership_id FROM user_subscriptions WHERE whop_membership_id=? LIMIT 1");
                 $sq->execute([$memId]);
                 $sRow = $sq->fetch();
@@ -230,17 +230,30 @@ if (stripos($type, 'membership') !== false) {
     }
     return;
 }
-if ($orderNo === '') {
-    error_log('Whop webhook: metadata.order_no yok (' . $type . ')');
-    return;
-}
-
 try {
     $pdo = db();
     if (!$pdo) return;
-    $st = $pdo->prepare("SELECT * FROM orders WHERE order_no = ? AND provider = 'whop' LIMIT 1");
-    $st->execute([$orderNo]);
-    $order = $st->fetch();
+    /* Siparis bulma: once metadata.order_no, yoksa odeme/refund id'si (provider_ref).
+       Whop'in iade/dispute olaylarinda metadata gelmeyebiliyor. */
+    $order = null;
+    if ($orderNo !== '') {
+        $st = $pdo->prepare("SELECT * FROM orders WHERE order_no = ? AND provider = 'whop' LIMIT 1");
+        $st->execute([$orderNo]);
+        $order = $st->fetch();
+    }
+    if (!$order) {
+        $refIds = [];
+        foreach (['id', 'object_id', 'payment_id'] as $ik) {
+            $v = trim((string)($data[$ik] ?? ''));
+            if ($v !== '') $refIds[] = $v;
+        }
+        foreach ($refIds as $rid) {
+            $st = $pdo->prepare("SELECT * FROM orders WHERE provider = 'whop' AND provider_ref = ? LIMIT 1");
+            $st->execute([$rid]);
+            $order = $st->fetch();
+            if ($order) break;
+        }
+    }
     if (!$order) {
         $rnPlan = strtolower((string)($meta['plan'] ?? ''));
         $rnUid = (int)($meta['user_id'] ?? 0);
@@ -256,7 +269,7 @@ try {
                 ->execute([$rnPlan, $rnCycle, $rnBase + $rnDays * 86400, $rnUid]);
             error_log('Whop webhook: yenileme uzatildi (siparis satiri yok, user=' . $rnUid . ')');
         } else {
-            error_log('Whop webhook: sipariş bulunamadı (' . $orderNo . ')');
+            error_log('Whop webhook: sipariş bulunamadı (' . ($orderNo !== '' ? $orderNo : 'meta yok') . ', tip=' . $type . ')');
         }
         return;
     }
@@ -359,18 +372,37 @@ try {
                 error_log('Whop plan grant: ' . $e->getMessage());
             }
         }
-    } elseif ($type === 'payment.failed') {
+    } elseif ($type === 'payment.failed' || $type === 'payment.canceled') {
         if ($order['status'] === 'pending') {
-            $pdo->prepare("UPDATE orders SET status = 'failed' WHERE id = ?")->execute([(int)$order['id']]);
+            $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?")
+                ->execute([$type === 'payment.canceled' ? 'cancelled' : 'failed', (int)$order['id']]);
         }
-    } elseif ($type === 'payment.refunded') {
-        $pdo->prepare("UPDATE orders SET status = 'refunded' WHERE id = ?")->execute([(int)$order['id']]);
+    } elseif ($type === 'payment.refunded' || $type === 'refund.created' || $type === 'refund.updated') {
+        /* Whop'ta iade olayi "refund.created" (payment.refunded diye bir event YOK).
+           Siparis metadata'dan bulunur; yoksa odeme/refund id'sinden turetilir. */
+        $refOrder = $order;
+        if ($type !== 'payment.refunded') {
+            $refId = (string)($data['object_id'] ?? $data['id'] ?? '');
+            $rq = $pdo->prepare("SELECT * FROM orders WHERE provider='whop' AND (order_no=? OR provider_ref=?) LIMIT 1");
+            $rq->execute([$orderNo, $refId]);
+            $foundRef = $rq->fetch();
+            if ($foundRef) $refOrder = $foundRef;
+        }
+        $pdo->prepare("UPDATE orders SET status = 'refunded' WHERE id = ?")->execute([(int)$refOrder['id']]);
         $rfPlan = strtolower((string)($meta['plan'] ?? ''));
-        $rfUid = (int)$order['user_id'];
-        $rfPid = (int)($order['product_id'] ?? 0);
+        $rfUid = (int)$refOrder['user_id'];
+        $rfPid = (int)($refOrder['product_id'] ?? 0);
         /* Iade edilen urunun erisimi geri alinir. */
         if ($rfUid > 0 && $rfPid > 0) whop_revoke_product_access($pdo, $rfUid, $rfPid);
-        if ($rfUid > 0 && isset(whop_plan_offers()[$rfPlan])) {
+        /* Metadata yoksa mevcut aboneliğin plani kullanilir (iade planı iptal eder). */
+        if ($rfUid > 0 && $rfPlan === '') {
+            try {
+                $subQ = $pdo->prepare("SELECT plan FROM user_subscriptions WHERE user_id=? LIMIT 1");
+                $subQ->execute([$rfUid]);
+                $rfPlan = strtolower((string)($subQ->fetchColumn() ?: ''));
+            } catch (Throwable $e) {}
+        }
+        if ($rfUid > 0 && ($rfPlan !== '' || isset(whop_plan_offers()[$rfPlan]))) {
             $pdo->prepare("UPDATE user_subscriptions SET status='cancelled' WHERE user_id=?")->execute([$rfUid]);
             $lq = $pdo->prepare("SELECT id, features FROM licenses WHERE user_id=?");
             $lq->execute([$rfUid]);
