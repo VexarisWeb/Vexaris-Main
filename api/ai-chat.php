@@ -31,15 +31,28 @@ if (abs(time() - $timestamp) > 300) { http_response_code(400); echo json_encode(
 $relayKeys = [];
 $hasStoreSecret = false;
 try {
-    $domLookup = $domain;
-    $stSec = $pdo->prepare("SELECT relay_secret FROM hosted_stores WHERE domain=? LIMIT 1");
-    $stSec->execute([$domLookup]);
-    $sec = trim((string)($stSec->fetchColumn() ?: ''));
+    /* Mağaza sırrı slug üzerinden bulunur: hosted_stores.domain alanı eski
+       (.vexaris.net) kalabiliyor, mağaza ise kanonik .vexaris.app domain'i ile
+       imza atıyor. Sırrı domain'e göre aramak eşleşmeyi kaçırırdı. */
+    $sec = '';
+    $slugGuess = '';
+    if (preg_match('/^([a-z0-9][a-z0-9\-]*)\./i', $domain, $mSlug)) $slugGuess = strtolower($mSlug[1]);
+    if ($slugGuess !== '') {
+        $stSec = $pdo->prepare("SELECT relay_secret FROM hosted_stores WHERE slug=? LIMIT 1");
+        $stSec->execute([$slugGuess]);
+        $sec = trim((string)($stSec->fetchColumn() ?: ''));
+    }
     if ($sec === '') {
-        $alt = preg_replace('/^www\./', '', $domain);
-        if ($alt !== $domain) {
-            $stSec->execute([$alt]);
-            $sec = trim((string)($stSec->fetchColumn() ?: ''));
+        $domLookup = $domain;
+        $stSec = $pdo->prepare("SELECT relay_secret FROM hosted_stores WHERE domain=? LIMIT 1");
+        $stSec->execute([$domLookup]);
+        $sec = trim((string)($stSec->fetchColumn() ?: ''));
+        if ($sec === '') {
+            $alt = preg_replace('/^www\./', '', $domain);
+            if ($alt !== $domain) {
+                $stSec->execute([$alt]);
+                $sec = trim((string)($stSec->fetchColumn() ?: ''));
+            }
         }
     }
     if ($sec !== '') { $relayKeys[] = $sec; $hasStoreSecret = true; }

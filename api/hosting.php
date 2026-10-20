@@ -198,11 +198,18 @@ try {
                     $r = $get->fetch();
                     if ($r) {
                         /* Mağazaya özel AI relay sırrı işle birlikte gider (konteynere
-                           VX_RELAY_SECRET olarak yazılır). */
+                           VX_RELAY_SECRET olarak yazılır). Sırı olmayan eski mağazalar
+                           için ilk işte üretilir (geriye uyum + güvenlik geçişi). */
                         try {
-                            $rs = $pdo->prepare("SELECT relay_secret FROM hosted_stores WHERE slug=? LIMIT 1");
+                            $rs = $pdo->prepare("SELECT id, relay_secret FROM hosted_stores WHERE slug=? LIMIT 1");
                             $rs->execute([(string)$r['slug']]);
-                            $r['relay_secret'] = trim((string)($rs->fetchColumn() ?: ''));
+                            $srow = $rs->fetch();
+                            $rsec = $srow ? trim((string)($srow['relay_secret'] ?? '')) : '';
+                            if ($srow && $rsec === '') {
+                                $rsec = bin2hex(random_bytes(32));
+                                $pdo->prepare("UPDATE hosted_stores SET relay_secret=? WHERE id=?")->execute([$rsec, (int)$srow['id']]);
+                            }
+                            $r['relay_secret'] = $rsec;
                         } catch (Throwable $e) { $r['relay_secret'] = ''; }
                         $rows[] = $r;
                     }
