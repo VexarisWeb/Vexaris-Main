@@ -30,4 +30,19 @@ User-agent: Offline Explorer
 User-agent: SiteSucker
 Disallow: /
 
+# AI arama / cevap motorlari — gorunurluk icin acik
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: PerplexityBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /user/
+Disallow: /dashboard
+
 Sitemap: https://vexaris.net/sitemap.xml

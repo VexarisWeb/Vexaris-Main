@@ -31,6 +31,10 @@ $GLOBALS['seoKey'] = 'license_check';
     <div class="absolute inset-0 dotgrid opacity-60 [mask-image:radial-gradient(70%_60%_at_50%_20%,#000_20%,transparent_100%)]" aria-hidden="true"></div>
     <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full bg-[#4f8fc0]/[.06] blur-[120px]" aria-hidden="true"></div>
     <div class="container" style="max-width:560px;position:relative;z-index:1;margin:0 auto;padding:0 20px">
+        <div style="text-align:center;margin-bottom:1.8rem">
+            <h1 style="font-size:1.65rem;line-height:1.25;font-weight:800;margin:0 0 .55rem;color:#e9e7e2">License Check</h1>
+            <p style="margin:0;color:#9aa3ac;font-size:.95rem;line-height:1.6">Enter a store domain to verify that its Vexaris license is active, which plan it runs on and which features it covers.</p>
+        </div>
         <div style="margin-bottom:1rem">
             <label for="licsDomain" style="display:block;font-size:.88rem;color:#cbd5e1;margin-bottom:.5rem;font-weight:600">Domain</label>
             <div style="position:relative">

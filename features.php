@@ -8,7 +8,7 @@ $loggedIn = is_logged_in();
 $cu = current_user();
 $GLOBALS['seoKey'] = 'features';
 $GLOBALS['seoFallback'] = [
-  'title' => 'Features - Vexaris',
+  'title' => 'Vexaris Features: Store, Delivery, Licenses, Payments',
   'description' => 'Vexaris features: product and stock management, coupons, automatic delivery, license keys, 12+ payment integrations, visual theme editor, modules and more.',
 ];
 
@@ -92,6 +92,8 @@ function feat_search($f) {
           <h1 class="mt-3 font-display font-extrabold tracking-tight text-4xl sm:text-5xl lg:text-[3.4rem] leading-[1.05]">Your entire store power,<br />in one panel.</h1>
           <p class="mt-4 text-[15px] leading-relaxed text-[#9aa3ac]">All platform modules are listed below. Find them fast with search.</p>
         </div>
+
+        <h2 class="reveal mt-16 text-center font-display font-bold tracking-tight text-2xl sm:text-3xl">Everything a digital product store needs</h2>
 
         <div class="reveal mt-8 max-w-xl mx-auto" style="--rd:150ms">
           <div class="relative">

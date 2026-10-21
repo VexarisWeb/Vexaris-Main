@@ -26,6 +26,7 @@ function seo_page_build(PDO $pdo, string $key, array $fallback, ?array $post = n
         $def['og_description'] = trim((string)($post['og_description'] ?? '')) !== '' ? $post['og_description'] : $def['description'];
         $def['og_image']    = trim((string)($post['og_image'] ?? '')) !== '' ? $post['og_image'] : ($post['cover_image'] ?? '');
         $def['published']   = (string)($post['created_at'] ?? '');
+        $def['modified']    = (string)($post['updated_at'] ?? '');
         $def['author']      = (string)($post['author_name'] ?? '');
         $def['slug']        = (string)($post['slug'] ?? '');
         return $def;
@@ -207,6 +208,7 @@ function seo_render_head(array $seo): void {
             'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $canonUrl],
             'image' => $ogImg,
             'datePublished' => trim((string)($seo['published'] ?? '')),
+            'dateModified' => trim((string)($seo['modified'] ?? '')) !== '' ? (string)$seo['modified'] : trim((string)($seo['published'] ?? '')),
             'publisher' => ['@type' => 'Organization', 'name' => 'Vexaris', 'logo' => ['@type' => 'ImageObject', 'url' => $base . '/assets/images/vexaris-logo.png']],
         ];
         if (trim((string)($seo['author'] ?? '')) !== '') {
@@ -215,8 +217,30 @@ function seo_render_head(array $seo): void {
         if ($slug !== '') {
             $ld['mainEntityOfPage'] = ['@type' => 'WebPage', '@id' => $base . '/' . ltrim($slug, '/')];
         }
+    } elseif (!in_array($key, ['pricing', 'blog'], true)) {
+        $ld = [
+            '@context' => 'https://schema.org',
+            '@type' => 'WebPage',
+            'name' => $title,
+            'url' => $canonUrl,
+            'description' => $desc,
+            'inLanguage' => 'en',
+            'publisher' => ['@type' => 'Organization', 'name' => 'Vexaris', 'url' => $base . '/'],
+        ];
     }
     if ($ld !== null) {
         echo '    <script type="application/ld+json">' . json_encode($ld, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
+    }
+    if ($key === 'blog-post' && trim((string)($seo['slug'] ?? '')) !== '') {
+        $bc = [
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => [
+                ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => $base . '/'],
+                ['@type' => 'ListItem', 'position' => 2, 'name' => 'Blog', 'item' => $base . '/blog'],
+                ['@type' => 'ListItem', 'position' => 3, 'name' => $title, 'item' => $canonUrl],
+            ],
+        ];
+        echo '    <script type="application/ld+json">' . json_encode($bc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
     }
 }

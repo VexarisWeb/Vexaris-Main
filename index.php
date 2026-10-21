@@ -9,6 +9,10 @@ boot_session();
 // Bilinmeyen yol buraya düşerse (nginx fallback) soft-404 yerine gerçek 404 ver.
 // Meşru: "/" ve "/index.php" (sorgu dizgisi serbest).
 $__reqPath = parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+if ($__reqPath === '/index.php') {
+    header('Location: /', true, 301);
+    exit;
+}
 if ($__reqPath !== '/' && $__reqPath !== '/index.php') {
     http_response_code(404);
     require __DIR__ . '/404.php';

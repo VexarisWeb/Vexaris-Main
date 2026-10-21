@@ -115,6 +115,22 @@ $VEX_LOGO = '/assets/images/vexaris-logo.png';
     .blog-empty i { font-size: 2.6rem; color: rgba(0,212,255,.35); display: block; margin-bottom: .8rem; }
 </style>
 
+<?php if ($posts): ?>
+<script type="application/ld+json"><?= json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'CollectionPage',
+    'name' => 'Vexaris Blog',
+    'url' => 'https://vexaris.net/blog',
+    'description' => 'Guides and fee comparisons for digital product sellers.',
+    'mainEntity' => [
+        '@type' => 'ItemList',
+        'numberOfItems' => count($posts),
+        'itemListElement' => array_values(array_map(function ($i, $p) {
+            return ['@type' => 'ListItem', 'position' => $i + 1, 'url' => 'https://vexaris.net/' . $p['slug'], 'name' => $p['title']];
+        }, array_keys($posts), $posts)),
+    ],
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
+<?php endif; ?>
 <?php include __DIR__ . '/footer.php'; ?>
 <?php include __DIR__ . '/includes/modals.php'; ?>
 </div>
