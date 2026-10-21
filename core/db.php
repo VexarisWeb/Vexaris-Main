@@ -1235,17 +1235,83 @@ function hosting_slug_check(string $slug): string {
     return '';
 }
 
+// ── Migration ledger ─────────────────────────────────────────
+// Sema değişiklikleri artık "defter" (schema_migrations) ile izlenir.
+// İstek yolunda DDL çalışmaz: sürüm eşleşiyorsa tek bir SELECT yeter.
+// Kod değişince sürüm hash'i değişir -> bekleyen migration varsa CLI/guard
+// çalıştırır (bkz. /root/vexaris-migrate.php ve cron).
+function vx_schema_version(): string {
+    static $v = null;
+    if ($v !== null) return $v;
+    try {
+        $r = new ReflectionFunction('run_migrations');
+        $src = $r->getFileName();
+        $lines = file($src) ?: [];
+        $start = $r->getStartLine() - 1;
+        $end   = $r->getEndLine();
+        $chunk = implode('', array_slice($lines, $start, max(1, $end - $start)));
+        $v = substr(sha1($chunk), 0, 16);
+    } catch (Throwable $e) {
+        $v = 'unknown';
+    }
+    return $v;
+}
+
+function vx_migration_ledger_table(PDO $pdo): bool {
+    try {
+        $st = $pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='schema_migrations'");
+        $st->execute();
+        if ((int)$st->fetchColumn() < 1) return false;
+        $st2 = $pdo->prepare("SELECT COUNT(*) FROM schema_migrations WHERE version = ?");
+        $st2->execute([vx_schema_version()]);
+        return (int)$st2->fetchColumn() > 0;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function vx_migration_mark(PDO $pdo): void {
+    try {
+        $pdo->prepare("CREATE TABLE IF NOT EXISTS schema_migrations (
+            version     VARCHAR(32) NOT NULL PRIMARY KEY,
+            applied_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")->execute();
+        $pdo->prepare("INSERT IGNORE INTO schema_migrations (version, applied_at) VALUES (?, NOW())")
+            ->execute([vx_schema_version()]);
+        $pdo->prepare("DELETE FROM schema_migrations WHERE applied_at < DATE_SUB(NOW(), INTERVAL 365 DAY)")->execute();
+    } catch (Throwable $e) {
+        error_log('schema_migrations isaretleme hatası: ' . $e->getMessage());
+    }
+}
+
 // ── Sayfa yüklenince migrate et (30 dk'da bir; her istekte 30+ DDL
 // sorgusu bot yükünde CPU patlatıyordu, IF NOT EXISTS güvencesiyle atlanır)
 if (!function_exists('run_migrations_guarded')) {
     function run_migrations_guarded(): void {
+        static $done = false;
+        if ($done) return;
+        $done = true;
+        // Siteye özel bayrak (eskiden sys_get_temp_dir() idi -> box'taki
+        // tüm siteler birbirinin flag'ini kullanıyordu).
+        $flagDir = '/var/cache/vexaris-mainsite';
+        if (!is_dir($flagDir)) @mkdir($flagDir, 0755, true);
+        $flag = $flagDir . '/mig_' . vx_schema_version();
+        $mtime = @filemtime($flag);
+        if ($mtime !== false && (time() - $mtime) < 300) return;   // 5 dk'da bir kontrol
+
+        $pdo = db();
+        if (!$pdo) return;
         try {
-            $flag = sys_get_temp_dir() . '/vexaris_mig_ok';
-            $mtime = @filemtime($flag);
-            if ($mtime !== false && (time() - $mtime) < 1800) return;
+            // Defter güncelse HİÇ DDL çalıştırma.
+            if (vx_migration_ledger_table($pdo)) {
+                @touch($flag);
+                return;
+            }
             run_migrations();
+            vx_migration_mark($pdo);
             @touch($flag);
         } catch (Throwable $e) {
+            error_log('Vexaris migration hatası: ' . $e->getMessage());
             try { run_migrations(); } catch (Throwable $e2) {}
         }
     }
