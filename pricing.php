@@ -79,9 +79,9 @@ foreach ($PLANS as $pl) {
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
   <link rel="icon" type="image/png" href="./assets/images/vexaris-logo.png" />
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <noscript><style>.reveal{opacity:1 !important;transform:none !important;}.line-mask>span{transform:none !important;}</style></noscript>
   <link rel="stylesheet" href="./assets/css/style.css?v=<?= filemtime(__DIR__ . '/assets/css/style.css') ?>" />
+  <link rel="stylesheet" href="./assets/css/tailwind.css?v=<?= filemtime(__DIR__ . '/assets/css/tailwind.css') ?>" />
   <script type="application/ld+json"><?= json_encode(['@context' => 'https://schema.org','@type' => 'Product','name' => 'Vexaris','description' => 'Digital product sales platform with hosted store plans.','image' => 'https://vexaris.net/assets/images/vexaris-logo.png','brand' => ['@type' => 'Brand','name' => 'Vexaris'],'offers' => $offerJson], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
   <script type="application/ld+json"><?= json_encode(['@context' => 'https://schema.org','@type' => 'FAQPage','mainEntity' => $faqJson], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
 </head>
