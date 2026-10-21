@@ -1,27 +1,36 @@
 # Vexaris
 
-> Self-hosted e-commerce infrastructure for selling digital products. List products, accept payments, and deliver automatically — all from one panel.
+> Hosted storefront platform for selling digital products — 0% commission, instant automatic delivery. Also available as self-hosted software.
 
-Vexaris is free, self-hosted software for selling digital goods: e-pins, license keys, software packages, Minecraft plugins, server setups, e-books and downloadable files. Sellers apply for access; approved accounts receive the product, a license key, and panel access.
+Vexaris is a selling platform for digital goods: e-pins, license keys, software packages, Minecraft plugins, server setups, Discord boosts, e-books and downloadable files. Sellers get a hosted store on `x.vexaris.app` (no server setup required) or can self-host the script.
 
 - Homepage: https://vexaris.net/
 - Features: https://vexaris.net/features
 - Pricing: https://vexaris.net/pricing (Free $0, Starter $6.99, Professional $14.99, Enterprise $39.99; yearly billing −20%)
 - Blog: https://vexaris.net/blog
 - License check: https://vexaris.net/license-check
-- Demo: https://demo.vexaris.net
+- Live demo: https://demo.vexaris.net
 - Status: https://status.vexaris.com.tr
+- Contact: info@vexaris.net
+
+## Pricing and plans
+
+- Free — $0 forever: 7 products, $100 revenue cap, 10 GB traffic, hosted store, `x.vexaris.app` subdomain, 1 theme, support tickets.
+- Starter — $6.99/month (or $5.59/month billed yearly): 35 products, $1,000 revenue, 50 GB traffic, custom domain, coupon system, 2 themes.
+- Professional — $14.99/month (or $11.99/month billed yearly): 75 products, $5,000 revenue, 200 GB traffic, API access, Vexaris AI, 3 themes.
+- Enterprise — $39.99/month (or $31.99/month billed yearly): unlimited products and revenue, 1,000 GB traffic, 30+ team seats, all themes.
+- Vexaris takes 0% commission on sales. No listing fees, no monthly platform fee on Free.
 
 ## How it works
 
 1. Publish your product: upload zip/rar/7z/jar files or paste one-per-line e-pins and license keys. Price, discount, category and ordering in a single form.
 2. Customer checks out: cart, coupons, balance or card payment with silent Turnstile verification.
-3. System delivers: the second payment is approved, a stock line is pulled, the license key is signed, and files land in the customer's library. Average delivery time: 0.4 seconds.
+3. System delivers: as soon as the payment is approved, a stock line is pulled, the license key is signed, and files land in the customer's library. Average delivery time: 0.4 seconds.
 4. Support and updates: tickets, new versions and download lists are built in.
 
 ## Payments
 
-9 payment and sales integrations: Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, Paywant and Whop. Crypto, installments, 3D Secure, saved cards, IPN/webhook approval. Card details never touch Vexaris servers.
+12 payment and sales integrations: Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, Paywant, Whop, Dodo Payments, Paddle and Lemon Squeezy. Crypto, installments, 3D Secure, saved cards, IPN/webhook approval, and balance (wallet) payments. Card details never touch Vexaris servers.
 
 ## Store modules
 
@@ -30,23 +39,20 @@ Vexaris is free, self-hosted software for selling digital goods: e-pins, license
 - Support tickets (categories, priorities, messaging, history)
 - Roles & permissions (admin, manager, moderator, support team)
 - Themes (default, azure, ember) and integrations (social login, captcha, live support)
-- Mail templates & SEO (customizable transactional mails, titles, descriptions, OG tags)
-- Blog, announcements, FAQ, reviews, licenses, version tracking, applications
+- Mail templates & SEO (customizable transactional mails, titles, descriptions, OG tags, canonical, JSON-LD)
+- Blog, announcements, FAQ, reviews, licenses, version tracking
 - Maintenance mode, scheduled publishing, categories, sliders, download tokens
+- Vexaris AI: product descriptions, announcements and SEO fields, plus a store assistant
 
 ## Accounts and access
 
-- Registration is open; seller applications are reviewed within 24 hours.
+- Registration is open and instant — no application, no manual review.
 - Sign-in supports email/password plus Google, Discord, GitHub and Microsoft OAuth.
 - Forgot-password flow uses a 6-digit emailed code; sessions can be managed per device.
-- Free plan: application-based, limited products, x.vexaris.net subdomain.
+- Free plan: self-serve, hosted store on an `x.vexaris.app` subdomain, 7 products.
+- Paid plans add a custom domain, higher product/revenue/traffic limits, API access and Vexaris AI.
 
 ## Licensing
 
-Each install is bound to licensed domains (subdomains included) with online verification. License status can be checked at https://vexaris.net/license-check. Self-host setup is available on special request; standard use runs on Vexaris SaaS infrastructure hosted abroad.
-
-## Support
-
-- Support tickets and Discord notifications with webhooks
-- Contact: info@vexaris.net
-- Docs and updates ship through the in-panel blog and changelog
+- Each store has a license key and a domain allow-list; plans and limits are enforced per domain.
+- Updates are delivered to licensed stores; new versions appear in the seller's download list.
