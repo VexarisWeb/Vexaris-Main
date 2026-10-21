@@ -21,7 +21,7 @@ try { require_once __DIR__ . '/core/whop.php'; $whopOn = whop_payments_enabled()
 $GLOBALS['seoKey'] = 'home';
 
 $BASE = '';
-$VEX_DASH = './assets/images/dashboard.png';
+$VEX_DASH = './assets/images/dashboard.png.webp';
 // Not: footer linkleri tek kaynaktan gelir (includes/data.php).
 
 $PAYMENTS = [
@@ -40,27 +40,27 @@ $PAYMENTS = [
 ];
 // Entegrasyon şeridi: logo dosyası olanlar görsel, olmayanlar yazı olarak çıkar
 $LOGOS = [
-  ['name'=>'Shopier','file'=>'shopier.png'],
-  ['name'=>'PayTR','file'=>'paytr.png'],
-  ['name'=>'Paywant','file'=>'paywant.png'],
-  ['name'=>'iyzico','file'=>'iyzico.png'],
-  ['name'=>'Stripe','file'=>'stripe.png'],
-  ['name'=>'PayPal','file'=>'paypal.png'],
-  ['name'=>'BitPay','file'=>'bitpay.png'],
-  ['name'=>'Cryptomus','file'=>'cryptomus.png'],
-  ['name'=>'Whop','file'=>'whop.jpg'],
-  ['name'=>'Dodo Payments','file'=>'dodopayments.jpg'],
-  ['name'=>'Paddle','file'=>'paddle.jpg'],
-  ['name'=>'Lemon Squeezy','file'=>'lemonsqueezy.jpg'],
-  ['name'=>'Google Auth','file'=>'google.png'],
-  ['name'=>'Discord Auth','file'=>'discord.png'],
-  ['name'=>'Microsoft Auth','file'=>'microsoft.png'],
-  ['name'=>'GitHub Auth','file'=>'github.png','chip'=>true],
-  ['name'=>'Cloudflare Turnstile','file'=>'cloudflare.png'],
-  ['name'=>'reCAPTCHA','file'=>'recaptcha.png'],
-  ['name'=>'Tawk.to','file'=>'tawkto.png'],
-  ['name'=>'Crisp','file'=>'crispchat.png'],
-  ['name'=>'JivoChat','file'=>'jivochat.png'],
+  ['name'=>'Shopier','file'=>'shopier.png.webp'],
+  ['name'=>'PayTR','file'=>'paytr.png.webp'],
+  ['name'=>'Paywant','file'=>'paywant.png.webp'],
+  ['name'=>'iyzico','file'=>'iyzico.png.webp'],
+  ['name'=>'Stripe','file'=>'stripe.png.webp'],
+  ['name'=>'PayPal','file'=>'paypal.png.webp'],
+  ['name'=>'BitPay','file'=>'bitpay.png.webp'],
+  ['name'=>'Cryptomus','file'=>'cryptomus.png.webp'],
+  ['name'=>'Whop','file'=>'whop.jpg.webp'],
+  ['name'=>'Dodo Payments','file'=>'dodopayments.jpg.webp'],
+  ['name'=>'Paddle','file'=>'paddle.jpg.webp'],
+  ['name'=>'Lemon Squeezy','file'=>'lemonsqueezy.jpg.webp'],
+  ['name'=>'Google Auth','file'=>'google.png.webp'],
+  ['name'=>'Discord Auth','file'=>'discord.png.webp'],
+  ['name'=>'Microsoft Auth','file'=>'microsoft.png.webp'],
+  ['name'=>'GitHub Auth','file'=>'github.png.webp','chip'=>true],
+  ['name'=>'Cloudflare Turnstile','file'=>'cloudflare.png.webp'],
+  ['name'=>'reCAPTCHA','file'=>'recaptcha.png.webp'],
+  ['name'=>'Tawk.to','file'=>'tawkto.png.webp'],
+  ['name'=>'Crisp','file'=>'crispchat.png.webp'],
+  ['name'=>'JivoChat','file'=>'jivochat.png.webp'],
   ['name'=>'Google Analytics','file'=>null],
 ];
 $STEPS = [
@@ -313,12 +313,12 @@ function vex_logo_item($l){
           <p class="mt-4 text-[15px] leading-relaxed text-[#9aa3ac]">Offer your customers the most convenient payment method with 12 payment and sales integrations.</p>
         </div>
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-           <?php $PAY_LOGOS = ['shopier'=>'shopier.png','paytr'=>'paytr-blue.png','iyzico'=>'iyzico.png','stripe'=>'stripe.png','paypal'=>'paypal.png','bitpay'=>'bitpay.png','cryptomus'=>'cryptomus.png','paywant'=>'paywant.png','whop'=>'whop.jpg','dodo'=>'dodopayments.jpg','paddle'=>'paddle.jpg','lemon'=>'lemonsqueezy.jpg']; ?>
+           <?php $PAY_LOGOS = ['shopier'=>['shopier.png.webp',1182,343], 'paytr'=>['paytr-blue.png.webp',820,146], 'iyzico'=>['iyzico.png.webp',820,356], 'stripe'=>['stripe.png.webp',800,380], 'paypal'=>['paypal.png.webp',800,208], 'bitpay'=>['bitpay.png.webp',800,281], 'cryptomus'=>['cryptomus.png.webp',820,922], 'paywant'=>['paywant.png.webp',447,447], 'whop'=>['whop.jpg.webp',400,400], 'dodo'=>['dodopayments.jpg.webp',400,400], 'paddle'=>['paddle.jpg.webp',400,400], 'lemon'=>['lemonsqueezy.jpg.webp',400,400]]; ?>
           <?php foreach ($PAYMENTS as $i => $pp): ?>
           <div class="reveal" style="--rd:<?= ($i % 3) * 80 ?>ms">
             <article class="card pay-card h-full p-6 flex items-start gap-4">
               <span class="grid place-items-center w-14 h-14 rounded-xl bg-white/[.96] p-1.5 shrink-0">
-                <img src="./assets/images/<?= $PAY_LOGOS[$pp['id']] ?>" alt="<?= htmlspecialchars($pp['name']) ?>" loading="lazy" draggable="false" class="max-w-full max-h-full object-contain" />
+                <img src="./assets/images/<?= $PAY_LOGOS[$pp['id']][0] ?>" alt="<?= htmlspecialchars($pp['name']) ?>" width="<?= $PAY_LOGOS[$pp['id']][1] ?>" height="<?= $PAY_LOGOS[$pp['id']][2] ?>" loading="lazy" decoding="async" draggable="false" class="max-w-full max-h-full object-contain" />
               </span>
               <span class="min-w-0">
                 <span class="block font-display font-bold text-[17px] tracking-tight"><?= htmlspecialchars($pp['name']) ?></span>
