@@ -3,6 +3,7 @@ require_once __DIR__ . '/db.php';
 
 function seo_page_build(PDO $pdo, string $key, array $fallback, ?array $post = null): array {
     $def = [
+        'key'         => $key,
         'title'       => $fallback['title'] ?? 'Vexaris - E-Ticaret Platformu',
         'description' => $fallback['description'] ?? '',
         'keywords'    => '',
@@ -11,6 +12,9 @@ function seo_page_build(PDO $pdo, string $key, array $fallback, ?array $post = n
         'og_title'    => '',
         'og_description' => '',
         'og_image'    => '',
+        'published'   => '',
+        'author'      => '',
+        'slug'        => '',
     ];
     if ($post !== null) {
         $def['title']       = trim((string)($post['meta_title'] ?? '')) !== '' ? $post['meta_title'] : ($post['title'] ?? $def['title']);
@@ -21,6 +25,9 @@ function seo_page_build(PDO $pdo, string $key, array $fallback, ?array $post = n
         $def['og_title']    = trim((string)($post['og_title'] ?? '')) !== '' ? $post['og_title'] : $def['title'];
         $def['og_description'] = trim((string)($post['og_description'] ?? '')) !== '' ? $post['og_description'] : $def['description'];
         $def['og_image']    = trim((string)($post['og_image'] ?? '')) !== '' ? $post['og_image'] : ($post['cover_image'] ?? '');
+        $def['published']   = (string)($post['created_at'] ?? '');
+        $def['author']      = (string)($post['author_name'] ?? '');
+        $def['slug']        = (string)($post['slug'] ?? '');
         return $def;
     }
     $prefix = 'seo_' . $key . '_';
@@ -116,23 +123,100 @@ function seo_render_head(array $seo): void {
     $ogT  = trim($seo['og_title'] ?? '') !== '' ? $seo['og_title'] : $title;
     $ogD  = trim($seo['og_description'] ?? '') !== '' ? $seo['og_description'] : $desc;
     $ogI  = trim($seo['og_image'] ?? '');
-    $url  = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? '');
+    $key  = (string)($seo['key'] ?? '');
+
+    /* Kanonik URL: sabit SITE_URL + yol. Host başlığına ve sorgu
+       string'ine güvenilmez (canonical/og:url zehirleme + duplicate içerik). */
+    $base = defined('SITE_URL') ? rtrim((string)SITE_URL, '/') : 'https://vexaris.net';
+    $path = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/');
+    $path = '/' . trim($path, '/');
+    if ($path === '/') $path = '/';
+    $selfUrl = $base . $path;
+    if ($can !== '') {
+        if (preg_match('#^https?://#i', $can)) {
+            $canonUrl = $can;
+        } else {
+            $canonUrl = $base . '/' . ltrim($can, '/');
+        }
+    } else {
+        $canonUrl = $selfUrl;
+    }
+
+    $ogType = ($key === 'blog-post') ? 'article' : 'website';
+    $defaultOg = $base . '/assets/images/og-cover.png';
+    $ogImg = $ogI !== '' ? $ogI : $defaultOg;
+
     echo '<title>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</title>' . "\n";
     if ($desc !== '') echo '    <meta name="description" content="' . htmlspecialchars($desc, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     if ($kw !== '') echo '    <meta name="keywords" content="' . htmlspecialchars($kw, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     if ($noindex) {
         echo '    <meta name="robots" content="noindex, nofollow">' . "\n";
     }
-    if ($can !== '') echo '    <link rel="canonical" href="' . htmlspecialchars($can, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    $selfPath = parse_url($url, PHP_URL_PATH);
-    $selfBase = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? '') . ($selfPath ?: '/');
-    $canonUrl = $can !== '' ? $can : $selfBase;
-    echo '    <link rel="alternate" hreflang="en" href="' . htmlspecialchars($canonUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    echo '    <link rel="alternate" hreflang="x-default" href="' . htmlspecialchars($canonUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    echo '    <link rel="canonical" href="' . htmlspecialchars($canonUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     echo '    <meta property="og:title" content="' . htmlspecialchars($ogT, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     if ($ogD !== '') echo '    <meta property="og:description" content="' . htmlspecialchars($ogD, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    if ($ogI !== '') echo '    <meta property="og:image" content="' . htmlspecialchars($ogI, ENT_QUOTES, 'UTF-8') . '">' . "\n";
-    echo '    <meta property="og:url" content="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    echo '    <meta property="og:image" content="' . htmlspecialchars($ogImg, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    echo '    <meta property="og:url" content="' . htmlspecialchars($canonUrl, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     echo '    <meta property="og:site_name" content="' . htmlspecialchars($site, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    echo '    <meta property="og:type" content="' . $ogType . '">' . "\n";
+    echo '    <meta property="og:locale" content="en_US">' . "\n";
+    if ($ogType === 'article' && trim((string)($seo['published'] ?? '')) !== '') {
+        echo '    <meta property="article:published_time" content="' . htmlspecialchars((string)$seo['published'], ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    }
     echo '    <meta name="twitter:card" content="summary_large_image">' . "\n";
+    echo '    <meta name="twitter:title" content="' . htmlspecialchars($ogT, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    if ($ogD !== '') echo '    <meta name="twitter:description" content="' . htmlspecialchars($ogD, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+    echo '    <meta name="twitter:image" content="' . htmlspecialchars($ogImg, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+
+    /* JSON-LD: sayfa turune gore. Tekil sayfalarda eklenmez. */
+    $ld = null;
+    if ($key === 'home') {
+        $ld = [
+            '@context' => 'https://schema.org',
+            '@graph' => [
+                [
+                    '@type' => 'Organization',
+                    '@id' => $base . '/#organization',
+                    'name' => 'Vexaris',
+                    'url' => $base . '/',
+                    'logo' => $base . '/assets/images/vexaris-logo.png',
+                    'description' => $desc,
+                ],
+                [
+                    '@type' => 'WebSite',
+                    '@id' => $base . '/#website',
+                    'url' => $base . '/',
+                    'name' => 'Vexaris',
+                    'publisher' => ['@id' => $base . '/#organization'],
+                    'potentialAction' => [
+                        '@type' => 'SearchAction',
+                        'target' => ['@type' => 'EntryPoint', 'urlTemplate' => $base . '/blog?q={search_term_string}'],
+                        'query-input' => 'required name=search_term_string',
+                    ],
+                ],
+            ],
+        ];
+    } elseif ($key === 'blog-post') {
+        $slug = trim((string)($seo['slug'] ?? ''));
+        $ld = [
+            '@context' => 'https://schema.org',
+            '@type' => 'BlogPosting',
+            'headline' => $title,
+            'description' => $desc,
+            'url' => $canonUrl,
+            'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $canonUrl],
+            'image' => $ogImg,
+            'datePublished' => trim((string)($seo['published'] ?? '')),
+            'publisher' => ['@type' => 'Organization', 'name' => 'Vexaris', 'logo' => ['@type' => 'ImageObject', 'url' => $base . '/assets/images/vexaris-logo.png']],
+        ];
+        if (trim((string)($seo['author'] ?? '')) !== '') {
+            $ld['author'] = ['@type' => 'Person', 'name' => (string)$seo['author']];
+        }
+        if ($slug !== '') {
+            $ld['mainEntityOfPage'] = ['@type' => 'WebPage', '@id' => $base . '/' . ltrim($slug, '/')];
+        }
+    }
+    if ($ld !== null) {
+        echo '    <script type="application/ld+json">' . json_encode($ld, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
+    }
 }

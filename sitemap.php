@@ -3,18 +3,17 @@ require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/blog.php';
 header('Content-Type: application/xml; charset=utf-8');
 $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-$base = ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'vexaris.net');
+$base = defined('SITE_URL') ? rtrim((string)SITE_URL, '/') : (($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'vexaris.net'));
+$today = date('Y-m-d');
 $urls = [
-    ['loc' => $base . '/', 'freq' => 'daily', 'pr' => '1.0'],
-    ['loc' => $base . '/features', 'freq' => 'weekly', 'pr' => '0.9'],
-    ['loc' => $base . '/pricing', 'freq' => 'weekly', 'pr' => '0.9'],
-    ['loc' => $base . '/blog', 'freq' => 'daily', 'pr' => '0.8'],
-    ['loc' => $base . '/license-check', 'freq' => 'monthly', 'pr' => '0.7'],
-    ['loc' => $base . '/login', 'freq' => 'monthly', 'pr' => '0.3'],
-    ['loc' => $base . '/register', 'freq' => 'monthly', 'pr' => '0.3'],
-    ['loc' => $base . '/privacy-policy', 'freq' => 'yearly', 'pr' => '0.3'],
-    ['loc' => $base . '/terms-of-use', 'freq' => 'yearly', 'pr' => '0.3'],
-    ['loc' => $base . '/cookie-policy', 'freq' => 'yearly', 'pr' => '0.3'],
+    ['loc' => $base . '/', 'freq' => 'daily', 'pr' => '1.0', 'lastmod' => $today],
+    ['loc' => $base . '/features', 'freq' => 'weekly', 'pr' => '0.9', 'lastmod' => $today],
+    ['loc' => $base . '/pricing', 'freq' => 'weekly', 'pr' => '0.9', 'lastmod' => $today],
+    ['loc' => $base . '/blog', 'freq' => 'daily', 'pr' => '0.8', 'lastmod' => $today],
+    ['loc' => $base . '/license-check', 'freq' => 'monthly', 'pr' => '0.7', 'lastmod' => $today],
+    ['loc' => $base . '/privacy-policy', 'freq' => 'yearly', 'pr' => '0.3', 'lastmod' => $today],
+    ['loc' => $base . '/terms-of-use', 'freq' => 'yearly', 'pr' => '0.3', 'lastmod' => $today],
+    ['loc' => $base . '/cookie-policy', 'freq' => 'yearly', 'pr' => '0.3', 'lastmod' => $today],
 ];
 try {
     $pdo = db();

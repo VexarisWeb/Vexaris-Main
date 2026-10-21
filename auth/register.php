@@ -126,8 +126,11 @@ log_pageview('kayit');
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign Up — Vexaris</title>
-<link rel="alternate" hreflang="en" href="https://vexaris.net/register">
-<link rel="alternate" hreflang="x-default" href="https://vexaris.net/register">
+<meta name="robots" content="noindex, nofollow">
+<link rel="canonical" href="https://vexaris.net/register">
+<meta property="og:title" content="Register — Vexaris">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://vexaris.net/register">
 <link rel="icon" type="image/png" href="/assets/images/vexaris-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
