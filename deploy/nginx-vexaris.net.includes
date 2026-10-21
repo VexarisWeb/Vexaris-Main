@@ -48,8 +48,12 @@ location = /activate { rewrite ^ /auth/activate.php last; }
 location = /whois { rewrite ^ /whois.php last; }
 # Sondaki slash'li kopyalar tek kornaya (301) — canonical/og:url ile ayni
 location ~ ^/(pricing|features|blog|login|register|whois|license-check|privacy-policy|terms-of-use|cookie-policy)/$ { rewrite ^/(.*)/$ /$1 permanent; }
+location ~ ^/([a-z0-9-]+/[a-z0-9-]+)/$ { rewrite ^/(.*)/$ /$1 permanent; }
+location ~ ^/blog/([a-z0-9-]+)/$ { rewrite ^/(.*)/$ /$1 permanent; }
 # Blog yazilari: tek segment (/blog/<slug>) ve ic-ice slug (<bolum>/<slug>)
 location ~ ^/blog/([a-z0-9-]+)$ { rewrite ^ /blog-post.php?slug=$1 last; }
+location ~ ^/blog/([a-z0-9-]+/[a-z0-9-]+)$ { rewrite ^ /blog-post.php?slug=$1 last; }
+location ~ ^/blog/([a-z0-9-]+/[a-z0-9-]+)/$ { rewrite ^ /blog-post.php last; }
 location ~ ^/([a-z0-9-]+/[a-z0-9-]+)$ { rewrite ^ /blog-post.php?slug=$1 last; }
 location ~ ^/([a-z0-9-]+)/?$ { rewrite ^ /blog-post.php?slug=$1 last; }
 location = /api/account { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/account.php last; }

@@ -13,7 +13,10 @@ $viaBlogPrefix = is_string($uriPath) && (bool)preg_match('#^/blog/#i', (string)$
 if ($slug === '' && is_string($uriPath)) {
     // Rewrite query string bazi sunucularda dusebiliyor (nginx proxy / AllowOverride farklari).
     // Bu yuzden slug dogrudan REQUEST_URI'den de coz: once /blog/slug, sonra kok-seviye /slug.
-    if (preg_match('#^/blog/([^/]+)/?$#i', $uriPath, $m)) {
+    if (preg_match('#^/blog/([a-z0-9-]+/[a-z0-9-]+)/?$#i', $uriPath, $m)) {
+        $slug = trim(urldecode($m[1]));
+        $viaBlogPrefix = true;
+    } elseif (preg_match('#^/blog/([^/]+)/?$#i', $uriPath, $m)) {
         $slug = trim(urldecode($m[1]));
         $viaBlogPrefix = true;
     } elseif (preg_match('#^/([A-Za-z0-9_-]+)/?$#', $uriPath, $m)) {
