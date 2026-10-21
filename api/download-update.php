@@ -1,8 +1,14 @@
 <?php
 require_once __DIR__ . '/../core/db.php';
+require_once __DIR__ . '/../config/autoload.php';
 
+/* Guncelleme paketinin imzasi: legacy anahtarla (mevcut magazalar dogrular).
+   Legacy anahtar repoda DEGIL, gizli dosyadan okunur. */
 function dlupd_hmac_key(): string {
-    return 'v' . '4x' . '7e' . strrev('REDACTED_KEY') . '!' . 'c' . '3' . 'b';
+    $legacy = trim((string)vx_secret('VX_LEGACY_KEY', ''));
+    if ($legacy !== '') return $legacy;
+    if (function_exists('_vx_k')) return (string)_vx_k();
+    return '';
 }
 
 $pdo = db();
@@ -47,8 +53,8 @@ if (abs(time() - $timestamp) > 300) {
     exit;
 }
 
-$exp = hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, dlupd_hmac_key());
-if (!hash_equals($exp, $signature)) {
+/* Gecis: istek hem yeni hem legacy anahtarla imzalanmis olabilir. */
+if (!function_exists('_vx_verify_hmac') || !_vx_verify_hmac($domain . '|' . $timestamp . '|' . $nonce, $signature)) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'msg' => 'bad signature']);
     exit;

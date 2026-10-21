@@ -1,10 +1,18 @@
 <?php
 require_once __DIR__ . '/../core/db.php';
+require_once __DIR__ . '/../config/autoload.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+/* Güncelleme yaniti eski (legacy) anahtarla imzalanir: mevcut kurulu
+   magazalar yaniti kendi eski anahtarlariyla dogruluyor. Yeni magazalar
+   yeni anahtarla dogrular (mainsite ayrica 'signature2' uretir).
+   Legacy anahtar repoda DEGIL, gizli dosyadan okunur. */
 function checkupd_hmac_key(): string {
-    return 'v' . '4x' . '7e' . strrev('REDACTED_KEY') . '!' . 'c' . '3' . 'b';
+    $legacy = trim((string)vx_secret('VX_LEGACY_KEY', ''));
+    if ($legacy !== '') return $legacy;
+    if (function_exists('_vx_k')) return (string)_vx_k();
+    return '';
 }
 
 $pdo = db();
@@ -47,8 +55,8 @@ if (abs(time() - $timestamp) > 300) {
     exit;
 }
 
-$exp = hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, checkupd_hmac_key());
-if (!hash_equals($exp, $signature)) {
+/* Gecis: istek hem yeni hem legacy anahtarla imzalanmis olabilir. */
+if (!function_exists('_vx_verify_hmac') || !_vx_verify_hmac($domain . '|' . $timestamp . '|' . $nonce, $signature)) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'msg' => 'bad signature']);
     exit;
@@ -120,5 +128,8 @@ echo json_encode([
     'ok'        => true,
     'version'   => json_decode($payload, true),
     'timestamp' => $ts,
+    // legacy imza: mevcut kurulu magazalar dogrular
     'signature' => hash_hmac('sha256', $payload . '|' . $ts, checkupd_hmac_key()),
+    // yeni imza: yeni surumlu magazalar dogrular
+    'signature2' => hash_hmac('sha256', $payload . '|' . $ts, function_exists('_vx_k') ? _vx_k() : checkupd_hmac_key()),
 ]);

@@ -40,19 +40,34 @@ function _vx_secret(string $name, string $default = ''): string {
 }
 }
 
-/* Yeni (aktif) master key */
-function _vx_k(): string { return _vx_secret('VX_MASTER_KEY', 'v' . '4x' . '7e' . strrev('REDACTED_KEY') . '!' . 'c' . '3' . 'b'); }
+/* Yeni (aktif) master key — gizli dosyadan. */
+function _vx_k(): string {
+    $k = _vx_secret('VX_MASTER_KEY', '');
+    if ($k !== '') return $k;
+    return _vx_k_legacy();
+}
 
-/* Eski master key: gecis donemi icin. Tum magazalar guncellendikten sonra
-   _vx_k_legacy() kaldirilabilir. */
-function _vx_k_legacy(): string { return 'v' . '4x' . '7e' . strrev('REDACTED_KEY') . '!' . 'c' . '3' . 'b'; }
+/* Eski master key: gecis donemi icin (gizli dosyada, repoda DEGIL).
+   Tum magazalar yeni surume gecince bu deger silinebilir. */
+function _vx_k_legacy(): string { return _vx_secret('VX_LEGACY_KEY', ''); }
 
 /* Gecis suresi boyunca kabul edilen tum anahtarlar (yeni once). */
 function _vx_keys(): array {
-    $keys = [_vx_k()];
+    $keys = [];
+    $n = _vx_k();
+    if ($n !== '') $keys[] = $n;
     $legacy = _vx_k_legacy();
     if ($legacy !== '' && !in_array($legacy, $keys, true)) $keys[] = $legacy;
     return $keys;
+}
+
+/* Store istegi imzasini gecis anahtarlariyla dogrular (true = gecerli). */
+function _vx_verify_hmac(string $payload, string $sig): bool {
+    if ($sig === '') return false;
+    foreach (_vx_keys() as $k) {
+        if ($k !== '' && hash_equals(hash_hmac('sha256', $payload, $k), $sig)) return true;
+    }
+    return false;
 }
 
 function _vx_d(string $a, string $b): bool {
