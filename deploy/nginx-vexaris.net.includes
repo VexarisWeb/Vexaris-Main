@@ -1,0 +1,119 @@
+# ── Guvenlik basliklari ────────────────────────────────────────
+# .htaccess nginx tarafindan okunmuyor; basliklar burada tanimli.
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header X-XSS-Protection "0" always;
+server_tokens off;
+
+# Sunucu yapilandirma kopyalari (deploy/) internete acik olmamali
+location ^~ /deploy/ { deny all; }
+
+# Git metadata / nokta ile baslayan dosyalar (webroot disinda tutulur)
+location ~ /\. { deny all; }
+location ~* /(?:composer\.(?:json|lock)|package(?:-lock)?\.json|\.env|\.git|\.svn|\.hg)$ { deny all; }
+
+# www -> apex (oturum + SEO tekligi icin tek host; once calisir ki http://www tek hopta https://apex'e insin)
+if ($host = www.vexaris.net) { return 301 https://vexaris.net$request_uri; }
+# HTTP -> HTTPS yonlendirme (LE dogrulama yolu haric)
+if ($scheme = http) { set $to_https H; }
+if ($request_uri ~* "^/.well-known/") { set $to_https ""; }
+if ($to_https = H) { return 301 https://$host$request_uri; }
+location = /login { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /auth/login.php last; }location = /register { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /auth/register.php last; }
+location = /logout { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /auth/logout.php last; }
+location = /dashboard/stores { rewrite ^ /user/stores.php last; }
+location = /dashboard { rewrite ^ /user/index.php last; }
+location = /dashboard/account { rewrite ^ /user/account.php last; }
+location = /dashboard/downloads { rewrite ^ /user/downloads.php last; }
+location = /dashboard/notifications { rewrite ^ /user/notifications.php last; }
+location = /dashboard/orders { rewrite ^ /user/orders.php last; }
+location = /dashboard/products { rewrite ^ /user/products.php last; }
+location = /dashboard/subscription { rewrite ^ /user/subscription.php last; }
+location = /dashboard/store { rewrite ^ /user/store.php last; }
+location = /dashboard/support { rewrite ^ /user/support.php last; }
+location = /admin { rewrite ^ /admin/index.php last; }
+location ~ ^/admin/([a-z0-9_-]+)$ { rewrite ^ /admin/$1.php last; }
+location = /license-check { rewrite ^ /license-check.php last; }
+location = /features { rewrite ^ /features.php last; }
+location = /pricing { rewrite ^ /pricing.php last; }
+location = /sitemap.xml { rewrite ^ /sitemap.php last; }
+location = /terms-of-use { rewrite ^ /terms-of-use.php last; }
+location = /privacy-policy { rewrite ^ /privacy-policy.php last; }
+location = /cookie-policy { rewrite ^ /cookie-policy.php last; }
+location = /blog { rewrite ^ /blog.php last; }
+location = /forgot-password { rewrite ^ /auth/forgot.php last; }
+location = /activate { rewrite ^ /auth/activate.php last; }
+location = /whois { rewrite ^ /whois.php last; }
+# Sondaki slash'li kopyalar tek kornaya (301) — canonical/og:url ile ayni
+location ~ ^/(pricing|features|blog|login|register|whois|license-check|privacy-policy|terms-of-use|cookie-policy)/$ { rewrite ^/(.*)/$ /$1 permanent; }
+# Blog yazilari: tek segment (/blog/<slug>) ve ic-ice slug (<bolum>/<slug>)
+location ~ ^/blog/([a-z0-9-]+)$ { rewrite ^ /blog-post.php?slug=$1 last; }
+location ~ ^/([a-z0-9-]+/[a-z0-9-]+)$ { rewrite ^ /blog-post.php?slug=$1 last; }
+location ~ ^/([a-z0-9-]+)/?$ { rewrite ^ /blog-post.php?slug=$1 last; }
+location = /api/account { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/account.php last; }
+location = /api/auth { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/auth.php last; }
+location = /api/whois-tool { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/whois-tool.php last; }
+location = /api/blog { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/blog.php last; }
+location = /api/check-update { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/check-update.php last; }
+location = /api/demo { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/demo.php last; }
+location = /api/download { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/download.php last; }
+location = /api/download-update { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/download-update.php last; }
+location = /api/legal { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/legal.php last; }
+location = /api/licenses { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/licenses.php last; }
+location = /api/notifications { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/notifications.php last; }
+location = /api/oauth { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/oauth.php last; }
+location = /api/permissions { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/permissions.php last; }
+location = /api/products { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/products.php last; }
+location = /api/public-check { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/public-check.php last; }
+location = /api/seo { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/seo.php last; }
+location = /api/settings { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/settings.php last; }
+location = /api/plan-checkout { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/plan-checkout.php last; }
+location = /api/whop-checkout { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/whop-checkout.php last; }
+location = /api/whop-webhook { rewrite ^ /api/whop-webhook.php last; }
+location = /api/license-domains { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/license-domains.php last; }
+location = /api/support { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/support.php last; }
+location = /api/users { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/users.php last; }
+location = /api/verify { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/verify.php last; }
+location ^~ /api/verify.php/ { rewrite ^/api/verify\.php(/api/.+\.php)$ $1 last; }
+location = /api/versions { limit_req zone=vxapi burst=10 nodelay; rewrite ^ /api/versions.php last; }
+
+location ^~ /core/ { deny all; }
+location ^~ /uploads/products/ { deny all; }
+location ^~ /uploads/versions/ { deny all; }
+location ^~ /.git/ { deny all; }
+location = /db.php { deny all; }
+location = /.env { deny all; }
+
+# Tarama botlari: PHP-FPM'e degmeden baglantiyi dusur (444 = cevapsiz kapat)
+location ^~ /xmlrpc.php { return 444; }
+location ^~ /wp-login.php { return 444; }
+location ^~ /wp-cron.php { return 444; }
+location ^~ /wp- { return 444; }
+location ^~ /wordpress { return 444; }
+location ^~ /phpmyadmin { return 444; }
+location ^~ /phpMyAdmin { return 444; }
+location ^~ /pma/ { return 444; }
+location ^~ /dbadmin { return 444; }
+location ^~ /adminer { return 444; }
+location ^~ /uploads/store-logos/ {
+    location ~ \.(php|phar|phtml)$ { deny all; }
+    try_files $uri =404;
+}
+
+location ^~ /wp/ { return 444; }
+location ^~ /wp1/ { return 444; }
+location ^~ /wp2/ { return 444; }
+location ^~ /web/ { return 444; }
+location ^~ /wpp- { return 444; }
+location ~* (wlwmanifest|~)$ { return 444; }
+location ^~ /.env { return 444; }
+location ^~ /cgi-bin/ { return 444; }
+location ~* \.(sql|bak|swp|swo|orig|save)$ { return 444; }
+location ~* (^|/)(composer\.(json|lock)|package(-lock)?\.json|\.htaccess|\.htpasswd)$ { return 444; }
+
+# Site SSL (panel-safe: includes server seviyesinde yuklenir)
+# listen 10.50.1.14:443 ssl;
+ssl_certificate /etc/letsencrypt/live/vexaris.net/fullchain.pem;
+ssl_certificate_key /etc/letsencrypt/live/vexaris.net/privkey.pem;
