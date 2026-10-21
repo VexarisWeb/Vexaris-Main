@@ -30,7 +30,7 @@ try {
         exit;
     }
     $pdo->prepare("INSERT INTO api_rate_limits (ip, scope) VALUES (?,'verify')")->execute([$ip]);
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 
 $domain    = strtolower(trim((string)($_POST['domain'] ?? '')));
 $timestamp = (int)($_POST['timestamp'] ?? 0);
@@ -52,7 +52,17 @@ if (abs(time() - $timestamp) > 300) {
 }
 
 $exp = hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, _vx_k());
-if (!hash_equals($exp, $signature)) {
+$macOk = hash_equals($exp, $signature);
+/* Gecis donemi: eski master key ile imzalanmis mağaza istekleri de kabul
+   edilir (tum magazalar yeni surume gecince bu dal kaldirilabilir). */
+if (!$macOk && function_exists('_vx_k_legacy')) {
+    $legacyExp = hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, _vx_k_legacy());
+    if (hash_equals($legacyExp, $signature)) {
+        $macOk = true;
+        error_log('Vexaris verify: legacy master key ile imzali istek (gecis donemi) domain=' . $domain);
+    }
+}
+if (!$macOk) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'msg' => 'bad signature']);
     exit;
@@ -70,7 +80,7 @@ try {
     if (mt_rand(1, 50) === 1) {
         $pdo->prepare("DELETE FROM license_nonces WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)")->execute();
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'msg' => 'server error']);
     exit;
@@ -127,11 +137,11 @@ try {
                         $f['plan'] = 'free';
                         $pdo->prepare("UPDATE licenses SET features=? WHERE id=?")->execute([json_encode($f), (int)$row['id']]);
                     }
-                } catch (Exception $e2) {}
+                } catch (Throwable $e2) {}
             }
         }
     }
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 
 $planTable = [
     'free' => ['slug' => 'free', 'product_limit' => 7, 'revenue_limit_usd' => 100.0, 'revenue_reset' => 'never', 'seats' => 0, 'modules' => 'none', 'ai' => null],
@@ -144,10 +154,18 @@ $plan = $planTable[$planSlug];
 $ts  = time();
 $out = json_encode($features);
 $planRaw = json_encode($plan);
+/* Yanit imzasi: gecis doneminde ESKI anahtarla imzalanir (mevcut magazalar
+   eski anahtarla dogruluyor). Tum magazalar yeni surume gecince
+   settings.vx_sign_with_new_key='1' ile yeni anahtara gecilir.
+   signature2 her zaman yeni anahtarla uretilir (yeni surum magazalar kullanir). */
+$sigKey = (function_exists('setting_get') && setting_get('vx_sign_with_new_key', '0') === '1')
+    ? _vx_k()
+    : (function_exists('_vx_k_legacy') ? _vx_k_legacy() : _vx_k());
 echo json_encode([
     'features'  => $features,
     'plan'      => $plan,
-    'plan_sig'  => hash_hmac('sha256', $planRaw . '|' . $ts, _vx_k()),
+    'plan_sig'  => hash_hmac('sha256', $planRaw . '|' . $ts, $sigKey),
     'timestamp' => $ts,
-    'signature' => hash_hmac('sha256', $out . '|' . $ts, _vx_k()),
+    'signature' => hash_hmac('sha256', $out . '|' . $ts, $sigKey),
+    'signature2' => hash_hmac('sha256', $out . '|' . $ts, _vx_k()),
 ]);

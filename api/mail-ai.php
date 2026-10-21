@@ -51,16 +51,16 @@ if ($prompt !== '') $msgs[] = ['role' => 'user', 'content' => $prompt];
 
 $r = ai_call_provider($prov, $msgs, 8192);
 if (empty($r['ok'])) {
-    try { ai_usage_log($pdo ?? db(), 'admin-mail', (string)($prov['provider'] ?? ''), (string)($prov['model_id'] ?? ''), 0, 0, false, mb_substr((string)($r['msg'] ?? 'hata'), 0, 200)); } catch (Exception $e) {}
+    try { ai_usage_log($pdo ?? db(), 'admin-mail', (string)($prov['provider'] ?? ''), (string)($prov['model_id'] ?? ''), 0, 0, false, mb_substr((string)($r['msg'] ?? 'hata'), 0, 200)); } catch (Throwable $e) {}
     echo json_encode(['ok' => false, 'msg' => 'AI hatasi: ' . mb_substr((string)($r['msg'] ?? ''), 0, 120)]);
     exit;
 }
 $text = trim((string)($r['text'] ?? ''));
 if (preg_match('/```(?:markdown)?\s*([\s\S]*?)```/', $text, $m)) $text = trim($m[1]);
 if ($text === '') {
-    try { ai_usage_log($pdo ?? db(), 'admin-mail', (string)($prov['provider'] ?? ''), (string)($prov['model_id'] ?? ''), (int)($r['in'] ?? 0), (int)($r['out'] ?? 0), false, 'bos/kesik yanit'); } catch (Exception $e) {}
+    try { ai_usage_log($pdo ?? db(), 'admin-mail', (string)($prov['provider'] ?? ''), (string)($prov['model_id'] ?? ''), (int)($r['in'] ?? 0), (int)($r['out'] ?? 0), false, 'bos/kesik yanit'); } catch (Throwable $e) {}
     echo json_encode(['ok' => false, 'msg' => 'AI boş yanıt döndürdü (token sınırı). İsteği kısaltıp tekrar deneyin.']);
     exit;
 }
-try { ai_usage_log($pdo ?? db(), 'admin-mail', (string)($prov['provider'] ?? ''), (string)($prov['model_id'] ?? ''), (int)($r['in'] ?? 0), (int)($r['out'] ?? 0), true); } catch (Exception $e) {}
+try { ai_usage_log($pdo ?? db(), 'admin-mail', (string)($prov['provider'] ?? ''), (string)($prov['model_id'] ?? ''), (int)($r['in'] ?? 0), (int)($r['out'] ?? 0), true); } catch (Throwable $e) {}
 echo json_encode(['ok' => true, 'text' => $text, 'model' => (string)($prov['model_id'] ?? '')]);

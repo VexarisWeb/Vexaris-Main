@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'list') {
             'page'       => $page,
             'featureKeys'=> $featureKeys,
         ]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => 'Sorgu hatası.']);
     }
     exit;
@@ -118,7 +118,7 @@ switch ($action) {
             $pdo->prepare("INSERT INTO licenses (customer_name, license_key, allowed_domains, status, features, suspended_until) VALUES (?,?,?,'active',?,NULL)")
                 ->execute([$customer, $key, json_encode($domains), json_encode($features)]);
             echo json_encode(['ok' => true, 'msg' => 'Lisans oluşturuldu.', 'license_key' => $key]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'Lisans oluşturulamadı.']);
         }
         break;
@@ -148,7 +148,7 @@ switch ($action) {
             $pdo->prepare("UPDATE licenses SET customer_name=?, allowed_domains=?, features=? WHERE id=?")
                 ->execute([$customer, json_encode($domains), json_encode($features), $id]);
             echo json_encode(['ok' => true, 'msg' => 'Lisans güncellendi.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'Güncelleme başarısız.']);
         }
         break;
@@ -164,7 +164,7 @@ switch ($action) {
             if (is_array($oldF) && isset($oldF['plan'])) $features['plan'] = lic_plan_slug($oldF['plan']);
             $pdo->prepare("UPDATE licenses SET features=? WHERE id=?")->execute([json_encode($features), $id]);
             echo json_encode(['ok' => true, 'msg' => 'Özellikler güncellendi.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'Güncelleme başarısız.']);
         }
         break;
@@ -191,7 +191,7 @@ switch ($action) {
             $pdo->prepare("UPDATE licenses SET status='suspended', suspended_until=? WHERE id=?")->execute([$until, $id]);
             audit_log($pdo, (int)(current_user()['id'] ?? 0), 'license_suspend', 'license', (string)$id, 'until ' . $until);
             echo json_encode(['ok' => true, 'msg' => 'Lisans askıya alındı.', 'until' => $until]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'İşlem başarısız.']);
         }
         break;
@@ -203,7 +203,7 @@ switch ($action) {
             $pdo->prepare("UPDATE licenses SET status='active', suspended_until=NULL WHERE id=?")->execute([$id]);
             audit_log($pdo, (int)(current_user()['id'] ?? 0), 'license_resume', 'license', (string)$id);
             echo json_encode(['ok' => true, 'msg' => 'Lisans hemen açıldı.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'İşlem başarısız.']);
         }
         break;
@@ -218,7 +218,7 @@ switch ($action) {
             $pdo->prepare("DELETE FROM licenses WHERE id=?")->execute([$id]);
             audit_log($pdo, (int)(current_user()['id'] ?? 0), 'license_delete', 'license', (string)$id, $delCustomer);
             echo json_encode(['ok' => true, 'msg' => 'Lisans silindi.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'Silme başarısız.']);
         }
         break;

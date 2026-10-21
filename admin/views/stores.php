@@ -46,7 +46,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action']
                         ->execute([(int)($row['user_id'] ?? 0), $slug, $nplan, (string)($row['owner'] ?? ''), $slug, $plang, $plOh, $pcat]);
                     $planMsg = 'OK: plan set to ' . $nplan . ', limits queued.';
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $planMsg = 'Server error.';
             }
         }
@@ -93,7 +93,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array(($_POST['store_
                     $planMsg = $mkUpd((int)($_POST['store_id'] ?? 0)) ? 'OK: update queued (v' . $latest . ').' : 'Store not found, up to date, or already queued.';
                 }
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $planMsg = 'Server error.';
         }
     } else {
@@ -104,7 +104,7 @@ $latestVer = function_exists('saas_latest_version') ? saas_latest_version($db) :
 $rows = [];
 try {
     $rows = $db->query("SELECT h.id, h.user_id, h.slug, h.domain, h.plan, h.app_version, h.owner, h.users, h.revenue, h.currency, h.category, h.abuse_score, h.abuse_detail, h.status, h.reported_at, h.created_at, u.username AS uname FROM hosted_stores h LEFT JOIN users u ON u.id=h.user_id ORDER BY h.id DESC LIMIT 200")->fetchAll();
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 $totalRev = 0.0;
 $totalUsers = 0;
 $revByCur = [];

@@ -11,7 +11,7 @@ if ($pdo) {
         $st = $pdo->prepare("SELECT p.*, up.granted_at, (SELECT COUNT(*) FROM download_tokens dt WHERE dt.product_id = p.id AND dt.user_id = ?) AS indirme_sayisi, (SELECT v.version FROM versions v WHERE v.product_id = p.id AND v.is_active=1 ORDER BY v.created_at DESC LIMIT 1) AS latest_version, (SELECT v.file_name FROM versions v WHERE v.product_id = p.id AND v.is_active=1 ORDER BY v.created_at DESC LIMIT 1) AS latest_file, (SELECT v.created_at FROM versions v WHERE v.product_id = p.id AND v.is_active=1 ORDER BY v.created_at DESC LIMIT 1) AS latest_version_created FROM user_products up JOIN products p ON p.id = up.product_id WHERE up.user_id = ? AND p.is_active = 1 ORDER BY up.granted_at DESC");
         $st->execute([$uid, $uid]);
         $products = $st->fetchAll();
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 ?>
 

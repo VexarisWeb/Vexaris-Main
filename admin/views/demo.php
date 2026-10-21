@@ -6,7 +6,7 @@ if ($demoPdo) {
         $st = $demoPdo->query("SELECT `value` FROM settings WHERE `key`='demo_post_enabled' LIMIT 1");
         $v = $st->fetchColumn();
         if ($v !== false) $demoPosts = (string)$v;
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 ?>
 <!-- DEMO YÖNETİMİ -->

@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     header('Location: /dashboard'); exit;
                     }
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 error_log('Register hatası: ' . $e->getMessage());
                 $error = 'Something went wrong. Please try again.';
             }

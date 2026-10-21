@@ -55,7 +55,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
                 $p = strtolower(trim((string)($ep['plan'] ?? 'free')));
                 if (in_array($p, ['free', 'starter', 'professional', 'enterprise'], true)) $effPlan = $p;
             }
-        } catch (Exception $e0) {}
+        } catch (Throwable $e0) {}
         $pdo->beginTransaction();
         $st = $pdo->prepare("SELECT COUNT(*) FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' FOR UPDATE");
         $st->execute([$uid, $uemail]);
@@ -165,13 +165,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
             $ins->execute([$uid, $slug, $effPlan, $uemail, $name, $langSel, $ohash, $cat, $logoUrl]);
             $jid = (int)$pdo->lastInsertId();
             $pdo->commit();
-        } catch (Exception $e2) {
+        } catch (Throwable $e2) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             if ($logoPath !== '' && is_file($logoPath)) @unlink($logoPath);
             stores_json(['ok' => false, 'msg' => 'Subdomain taken.']);
         }
         stores_json(['ok' => true, 'job_id' => $jid]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
     }
 }
@@ -198,11 +198,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         try {
             $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,?,'free',?,'','en','delete','pending')");
             $ins->execute([$uid, $slug, $uemail]);
-        } catch (Exception $e2) {
+        } catch (Throwable $e2) {
             stores_json(['ok' => false, 'msg' => 'Delete already queued.']);
         }
         stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId()]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
     }
 }
@@ -234,7 +234,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?, ?, '', ?, 'update','pending', ?, ?)");
         $ins->execute([$uid, $slug, (string)($row['plan'] ?? 'free'), $uemail, $ulang, $ohash, $ucat]);
         stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId(), 'version' => $latest]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
     }
 }
@@ -288,12 +288,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
                 $pdo->prepare("UPDATE hosted_stores SET custom_domain=?, custom_status='pending' WHERE id=?")->execute([$dom, $sid]);
             }
             $pdo->commit();
-        } catch (Exception $e2) {
+        } catch (Throwable $e2) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             stores_json(['ok' => false, 'msg' => 'A job is already queued for this store.']);
         }
         stores_json(['ok' => true, 'job_id' => $jid, 'domain' => $dom]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
     }
 }
@@ -317,7 +317,7 @@ if (isset($_GET['check'])) {
         $st = $pdo->prepare("SELECT id FROM hosted_stores WHERE slug=? LIMIT 1");
         $st->execute([$slug]);
         if ($st->fetch()) stores_json(['ok' => true, 'available' => false, 'msg' => 'taken']);
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
     stores_json(['ok' => true, 'available' => true, 'domain' => $slug . '.vexaris.app']);
 }
 
@@ -331,7 +331,7 @@ if (isset($_GET['check_job'])) {
         $out = ['ok' => true, 'status' => $row['status'], 'message' => $row['last_msg'], 'kind' => $row['kind']];
         if ($row['status'] === 'done') $out['domain'] = $row['slug'] . '.vexaris.app';
         stores_json($out);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
     }
 }
@@ -343,7 +343,7 @@ try {
     $st = $pdo->prepare("SELECT id, slug, domain, plan, category, site_name, users, products, revenue, currency, traffic_bytes, traffic_updated, app_version, status, reported_at, created_at, custom_domain, custom_status FROM hosted_stores WHERE (user_id=? OR owner=?) AND status='active' ORDER BY id DESC LIMIT 1");
     $st->execute([$uid, $uemail]);
     $store = $st->fetch() ?: null;
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 $myPlan = function_exists('user_effective_plan') ? user_effective_plan($uid) : ['plan' => 'free', 'until' => 0];
 $planQuotaGB = ['free' => 10, 'starter' => 50, 'professional' => 200, 'enterprise' => 1000];
 $hasActive = $store !== null;
@@ -353,7 +353,7 @@ if ($store) {
         $st = $pdo->prepare("SELECT day, bytes FROM store_traffic_daily WHERE slug=? AND day > DATE_SUB(CURDATE(), INTERVAL 14 DAY) ORDER BY day ASC");
         $st->execute([(string)$store['slug']]);
         foreach ($st->fetchAll() as $r) $traf14[(string)$r['day']] = (int)$r['bytes'];
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 function nx_fmt_bytes($b) {
     $b = max(0, (float)$b);

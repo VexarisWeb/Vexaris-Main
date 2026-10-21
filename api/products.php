@@ -190,7 +190,7 @@ try {
 
     echo json_encode(['ok' => false, 'msg' => 'Bilinmeyen işlem.']);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log($e->getMessage());
     echo json_encode(['ok' => false, 'msg' => 'Sunucu hatası oluştu.']);
 }

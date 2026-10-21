@@ -39,7 +39,7 @@ try {
     }
 
     echo json_encode(['ok' => false, 'msg' => 'Unknown action.']);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log($e->getMessage());
     echo json_encode(['ok' => false, 'msg' => 'Server error.']);
 }

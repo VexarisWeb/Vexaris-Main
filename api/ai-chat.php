@@ -71,7 +71,7 @@ try {
     $n = $pdo->prepare("INSERT IGNORE INTO license_nonces (nonce) VALUES (?)");
     $n->execute([$nonce]);
     if ($n->rowCount() === 0) { http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'nonce used']); exit; }
-} catch (Exception $e) { http_response_code(500); echo json_encode(['ok' => false, 'msg' => 'server error']); exit; }
+} catch (Throwable $e) { http_response_code(500); echo json_encode(['ok' => false, 'msg' => 'server error']); exit; }
 $domain = preg_replace('/^www\./', '', $domain);
 $domainWww = 'www.' . $domain;
 
@@ -100,7 +100,7 @@ try {
             $licPlan = (is_array($lf) && isset($lf['plan'])) ? strtolower(trim((string)$lf['plan'])) : '';
         }
     }
-} catch (Exception $e) { $licensed = false; }
+} catch (Throwable $e) { $licensed = false; }
 if (!$licensed) { http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'no license']); exit; }
 
 $aiWindows = ['starter' => [12, 8], 'professional' => [30, 6], 'enterprise' => [70, 4]];
@@ -113,7 +113,7 @@ if (true) {
         $wq = $pdo->prepare("SELECT COUNT(*) FROM ai_usage_log WHERE domain=? AND ok=1 AND created_at >= FROM_UNIXTIME(?)");
         $wq->execute([$domain, $wStart]);
         $wUsed = (int)$wq->fetchColumn();
-    } catch (Exception $e) { $wUsed = 0; }
+    } catch (Throwable $e) { $wUsed = 0; }
     if ($wUsed >= $wLim) {
         http_response_code(402);
         echo json_encode(['ok' => false, 'msg' => 'plan_quota', 'quota' => ['limit' => $wLim, 'used' => $wUsed, 'window_h' => $wH, 'reset' => $wStart + $wH * 3600]]);

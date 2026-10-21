@@ -21,7 +21,7 @@ if ($pdo) {
         $ocq = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ?");
         $ocq->execute([$uid]);
         $orderCount = (int)$ocq->fetchColumn();
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 $storeName = '';
 try {
@@ -30,7 +30,7 @@ try {
         $st->execute([$uid, strtolower(trim((string)($user['email'] ?? '')))]);
         if ($r = $st->fetch()) $storeName = trim((string)($r['site_name'] ?? '')) !== '' ? (string)$r['site_name'] : (string)$r['slug'];
     }
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 $planColors = ['free' => '#9aa3ac', 'starter' => '#4f8fc0', 'professional' => '#a78bfa', 'enterprise' => '#f0b429'];
 $pc = $planColors[$planSlug] ?? '#9aa3ac';
 ?>

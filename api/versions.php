@@ -32,6 +32,16 @@ function ver_human_size($bytes): string {
     return $bytes . ' B';
 }
 
+/* Sürüm paketi her lisanslı mağazaya dağıtılıp mağazanın webroot'unun
+   üzerine açılıyor. Bu yüzden yükleme/değiştirme/silme işlemleri SADECE
+   admin rolüne açıktır; 'versions' izni olan yönetici rolleri yeterli değildir. */
+function ver_require_admin(string $msg = 'Bu işlem için admin yetkisi gerekli.'): void {
+    if (user_role() === 'admin' && is_admin()) return;
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'msg' => $msg]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'list') {
     try {
         $rows = $pdo->query("SELECT v.*,
@@ -39,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'list') {
             (SELECT COUNT(*) FROM update_events e WHERE e.version_id=v.id AND e.event_type='delayed')   AS delayed_count
             FROM versions v ORDER BY v.created_at DESC")->fetchAll();
         echo json_encode(['ok' => true, 'versions' => $rows]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => 'Sorgu hatası.']);
     }
     exit;
@@ -82,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'stats') {
             'delayed'   => (int)$delayed->fetchColumn(),
             'last14'    => $last14,
         ]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => 'Sorgu hatası.']);
     }
     exit;
@@ -98,6 +108,7 @@ csrf_check();
 switch ($action) {
 
     case 'create':
+        ver_require_admin();
         $ver = ver_sanitize((string)($_POST['version'] ?? ''));
         if ($ver === '') {
             echo json_encode(['ok' => false, 'msg' => 'Geçersiz sürüm numarası. Örnek: 1.0.0']);
@@ -141,8 +152,11 @@ switch ($action) {
             exit;
         }
         try {
-            $pdo->prepare("INSERT INTO versions (version, description, file_name, file_path, file_size, product_id, is_active) VALUES (?,?,?,?,?,?,1)")
-                ->execute([$ver, $desc ?: null, $f['name'], '/uploads/versions/' . $sn, ver_human_size($f['size']), $pid]);
+            // Artifact bütünlüğü: mağaza tarafı (ve ileride imza) sha256'ya
+            // göre doğrulayabilsin.
+            $sha = hash_file('sha256', $dp);
+            $pdo->prepare("INSERT INTO versions (version, description, file_name, file_path, file_size, product_id, is_active, sha256) VALUES (?,?,?,?,?,?,1,?)")
+                ->execute([$ver, $desc ?: null, $f['name'], '/uploads/versions/' . $sn, ver_human_size($f['size']), $pid, $sha ?: null]);
             $vid = (int)$pdo->lastInsertId();
             if ($pid !== null) {
                 $us = $pdo->prepare("SELECT user_id FROM user_products WHERE product_id=?");
@@ -151,17 +165,18 @@ switch ($action) {
                 $prodName->execute([$pid]);
                 $pname = (string)$prodName->fetchColumn();
                 foreach ($us->fetchAll(PDO::FETCH_COLUMN) as $uid) {
-                    try { $pdo->prepare("INSERT INTO notifications (user_id,type,title,message) VALUES (?,?,?,?)")->execute([$uid,'update',"Yeni güncelleme: $ver", ($pname ? "$pname icin " : "") . "$ver surumu yayinlandi. " . ($desc ?: "Indirme sayfanizdan guncelleyebilirsiniz.")]); } catch (Exception $e) {}
+                    try { $pdo->prepare("INSERT INTO notifications (user_id,type,title,message) VALUES (?,?,?,?)")->execute([$uid,'update',"Yeni güncelleme: $ver", ($pname ? "$pname icin " : "") . "$ver surumu yayinlandi. " . ($desc ?: "Indirme sayfanizdan guncelleyebilirsiniz.")]); } catch (Throwable $e) {}
                 }
             }
             echo json_encode(['ok' => true, 'msg' => 'Sürüm eklendi.', 'id' => $vid]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             @unlink($dp);
             echo json_encode(['ok' => false, 'msg' => 'Sürüm eklenemedi (aynı sürüm zaten mevcut olabilir).']);
         }
         break;
 
     case 'update':
+        ver_require_admin();
         $id = (int)($_POST['id'] ?? 0);
         if ($id <= 0) { echo json_encode(['ok' => false, 'msg' => 'Geçersiz ID.']); exit; }
         $desc = trim((string)($_POST['description'] ?? ''));
@@ -177,23 +192,25 @@ switch ($action) {
                 $pdo->prepare("UPDATE versions SET description=? WHERE id=?")->execute([$desc ?: null, $id]);
             }
             echo json_encode(['ok' => true, 'msg' => 'Sürüm güncellendi.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'Güncelleme başarısız.']);
         }
         break;
 
     case 'toggle':
+        ver_require_admin();
         $id = (int)($_POST['id'] ?? 0);
         if ($id <= 0) { echo json_encode(['ok' => false, 'msg' => 'Geçersiz ID.']); exit; }
         try {
             $pdo->prepare("UPDATE versions SET is_active = 1 - is_active WHERE id=?")->execute([$id]);
             echo json_encode(['ok' => true, 'msg' => 'Durum güncellendi.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'İşlem başarısız.']);
         }
         break;
 
     case 'delete':
+        ver_require_admin();
         $id = (int)($_POST['id'] ?? 0);
         if ($id <= 0) { echo json_encode(['ok' => false, 'msg' => 'Geçersiz ID.']); exit; }
         try {
@@ -209,7 +226,7 @@ switch ($action) {
                 if (is_file($abs)) @unlink($abs);
             }
             echo json_encode(['ok' => true, 'msg' => 'Sürüm silindi.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'Silme başarısız.']);
         }
         break;

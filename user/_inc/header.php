@@ -18,7 +18,7 @@ if ($pdo) {
         $st = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0");
         $st->execute([(int)$user['id']]);
         $unreadCount = (int)$st->fetchColumn();
-    } catch (Exception $e) { $unreadCount = 0; }
+    } catch (Throwable $e) { $unreadCount = 0; }
 }
 $myPlan = user_effective_plan((int)$user['id']);
 $isFreePlan = ($myPlan['plan'] ?? 'free') === 'free';

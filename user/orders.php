@@ -9,7 +9,7 @@ $orders = [];
 if ($pdo) {
     try {
         $pdo->prepare("UPDATE orders SET status='cancelled' WHERE user_id=? AND provider='whop' AND status='pending' AND created_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)")->execute([$uid]);
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
     try {
         $paidNo = (string)($_GET['order'] ?? '');
         if (($_GET['paid'] ?? '') === '1' && $paidNo !== '') {
@@ -17,12 +17,12 @@ if ($pdo) {
             $pq->execute([$uid, $paidNo]);
             $paidStatus = (string)$pq->fetchColumn();
         }
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
     try {
         $st = $pdo->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC");
         $st->execute([$uid]);
         $orders = $st->fetchAll();
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 ?>
 

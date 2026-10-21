@@ -16,7 +16,7 @@ if ($pdo) {
 
         foreach ($notifs as &$n) $n['is_read'] = 1;
         unset($n);
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 ?>
 

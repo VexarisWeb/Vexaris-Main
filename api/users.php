@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'list') {
             'totalPages'  => $totalPages,
             'page'        => $page,
         ]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => 'Sorgu hatası.']);
     }
     exit;
@@ -100,7 +100,7 @@ if ($action === 'links') {
         $flags = $pdo->prepare("SELECT linked_user_id, `sig` AS `signal`, detail, created_at FROM multi_flags WHERE user_id = ? ORDER BY created_at DESC LIMIT 20");
         $flags->execute([$id]);
         echo json_encode(['ok' => true, 'linked' => $detail, 'flags' => $flags->fetchAll()]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => 'Sorgu hatası.']);
     }
     exit;
@@ -115,7 +115,7 @@ if ($id <= 0) {
 $selfId = (int)(current_user()['id'] ?? 0);
 $myRole = user_role();
 $sysOwnerId = 0;
-try { $sysOwnerId = (int)$pdo->query("SELECT id FROM users WHERE is_admin=1 ORDER BY id ASC LIMIT 1")->fetchColumn(); } catch (Exception $e) {}
+try { $sysOwnerId = (int)$pdo->query("SELECT id FROM users WHERE is_admin=1 ORDER BY id ASC LIMIT 1")->fetchColumn(); } catch (Throwable $e) {}
 $isSysOwner = function (int $uid) use ($sysOwnerId): bool { return $sysOwnerId > 0 && $uid === $sysOwnerId; };
 $denyOwnerMsg = 'The system owner account is protected.';
 
@@ -137,8 +137,18 @@ switch ($action) {
         }
         try {
             $pdo->prepare("UPDATE users SET is_active = 0, ban_reason = 'manual' WHERE id = ?")->execute([$id]);
+            // Ban: mevcut oturumlar ve "remember me" tokenları düşsün.
+            // Aksi halde banlanan kullanıcı açık oturumuyla panele girmeye devam eder.
+            if (function_exists('sessions_kill_all')) {
+                sessions_kill_all($pdo, $id, false);
+            } else {
+                $pdo->prepare("UPDATE users SET session_version = session_version + 1 WHERE id = ?")->execute([$id]);
+                $pdo->prepare("UPDATE user_sessions SET revoked = 1 WHERE user_id = ?")->execute([$id]);
+                $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = ?")->execute([$id]);
+            }
+            if (function_exists('audit_log')) audit_log($pdo, (int)$selfId, 'ban', 'users', (string)$id, 'manual');
             echo json_encode(['ok' => true, 'msg' => 'Kullanıcı banlandı.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'İşlem başarısız.']);
         }
         break;
@@ -152,7 +162,7 @@ switch ($action) {
         try {
             $pdo->prepare("UPDATE users SET is_active = 1, ban_reason = '' WHERE id = ?")->execute([$id]);
             echo json_encode(['ok' => true, 'msg' => 'Ban kaldırıldı, hesap aktif.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'İşlem başarısız.']);
         }
         break;
@@ -187,7 +197,7 @@ switch ($action) {
             $stmt = $pdo->prepare("UPDATE users SET username = ? WHERE id = ?");
             $stmt->execute([$newName, $id]);
             echo json_encode(['ok' => true, 'msg' => 'Kullanıcı adı güncellendi.', 'username' => $newName]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'Güncelleme başarısız.']);
         }
         break;
@@ -221,7 +231,7 @@ switch ($action) {
                 'is_admin'=> $newRole === 'admin' ? 1 : 0,
                 'msg'     => 'Rol güncellendi: ' . role_label($newRole) . '.',
             ]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'Rol güncellenemedi.']);
         }
         break;
@@ -256,13 +266,19 @@ switch ($action) {
                 'balance' => $balance + $amount,
                 'msg'     => sprintf('Kredi gönderildi: +₺%.2f', $amount),
             ]);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             echo json_encode(['ok' => false, 'msg' => 'Kredi gönderilirken hata oluştu.']);
         }
         break;
 
     // ── Kullanıcı Sil ──────────────────────────────────────
     case 'delete':
+        // Silme yetkisi yalnızca admin'de: moderator/yonetici rolleri
+        // 'users' izni taşıdığı için silme yetkisini de devralmamalı.
+        if ($myRole !== 'admin') {
+            echo json_encode(['ok' => false, 'msg' => 'Kullanıcı silmek için admin yetkisi gerekli.']);
+            exit;
+        }
         if ($id === $selfId) {
             echo json_encode(['ok' => false, 'msg' => 'Kendi hesabını silemezsin.']);
             exit;
@@ -289,7 +305,7 @@ switch ($action) {
                 'DELETE FROM api_rate_limits WHERE ip IN (SELECT email FROM users WHERE id=?)',
             ];
             foreach ($delTables as $sql) {
-                try { $pdo->prepare($sql)->execute([$id]); } catch (Exception $e) {}
+                try { $pdo->prepare($sql)->execute([$id]); } catch (Throwable $e) {}
             }
             try {
                 $licDel = $pdo->prepare("SELECT id FROM licenses WHERE user_id=?");
@@ -297,7 +313,7 @@ switch ($action) {
                 foreach ($licDel->fetchAll(PDO::FETCH_COLUMN) as $licId) {
                     $pdo->prepare("DELETE FROM licenses WHERE id=?")->execute([(int)$licId]);
                 }
-            } catch (Exception $e) {}
+            } catch (Throwable $e) {}
             /* Kullanicinin magazalari aktif kalmasin: silme islemi kuyruga alinir
                (worker konteyner/DB/volume temizligi yapar). */
             try {
@@ -309,12 +325,12 @@ switch ($action) {
                         ->execute([$id, (string)$srow['slug'], (string)$srow['owner'], (string)($srow['site_name'] ?: $srow['slug']), (string)($srow['lang'] ?: 'en'), (string)($srow['category'] ?: 'other')]);
                     $pdo->prepare("UPDATE hosted_stores SET status='deleting' WHERE id=?")->execute([(int)$srow['id']]);
                 }
-            } catch (Exception $e) {}
+            } catch (Throwable $e) {}
             $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
             if (function_exists('audit_log')) audit_log($pdo, (int)($selfId ?? 0), 'delete', 'users', (string)$id, '');
             $pdo->commit();
             echo json_encode(['ok' => true, 'msg' => 'Kullanıcı silindi.']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             echo json_encode(['ok' => false, 'msg' => 'Silme işlemi başarısız.']);
         }

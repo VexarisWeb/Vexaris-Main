@@ -351,6 +351,16 @@ function multi_enforce(\PDO $pdo, int $uid): string {
             $bid = (int)$r['id'];
             if ($bid === $mainId) continue; // ana hesap: dokunulmaz
             $pdo->prepare("UPDATE users SET is_active = 0, ban_reason = 'multi' WHERE id = ? AND is_active = 1")->execute([$bid]);
+            // Oturumlar ve remember-me tokenlari dusurulur (ban gecerli olsun).
+            try {
+                if (function_exists('sessions_kill_all')) {
+                    sessions_kill_all($pdo, $bid, false);
+                } else {
+                    $pdo->prepare("UPDATE users SET session_version = session_version + 1 WHERE id = ?")->execute([$bid]);
+                    $pdo->prepare("UPDATE user_sessions SET revoked = 1 WHERE user_id = ?")->execute([$bid]);
+                    $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = ?")->execute([$bid]);
+                }
+            } catch (Throwable $e3) {}
             multi_flag($pdo, $bid, $mainId, 'multi_ban', 'Otomatik multi-hesap bani (ana hesap #' . $mainId . ')');
             try {
                 notify_user($bid, 'rejected', 'Account suspended — multiple accounts',

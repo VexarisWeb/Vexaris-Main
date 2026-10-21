@@ -18,7 +18,7 @@ if ($pdo) {
             $r['show_currency'] = strtoupper($r['currency'] !== '' ? $r['currency'] : $cur);
             $items[] = $r;
         }
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 
 $paid = (string)($_GET['paid'] ?? '');

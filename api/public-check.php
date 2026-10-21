@@ -23,7 +23,7 @@ try {
         exit;
     }
     $pdo->prepare("INSERT INTO api_rate_limits (ip, scope) VALUES (?,'pubcheck')")->execute([$ip]);
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 
 $token = $_GET['cf_token'] ?? $_POST['cf-turnstile-response'] ?? $_POST['cf_token'] ?? '';
 if (turnstile_enabled() && !turnstile_verify($token, $_SERVER['REMOTE_ADDR'] ?? null)) {
@@ -50,7 +50,7 @@ try {
             break 2;
         }
     }
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 
 echo json_encode([
     'ok'      => $found,

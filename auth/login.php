@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $error = 'Email/username or password is incorrect.';
                 }
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 error_log('Login hatası: ' . $e->getMessage());
                 $error = 'Something went wrong. Please try again.';
             }

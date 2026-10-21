@@ -130,7 +130,7 @@ try {
                     echo json_encode(['ok' => false, 'msg' => $tx('Dakikada en fazla 20 mesaj gönderebilirsin.', 'You can send at most 20 messages per minute.')]);
                     exit;
                 }
-            } catch (Exception $e) {}
+            } catch (Throwable $e) {}
             $role = ($isAdmin || $isStaff) ? 'admin' : 'user';
             if (!$isAdmin && !$isStaff) {
                 $st = $pdo->prepare("SELECT id FROM support_tickets WHERE id = ? AND user_id = ?");
@@ -200,7 +200,7 @@ try {
                 $stT = $pdo->prepare("SELECT COUNT(*) FROM ticket_typing WHERE ticket_id = ? AND user_id <> ? AND updated_at > DATE_SUB(NOW(), INTERVAL 5 SECOND)");
                 $stT->execute([$ticketId, $uid]);
                 $peerTyping = (int)$stT->fetchColumn() > 0;
-            } catch (Exception $e) {}
+            } catch (Throwable $e) {}
 
             echo json_encode(['ok' => true, 'ticket' => $ticket, 'messages' => $messages, 'typing' => $peerTyping]);
             exit;
@@ -229,7 +229,7 @@ try {
             try {
                 $pdo->prepare("INSERT INTO ticket_typing (ticket_id, user_id, updated_at) VALUES (?,?,NOW()) ON DUPLICATE KEY UPDATE updated_at = NOW()")->execute([$ticketId, $uid]);
                 $pdo->prepare("DELETE FROM ticket_typing WHERE updated_at < DATE_SUB(NOW(), INTERVAL 30 SECOND)")->execute();
-            } catch (Exception $e) {}
+            } catch (Throwable $e) {}
             echo json_encode(['ok' => true]);
             exit;
 
@@ -285,7 +285,7 @@ try {
         default:
             echo json_encode(['ok' => false, 'msg' => $tx('Bilinmeyen işlem.', 'Unknown action.')]);
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log('Support API: ' . $e->getMessage());
     echo json_encode(['ok' => false, 'msg' => $tx('Sunucu hatası.', 'Server error.')]);
 }

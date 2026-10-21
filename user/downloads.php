@@ -11,7 +11,7 @@ if ($pdo) {
         $st = $pdo->prepare("SELECT d.*, o.product_name FROM downloads d LEFT JOIN orders o ON o.id = d.order_id WHERE d.user_id = ? ORDER BY d.created_at DESC");
         $st->execute([$uid]);
         $downloads = $st->fetchAll();
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 ?>
 

@@ -65,7 +65,7 @@ try {
         echo json_encode(['ok' => false, 'msg' => 'nonce used']);
         exit;
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'msg' => 'server error']);
     exit;
@@ -84,7 +84,7 @@ try {
             break 2;
         }
     }
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 
 if (!$licensed) {
     http_response_code(403);
@@ -96,7 +96,7 @@ try {
     $st = $pdo->prepare("SELECT * FROM versions WHERE is_active=1 AND version=? LIMIT 1");
     $st->execute([$version]);
     $v = $st->fetch();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     $v = false;
 }
 
@@ -125,7 +125,7 @@ if (!is_file($abs)) {
 try {
     $pdo->prepare("INSERT INTO update_events (version_id, domain, event_type, delay_days) VALUES (?,?,?,0)")
         ->execute([(int)$v['id'], $domain, 'installed']);
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 
 header('Content-Type: application/zip');
 header('Content-Disposition: attachment; filename="' . basename($v['file_name']) . '"');

@@ -3,10 +3,37 @@
 //  Vexaris — Veritabanı Bağlantısı & Migration
 // ============================================================
 
+/* Gizli degerler webroot DISINDA tutulur: /srv/vexaris/secrets/vexaris_net.env
+   (root:vexaris_net_usr 640). Sira: dosya -> ortam degiskeni -> bos.
+   Boylece sifre kodda ve git gecmisinde bulunmaz. */
+function vx_secret(string $name, string $default = ''): string {
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        $file = '/srv/vexaris/secrets/vexaris_net.env';
+        if (is_readable($file)) {
+            $fh = @fopen($file, 'r');
+            if ($fh) {
+                while (($line = fgets($fh)) !== false) {
+                    $line = trim($line);
+                    if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
+                    [$k, $v] = explode('=', $line, 2);
+                    $cache[trim($k)] = trim($v, " \t\"'");
+                }
+                fclose($fh);
+            }
+        }
+    }
+    if (isset($cache[$name]) && $cache[$name] !== '') return (string)$cache[$name];
+    $env = getenv($name);
+    if ($env !== false && $env !== '') return (string)$env;
+    return $default;
+}
+
 define('DB_HOST',    'localhost');
 define('DB_NAME',    'vexaris_net');
 define('DB_USER',    'vexaris_net_usr');
-define('DB_PASS',    'REDACTED_DB_PASSWORD');
+define('DB_PASS',    vx_secret('VX_DB_PASS'));
 define('DB_CHARSET', 'utf8mb4');
 
 define('SESSION_NAME', 'vexaris_sess');
@@ -61,11 +88,24 @@ function session_guard(): void {
     try {
         $pdo = db();
         if (!$pdo) return;
-        $st = $pdo->prepare("SELECT session_version FROM users WHERE id = ? LIMIT 1");
+        $st = $pdo->prepare("SELECT session_version, is_active, ban_reason FROM users WHERE id = ? LIMIT 1");
         $st->execute([$uid]);
-        $ver = $st->fetchColumn();
-        if ($ver === false) { // kullanıcı silinmiş
+        $urow = $st->fetch();
+        if (!$urow) { // kullanıcı silinmiş
             unset($_SESSION['user']);
+            return;
+        }
+        $ver = $urow['session_version'];
+        // Ban kontrolu: banlanan hesabın oturumu düşer (panel + admin dahil).
+        // is_active=0 ama ban_reason boşsa = "aktivasyon bekliyor" -> oturum kalır.
+        $banWhy = (string)($urow['ban_reason'] ?? '');
+        if ((int)($urow['is_active'] ?? 1) === 0 && $banWhy !== '') {
+            unset($_SESSION['user']);
+            @session_regenerate_id(true);
+            if (!headers_sent()) {
+                header('Location: /banned?why=' . rawurlencode($banWhy === 'multi' ? 'multi' : 'manual'));
+                exit;
+            }
             return;
         }
         $sessVer = (int)($_SESSION['user']['sess_ver'] ?? 0);
@@ -189,12 +229,18 @@ function auth_via_remember(): void {
     $pdo = db();
     if (!$pdo) return;
     try {
-        $st = $pdo->prepare("SELECT rt.user_id, rt.expires_at, u.username, u.email, u.is_admin, u.session_version FROM remember_tokens rt JOIN users u ON u.id = rt.user_id WHERE rt.token_hash = ? LIMIT 1");
+        $st = $pdo->prepare("SELECT rt.user_id, rt.expires_at, u.username, u.email, u.is_admin, u.session_version, u.is_active, u.ban_reason FROM remember_tokens rt JOIN users u ON u.id = rt.user_id WHERE rt.token_hash = ? LIMIT 1");
         $st->execute([hash('sha256', $raw)]);
         $row = $st->fetch();
         if (!$row || strtotime((string)$row['expires_at']) < time()) {
             remember_forget($raw);
             try { $pdo->exec("DELETE FROM remember_tokens WHERE expires_at < NOW()"); } catch (Throwable $e2) {}
+            return;
+        }
+        // Banli hesap "remember me" ile geri giremez.
+        if ((int)($row['is_active'] ?? 1) === 0 && (string)($row['ban_reason'] ?? '') !== '') {
+            remember_forget($raw);
+            try { $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = ?")->execute([(int)$row['user_id']]); } catch (Throwable $e2) {}
             return;
         }
         $_SESSION['user'] = [
@@ -380,6 +426,7 @@ function run_migrations(): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         ensure_column($pdo, 'hosted_stores', 'relay_secret', "`relay_secret` VARCHAR(64) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosted_stores', 'api_secret', "`api_secret` VARCHAR(64) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'custom_domain', "`custom_domain` VARCHAR(190) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'custom_status', "`custom_status` VARCHAR(20) NOT NULL DEFAULT ''");
 
@@ -713,6 +760,7 @@ function run_migrations(): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         ensure_column($pdo, 'versions', 'product_id', '`product_id` INT UNSIGNED NULL AFTER `is_active`');
+        ensure_column($pdo, 'versions', 'sha256', '`sha256` CHAR(64) NULL AFTER `product_id`');
 
         // ── Hesap aktivasyonu / şifre sıfırlama / oturum takibi ──
         ensure_column($pdo, 'users', 'is_active', '`is_active` TINYINT(1) NOT NULL DEFAULT 1');
@@ -1138,12 +1186,14 @@ function notify_user(int $userId, string $type, string $title, string $message):
 }
 
 // ── Demo alt alanı DB bağlantısı ────────────────────────────
+// Not: eski kod 'vexaris_dem_usr' kullanıyordu; bu kullanıcı MySQL'de yoktu
+// (admin demo paneli her zaman hata veriyordu). Dogru kullanici: vexaris_demo.
 function demo_db(): ?PDO {
     static $pdo = null;
     if ($pdo === null) {
         try {
             $dsn = 'mysql:host=localhost;dbname=vexaris_demo;charset=utf8mb4';
-            $pdo = new PDO($dsn, 'vexaris_dem_usr', 'REDACTED_DEMO_DB_PASSWORD', [
+            $pdo = new PDO($dsn, 'vexaris_demo', vx_secret('VX_DEMO_DB_PASS'), [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,

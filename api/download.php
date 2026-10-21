@@ -117,7 +117,7 @@ try {
 
     header('Location: /api/download?token=' . $token);
     exit;
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log($e->getMessage());
     http_response_code(500);
     echo 'Server error.';

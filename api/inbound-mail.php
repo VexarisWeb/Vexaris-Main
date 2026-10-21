@@ -18,7 +18,7 @@ try {
     $st = $pdo->prepare("SELECT `value` FROM settings WHERE `key`='mail_inbound_secret' LIMIT 1");
     $st->execute();
     $secret = (string)$st->fetchColumn();
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 if ($secret === '') { http_response_code(503); echo json_encode(['ok' => false, 'msg' => 'not-configured']); exit; }
 
 $to      = mb_substr(trim((string)($d['to'] ?? '')), 0, 190);
@@ -68,7 +68,7 @@ if ($nonce !== '') {
         if ($n->rowCount() === 0) {
             http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'nonce used']); exit;
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         http_response_code(500); echo json_encode(['ok' => false]); exit;
     }
 }
@@ -97,6 +97,6 @@ try {
         if (function_exists('mail_promote_stale_pending')) { mail_promote_stale_pending($pdo, 30); }
     } catch (Throwable $e) {}
     echo json_encode(['ok' => true, 'id' => $newId]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500); echo json_encode(['ok' => false]);
 }

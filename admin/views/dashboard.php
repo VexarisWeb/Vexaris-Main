@@ -10,9 +10,9 @@ try {
     $pending_apps = $pdo->query("SELECT t.id, t.subject, t.created_at, u.username FROM support_tickets t JOIN users u ON u.id=t.user_id WHERE t.source='application' AND t.status='open' ORDER BY t.created_at DESC LIMIT 5")->fetchAll();
     $open_list = $pdo->query("SELECT t.id, t.subject, t.last_msg_at, u.username FROM support_tickets t JOIN users u ON u.id=t.user_id WHERE t.status='open' AND t.source='support' ORDER BY t.last_msg_at DESC LIMIT 5")->fetchAll();
     try {
-        $unread_n = (int)$pdo->query("SELECT COUNT(*) FROM inbound_emails WHERE is_read=0")->fetchColumn();
-        $unread_mails = $pdo->query("SELECT id, to_addr, from_addr, subject, created_at FROM inbound_emails ORDER BY id DESC LIMIT 5")->fetchAll();
-    } catch (Exception $e) {}
+        $unread_n = (int)$pdo->query("SELECT COUNT(*) FROM inbound_emails WHERE is_read=0 AND deleted=0 AND spam=0 AND spam_checked=1")->fetchColumn();
+        $unread_mails = $pdo->query("SELECT id, to_addr, from_addr, subject, created_at FROM inbound_emails WHERE deleted=0 AND spam=0 AND spam_checked=1 ORDER BY id DESC LIMIT 5")->fetchAll();
+    } catch (Throwable $e) {}
     $rows = $pdo->query("SELECT DATE(created_at) d, COUNT(*) c FROM page_views WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY d")->fetchAll();
     $ur = $pdo->query("SELECT DATE(created_at) d, COUNT(*) c FROM users WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY d")->fetchAll();
     $map = []; $umap = [];
@@ -24,7 +24,7 @@ try {
     }
     $top_pages = $pdo->query("SELECT page, COUNT(*) as cnt FROM page_views GROUP BY page ORDER BY cnt DESC LIMIT 5")->fetchAll();
     $recent_users = $pdo->query("SELECT id,username,email,is_admin,role,created_at FROM users ORDER BY created_at DESC LIMIT 8")->fetchAll();
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 $maxV = 1;
 foreach ($chart as $c) $maxV = max($maxV, $c['v']);
 ?>

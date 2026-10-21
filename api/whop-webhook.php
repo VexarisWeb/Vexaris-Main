@@ -131,6 +131,40 @@ function whop_mark_event(PDO $pdo, string $eventId): void {
     } catch (Throwable $e) {}
 }
 
+/* Adminlere bildirim (odeme dogrulanamadigi / uyusmazlik gibi durumlar). */
+function whop_notify_admins(PDO $pdo, string $title, string $message): void {
+    try {
+        $st = $pdo->prepare("SELECT id FROM users WHERE is_admin=1 OR role='admin' LIMIT 20");
+        $st->execute();
+        foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $aid) {
+            notify_user((int)$aid, 'info', $title, $message);
+        }
+    } catch (Throwable $e) {}
+}
+
+/* ── Yanıt yönetimi ───────────────────────────────────────────
+   Once "200 OK" dondurmak, sonradan hata olursa Whop'un yeniden
+   denemesini engelliyordu (odeme alindi, teslim yok). Artik:
+     - islem bitince 200 doner
+     - fatal hata olursa 500 doner -> Whop yeniden dener
+     - ayni olay tekrar gelirse 200 (islem tekrar edilmez) */
+$GLOBALS['whop_out'] = false;
+function whop_finish(int $code = 200, string $body = 'OK'): void {
+    if ($GLOBALS['whop_out']) return;
+    $GLOBALS['whop_out'] = true;
+    if (!headers_sent()) http_response_code($code);
+    echo $body;
+}
+register_shutdown_function(function () {
+    if ($GLOBALS['whop_out']) return;
+    $e = error_get_last();
+    if ($e && in_array((int)$e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
+        error_log('Whop webhook fatal: ' . $e['message'] . ' @ ' . $e['file'] . ':' . $e['line']);
+        if (!headers_sent()) http_response_code(500);
+        echo 'ERROR';
+    }
+});
+
 $payload = file_get_contents('php://input') ?: '';
 $msgId  = (string)($_SERVER['HTTP_WEBHOOK_ID'] ?? $_SERVER['HTTP_SVIX_ID'] ?? '');
 $msgTs  = (string)($_SERVER['HTTP_WEBHOOK_TIMESTAMP'] ?? $_SERVER['HTTP_SVIX_TIMESTAMP'] ?? '');
@@ -143,10 +177,7 @@ if (!whop_verify_webhook($payload, $msgId, $msgTs, $msgSig)) {
 }
 
 $event = json_decode($payload, true);
-http_response_code(200); // Whop'a hızlı 200 (5 sn kuralı)
-echo 'OK';
-
-if (!is_array($event)) return;
+if (!is_array($event)) { whop_finish(); return; }
 $type = (string)($event['type'] ?? '');
 
 /* Son webhook teslimini kaydet (panelde "son webhook" gosterilir; teslim
@@ -164,17 +195,26 @@ $data = is_array($event['data'] ?? null) ? $event['data'] : [];
 $meta = is_array($data['metadata'] ?? null) ? $data['metadata'] : [];
 $orderNo = (string)($meta['order_no'] ?? '');
 
-/* Ayni olay iki kez islenmesin (whop_events tablosu). */
+/* Ayni olay iki kez islenmesin (whop_events tablosu).
+   Idempotency ATOMIK: once INSERT IGNORE + rowCount kontrolu, sonra islem.
+   (Once "SELECT sonra isle" yapisinda eszamanli iki teslimde plan iki kez
+    uygulanabiliyordu.) */
 $eventId = $msgId !== '' ? substr($msgId, 0, 64) : '';
 if ($eventId !== '') {
     try {
         $evChk = db();
         if ($evChk) {
-            $evSt = $evChk->prepare("SELECT id FROM whop_events WHERE event_id=? LIMIT 1");
-            $evSt->execute([$eventId]);
-            if ($evSt->fetch()) { error_log('Whop webhook: olay zaten islenmis, atlandi (' . $eventId . ')'); return; }
+            $evIns = $evChk->prepare("INSERT IGNORE INTO whop_events (event_id, created_at) VALUES (?, NOW())");
+            $evIns->execute([$eventId]);
+            if ($evIns->rowCount() === 0) {
+                error_log('Whop webhook: olay zaten islenmis, atlandi (' . $eventId . ')');
+                whop_finish();
+                return;
+            }
         }
-    } catch (Throwable $e) {}
+    } catch (Throwable $e) {
+        error_log('Whop webhook olay isaretleme hatası: ' . $e->getMessage());
+    }
 }
 
 if (stripos($type, 'membership') !== false) {
@@ -228,11 +268,12 @@ if (stripos($type, 'membership') !== false) {
     } catch (Throwable $e) {
         error_log('Whop cancel isleme: ' . $e->getMessage());
     }
+    whop_finish();
     return;
 }
 try {
     $pdo = db();
-    if (!$pdo) return;
+    if (!$pdo) { whop_finish(500, 'ERROR'); return; }
     /* Siparis bulma: once metadata.order_no, yoksa odeme/refund id'si (provider_ref).
        Whop'in iade/dispute olaylarinda metadata gelmeyebiliyor. */
     $order = null;
@@ -271,38 +312,74 @@ try {
         } else {
             error_log('Whop webhook: sipariş bulunamadı (' . ($orderNo !== '' ? $orderNo : 'meta yok') . ', tip=' . $type . ')');
         }
+        whop_finish();
         return;
     }
     $payId = (string)($data['id'] ?? '');
 
     if ($type === 'payment.succeeded') {
         if ($order['status'] === 'completed') {
-            if ($eventId !== '') whop_mark_event($pdo, $eventId);
-            return; // tekrar bildirimi
+            whop_finish(); // tekrar bildirimi (olay zaten isaretli)
+            return;
         }
-        /* Tutar ve para birimi kontrolu: alan geliyorsa dogrulanir. */
+        /* Tutar ve para birimi kontrolu: alan geliyorsa dogrulanir.
+           Alan yoksa Whop API'sinden sorgulanir; o da olmazsa siparis
+           "dogrulanamayan odeme" olarak isaretlenip incelemeye alinir. */
         $paidAmt = null;
         foreach (['total', 'amount', 'gross_amount', 'price'] as $ak) {
             if (isset($data[$ak]) && is_numeric($data[$ak])) { $paidAmt = (float)$data[$ak]; break; }
         }
+        $payId0 = (string)($data['id'] ?? '');
+        if ($paidAmt === null && $payId0 !== '') {
+            try {
+                [$wc, $wj] = whop_api('GET', '/api/v1/payments/' . rawurlencode($payId0));
+                if ($wc >= 200 && $wc < 300 && is_array($wj)) {
+                    foreach (['total', 'amount', 'gross_amount', 'price'] as $ak2) {
+                        if (isset($wj[$ak2]) && is_numeric($wj[$ak2])) { $paidAmt = (float)$wj[$ak2]; break; }
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
         $expAmt = (float)$order['amount'];
+        $amtUnverified = false;
         if ($paidAmt !== null) {
             $okAmt = ($paidAmt >= $expAmt - 0.01) || (($paidAmt / 100) >= $expAmt - 0.01);
             if (!$okAmt) {
                 error_log('Whop webhook: tutar uyusmazligi (' . $orderNo . ' beklenen=' . $expAmt . ' gelen=' . $paidAmt . ')');
+                try {
+                    $pdo->prepare("UPDATE orders SET status='review' WHERE id=?")->execute([(int)$order['id']]);
+                    audit_log($pdo, (int)$order['user_id'], 'whop_amount_mismatch', 'order', (string)$order['id'], 'expected=' . $expAmt . ' paid=' . $paidAmt);
+                    whop_notify_admins($pdo, 'Payment needs review', 'Order ' . $orderNo . ' amount mismatch (expected ' . $expAmt . ', received ' . $paidAmt . ').');
+                } catch (Throwable $e2) {}
+                whop_finish();
                 return;
             }
         } else {
+            $amtUnverified = true;
             error_log('Whop webhook: tutar alani yok, dogrulanamadi (' . $orderNo . ')');
         }
         $payCur = strtoupper(trim((string)($data['currency'] ?? '')));
         $ordCur = strtoupper(trim((string)($order['currency'] ?? 'USD')));
         if ($payCur !== '' && $ordCur !== '' && $payCur !== $ordCur) {
             error_log('Whop webhook: para birimi uyusmazligi (' . $orderNo . ' beklenen=' . $ordCur . ' gelen=' . $payCur . ')');
+            try {
+                $pdo->prepare("UPDATE orders SET status='review' WHERE id=?")->execute([(int)$order['id']]);
+                audit_log($pdo, (int)$order['user_id'], 'whop_currency_mismatch', 'order', (string)$order['id'], 'expected=' . $ordCur . ' paid=' . $payCur);
+            } catch (Throwable $e2) {}
+            whop_finish();
             return;
         }
         $pdo->prepare("UPDATE orders SET status = 'completed', provider_ref = ? WHERE id = ?")
             ->execute([$payId !== '' ? $payId : $order['provider_ref'], (int)$order['id']]);
+        if ($amtUnverified) {
+            // Odeme Whop imzasi dogrulanmis ama tutar alanida yok: yetki verilir,
+            // siparis incelemeye alinir (admin panelden gorulur).
+            try {
+                $pdo->prepare("UPDATE orders SET status='paid_unverified' WHERE id=?")->execute([(int)$order['id']]);
+                audit_log($pdo, (int)$order['user_id'], 'whop_amount_unverified', 'order', (string)$order['id'], 'order_no=' . $orderNo);
+                whop_notify_admins($pdo, 'Payment amount unverified', 'Order ' . $orderNo . ' has no amount field in the Whop payload. Entitlement granted, order flagged for review.');
+            } catch (Throwable $e2) {}
+        }
         $uid = (int)$order['user_id'];
         $pid = (int)($order['product_id'] ?? 0);
         if ($uid > 0 && $pid > 0) {
@@ -394,15 +471,22 @@ try {
         $rfPid = (int)($refOrder['product_id'] ?? 0);
         /* Iade edilen urunun erisimi geri alinir. */
         if ($rfUid > 0 && $rfPid > 0) whop_revoke_product_access($pdo, $rfUid, $rfPid);
+        /* ONEMLI: urun iadesi (product_id>0) SaaS aboneligini iptal etmez.
+           Yalnizca PLAN siparisleri (product_id=0) aboneligi iptal eder.
+           Aksi halde 5$lik urun iadesi, odeme yapilan aylik plani da dusuruyordu. */
+        $isPlanOrder = ($rfPid === 0);
+        if (!$isPlanOrder) {
+            $rfPlan = '';
+        }
         /* Metadata yoksa mevcut aboneliğin plani kullanilir (iade planı iptal eder). */
-        if ($rfUid > 0 && $rfPlan === '') {
+        if ($rfUid > 0 && $isPlanOrder && $rfPlan === '') {
             try {
                 $subQ = $pdo->prepare("SELECT plan FROM user_subscriptions WHERE user_id=? LIMIT 1");
                 $subQ->execute([$rfUid]);
                 $rfPlan = strtolower((string)($subQ->fetchColumn() ?: ''));
             } catch (Throwable $e) {}
         }
-        if ($rfUid > 0 && ($rfPlan !== '' || isset(whop_plan_offers()[$rfPlan]))) {
+        if ($rfUid > 0 && $isPlanOrder && ($rfPlan !== '' || isset(whop_plan_offers()[$rfPlan]))) {
             $pdo->prepare("UPDATE user_subscriptions SET status='cancelled' WHERE user_id=?")->execute([$rfUid]);
             $lq = $pdo->prepare("SELECT id, features FROM licenses WHERE user_id=?");
             $lq->execute([$rfUid]);
@@ -427,25 +511,32 @@ try {
                 $dpUid = (int)$dOrd['user_id'];
                 $dpPid = (int)($dOrd['product_id'] ?? 0);
                 if ($dpUid > 0 && $dpPid > 0) whop_revoke_product_access($pdo, $dpUid, $dpPid);
-                $pdo->prepare("UPDATE user_subscriptions SET status='cancelled' WHERE user_id=?")->execute([$dpUid]);
-                $lq = $pdo->prepare("SELECT id, features FROM licenses WHERE user_id=?");
-                $lq->execute([$dpUid]);
-                foreach ($lq->fetchAll() as $lr) {
-                    $lf = json_decode((string)$lr['features'], true);
-                    if (is_array($lf) && !empty($lf['plan_auto'])) {
-                        $lf['plan'] = 'free';
-                        $pdo->prepare("UPDATE licenses SET features=? WHERE id=?")->execute([json_encode($lf), (int)$lr['id']]);
+                /* Urun itirazi aboneligi iptal etmez; yalnizca PLAN siparisleri. */
+                if ($dpUid > 0 && $dpPid === 0) {
+                    $pdo->prepare("UPDATE user_subscriptions SET status='cancelled' WHERE user_id=?")->execute([$dpUid]);
+                    $lq = $pdo->prepare("SELECT id, features FROM licenses WHERE user_id=?");
+                    $lq->execute([$dpUid]);
+                    foreach ($lq->fetchAll() as $lr) {
+                        $lf = json_decode((string)$lr['features'], true);
+                        if (is_array($lf) && !empty($lf['plan_auto'])) {
+                            $lf['plan'] = 'free';
+                            $pdo->prepare("UPDATE licenses SET features=? WHERE id=?")->execute([json_encode($lf), (int)$lr['id']]);
+                        }
                     }
+                    notify_user($dpUid, 'info', 'Payment disputed', 'A dispute was opened on your plan payment. Your site continues on the Free plan until resolved.');
+                    whop_downgrade_store($pdo, $dpUid);
                 }
-                notify_user($dpUid, 'info', 'Payment disputed', 'A dispute was opened on your plan payment. Your site continues on the Free plan until resolved.');
-                whop_downgrade_store($pdo, $dpUid);
             }
         }
     }
     if ($eventId !== '') whop_mark_event($pdo, $eventId);
+    whop_finish();
 } catch (Throwable $e) {
     error_log('Whop webhook isleme: ' . $e->getMessage());
+    /* Islem yarida kaldi: olay isareti silinir ve Whop'a 500 donulur ->
+       Whop olayi tekrar gonderir, odeme kaybi olmaz. */
     if ($eventId !== '') {
         try { $pdo = db(); if ($pdo) $pdo->prepare("DELETE FROM whop_events WHERE event_id=?")->execute([$eventId]); } catch (Throwable $e2) {}
     }
+    whop_finish(500, 'ERROR');
 }

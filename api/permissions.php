@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'list') {
             $roles[$r] = $st->fetchAll(PDO::FETCH_COLUMN);
         }
         echo json_encode(['ok' => true, 'roles' => $roles, 'resources' => $allResources]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => 'Sorgu hatası.']);
     }
     exit;
@@ -73,6 +73,6 @@ try {
         $ins->execute([$role, $res]);
     }
     echo json_encode(['ok' => true, 'msg' => role_label($role) . ' rolü için izinler güncellendi.']);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     echo json_encode(['ok' => false, 'msg' => 'İzinler güncellenemedi.']);
 }

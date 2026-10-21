@@ -27,7 +27,7 @@ if ($pdo) {
         $stN = $pdo->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
         $stN->execute([$uid]);
         $recentNotifs = $stN->fetchAll();
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 
 $statusLabels = ['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'];
@@ -41,7 +41,7 @@ if ($pdo && $uid) {
         $stS->execute([$uid]);
         $myPlan = $stS->fetch() ?: null;
         if ($myPlan && ($myPlan['status'] !== 'active' || (int)$myPlan['current_period_end'] < time())) $myPlan = null;
-    } catch (Exception $e) { $myPlan = null; }
+    } catch (Throwable $e) { $myPlan = null; }
 }
 ?>
 <div class="main__header">
@@ -83,7 +83,7 @@ if ($pdo && $uid) {
             $gv = $pdo->query("SELECT * FROM versions WHERE is_active=1 ORDER BY created_at DESC LIMIT 1")->fetch();
             if ($gv) $latestVersions[0]=$gv;
         }
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 if ($latestVersions):
 ?>

@@ -39,7 +39,7 @@ if ($upSlug !== '') {
         $st = $pdo->prepare("SELECT id FROM hosted_stores WHERE slug=? AND (user_id=? OR owner=?) LIMIT 1");
         $st->execute([$upSlug, $uid, $uemail]);
         if (!$st->fetch()) $upSlug = '';
-    } catch (Exception $e) { $upSlug = ''; }
+    } catch (Throwable $e) { $upSlug = ''; }
 } else {
     /* Slug gonderilmemisse (pazarlama formu): kullanicinin aktif magazasi
        otomatik hedeflenir; aksi halde odeme alinip magaza free kaliyordu. */
@@ -49,7 +49,7 @@ if ($upSlug !== '') {
         $st->execute([$uid, $uemail]);
         $found = (string)($st->fetchColumn() ?: '');
         if ($found !== '') $upSlug = $found;
-    } catch (Exception $e) { $upSlug = ''; }
+    } catch (Throwable $e) { $upSlug = ''; }
 }
 
 try {

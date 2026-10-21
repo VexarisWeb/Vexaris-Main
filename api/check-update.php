@@ -65,7 +65,7 @@ try {
         echo json_encode(['ok' => false, 'msg' => 'nonce used']);
         exit;
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'msg' => 'server error']);
     exit;
@@ -84,7 +84,7 @@ try {
             break 2;
         }
     }
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 
 if (!$licensed) {
     echo json_encode(['ok' => false, 'msg' => 'not licensed']);
@@ -94,7 +94,7 @@ if (!$licensed) {
 try {
     $st = $pdo->query("SELECT * FROM versions WHERE is_active=1 ORDER BY created_at DESC LIMIT 1");
     $v  = $st->fetch();
-} catch (Exception $e) {
+} catch (Throwable $e) {
     $v = false;
 }
 

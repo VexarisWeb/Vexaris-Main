@@ -14,7 +14,7 @@ function ib_cfg(PDO $pdo, string $key, string $def = ''): string {
         $st->execute([$key]);
         $v = $st->fetchColumn();
         return ($v === false || $v === null) ? $def : (string)$v;
-    } catch (Exception $e) { return $def; }
+    } catch (Throwable $e) { return $def; }
 }
 function ib_cfg_set(PDO $pdo, string $key, string $value): void {
     $st = $pdo->prepare("INSERT INTO settings (`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)");
@@ -282,7 +282,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $pdo) {
 }
 if ($inSecret === '' && $pdo) {
     $inSecret = bin2hex(random_bytes(32));
-    try { ib_cfg_set($pdo, 'mail_inbound_secret', $inSecret); } catch (Exception $e) {}
+    try { ib_cfg_set($pdo, 'mail_inbound_secret', $inSecret); } catch (Throwable $e) {}
 }
 
 function ib_like(string $q): string {
@@ -323,7 +323,7 @@ function ib_list(PDO $pdo, string $folder, string $filter, string $q, int $page,
         $cst = $pdo->prepare("SELECT COUNT(*) FROM ($inner) t");
         $cst->execute($args);
         $total = (int)$cst->fetchColumn();
-    } catch (Exception $e) { $total = 0; }
+    } catch (Throwable $e) { $total = 0; }
     $pages = max(1, (int)ceil($total / $per));
     if ($page > $pages) { $page = $pages; }
     $off = ($page - 1) * $per;
@@ -332,11 +332,11 @@ function ib_list(PDO $pdo, string $folder, string $filter, string $q, int $page,
         $st = $pdo->prepare("SELECT * FROM ($inner) t ORDER BY created_at DESC, id DESC LIMIT $per OFFSET $off");
         $st->execute($args);
         $items = $st->fetchAll();
-    } catch (Exception $e) { $items = []; }
+    } catch (Throwable $e) { $items = []; }
     return ['items' => $items, 'total' => $total, 'pages' => $pages, 'page' => $page, 'per' => $per];
 }
 
-if ($pdo && function_exists('mail_promote_stale_pending')) { try { mail_promote_stale_pending($pdo, 30); } catch (Exception $e) {} }
+if ($pdo && function_exists('mail_promote_stale_pending')) { try { mail_promote_stale_pending($pdo, 30); } catch (Throwable $e) {} }
 
 $counts = ['inbox' => 0, 'unread' => 0, 'sent' => 0, 'starred' => 0, 'trash' => 0, 'spam' => 0];
 $spamPending = 0;
@@ -353,7 +353,7 @@ if ($pdo) {
         $counts['sent'] = (int)($r[0] ?? 0);
         $counts['starred'] += (int)($r[1] ?? 0);
         $counts['trash'] += (int)($r[2] ?? 0);
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 
 $listing = ['items' => [], 'total' => 0, 'pages' => 1, 'page' => 1, 'per' => $per];
@@ -381,7 +381,7 @@ if ($selId > 0 && $pdo) {
                 $sel['is_read'] = 1;
             }
         }
-    } catch (Exception $e) { $sel = null; }
+    } catch (Throwable $e) { $sel = null; }
 }
 
 $composing = isset($_GET['compose']) || isset($_GET['reply']) || isset($_GET['fwd']) || $inErr;
@@ -398,7 +398,7 @@ if ((isset($_GET['reply']) || isset($_GET['fwd'])) && $pdo) {
         $st->execute([$rid]);
         $replyRow = $st->fetch() ?: null;
         $replyBox = $rb;
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 $isFwd = isset($_GET['fwd']);
 $sig = (string)ib_cfg($pdo, 'mail_signature', '');
