@@ -64,6 +64,14 @@ function render_editor(string $id, string $content = '', string $height = '300px
 .ed-modal-btn:hover{background:#3a3a3a;}
 .ed-modal-btn.pri{background:#3498db;border-color:#3498db;font-weight:700;}
 .ed-modal-btn.pri:hover{background:#2980b9;}
+@media(max-width:768px){
+ .ed-body{font-size:16px;-webkit-text-size-adjust:100%}
+ .ed-btn{width:36px;height:36px;min-width:36px}
+ .ed-modal-box{width:96%;padding:14px}
+ .ed-drp{max-width:calc(100vw - 16px);flex-wrap:wrap}
+ .ed-clr-grd{grid-template-columns:repeat(6,1fr)}
+ .ed-body{min-height:200px}
+}
 </style>
 <?php
     render_editor_instance($cssId, $content, $height, $name);
@@ -211,9 +219,15 @@ function render_editor_instance(string $id, string $content, string $height, str
 var $=document.getElementById.bind(document),r='<?= $rId ?>',ed=$('edBody-'+r),wrap=$('edWrap-'+r);
 if(!ed||!wrap)return;
 var sr=null;
-function ss(){var s=window.getSelection();if(s.rangeCount>0){var ra=s.getRangeAt(0);if(ed.contains(ra.commonAncestorContainer)||ed===ra.commonAncestorContainer)sr=ra;}}
-function sr2(){if(sr){var s=window.getSelection();s.removeAllRanges();s.addRange(sr);}else ed.focus();}
-['keyup','mouseup','focus'].forEach(function(ev){ed.addEventListener(ev,ss);});
+function ss(){try{var s=window.getSelection();if(s&&s.rangeCount>0){var ra=s.getRangeAt(0);var ac=ra.commonAncestorContainer;if(ed.contains(ac)||ed===ac)sr=ra;}}catch(e){}}
+function edFocus(){try{ed.focus({preventScroll:true});}catch(e){try{ed.focus();}catch(e2){}}}
+function sr2(){var keep=sr;edFocus();if(keep){try{var s=window.getSelection();s.removeAllRanges();s.addRange(keep);}catch(e){}}}
+['keyup','mouseup','focus','touchend'].forEach(function(ev){ed.addEventListener(ev,ss);});
+document.addEventListener('selectionchange',ss);
+
+wrap.querySelectorAll('.ed-tb').forEach(function(tb){tb.addEventListener('mousedown',function(e){
+var t=e.target.closest('button,.ed-clr-sw,.ed-tab,label');if(t)e.preventDefault();
+});});
 
 wrap.querySelectorAll('.ed-drp-tg').forEach(function(b){b.addEventListener('click',function(e){
 e.preventDefault();e.stopPropagation();ss();var t=b.getAttribute('data-target');

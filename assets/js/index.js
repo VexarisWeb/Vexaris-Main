@@ -75,35 +75,6 @@
     setTimeout(showAll, 2500);
   }
 
-  /* ---------- sayaç ---------- */
-  function initCountUp() {
-    var els = $all('[data-countup]');
-    if (!els.length) return;
-    function run(el) {
-      var to = parseFloat(el.getAttribute('data-countup')) || 0;
-      var dec = parseInt(el.getAttribute('data-dec') || '0', 10);
-      var pre = el.getAttribute('data-prefix') || '';
-      var suf = el.getAttribute('data-suffix') || '';
-      function fmt(v) {
-        return pre + v.toLocaleString('tr-TR', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suf;
-      }
-      if (reduced) { el.textContent = fmt(to); return; }
-      var t0 = performance.now(), dur = 1400;
-      (function tick(t) {
-        var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
-        el.textContent = fmt(to * e);
-        if (p < 1) requestAnimationFrame(tick);
-      })(t0);
-    }
-    if (!('IntersectionObserver' in window)) { els.forEach(run); return; }
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (en.isIntersecting) { run(en.target); io.unobserve(en.target); }
-      });
-    }, { threshold: 0.4 });
-    els.forEach(function (e) { io.observe(e); });
-  }
-
   /* ---------- logo şeridi: kayar motor (smooth, rAF) ---------- */
   var marqueeHalf = 0, marqueeDirty = true;
   function marqueeMeasure() { marqueeDirty = true; }
@@ -167,9 +138,7 @@
   }
 
   /* ---------- hero dönen kelimeler ---------- */
-  var ROT_WORDS_TR = ['Güçlü Altyapı', 'Modern Entegrasyonlar', 'Yüksek Performans', 'Otomatik Teslimat'];
-  var ROT_WORDS_EN = ['Powerful Infrastructure', 'Modern Integrations', 'High Performance', 'Automatic Delivery'];
-  var ROT_WORDS = (document.documentElement.lang || 'en').toLowerCase().indexOf('tr') === 0 ? ROT_WORDS_TR : ROT_WORDS_EN;
+  var ROT_WORDS = ['Powerful Infrastructure', 'Modern Integrations', 'High Performance', 'Automatic Delivery'];
   function initRotate() {
     var el = $('#rotWord');
     if (!el || !ROT_WORDS.length) return;
@@ -259,44 +228,21 @@
     var m = $('#infoModal');
     if (!m) return;
     var title = $('#infoTitle'), meta = $('#infoMeta'), body = $('#infoBody');
-    if (act === 'status') {
-      if (title) title.textContent = 'Durum sayfası';
-      if (meta) meta.textContent = 'status.vexaris';
-      if (body) {
-        body.innerHTML = '';
-        var ul = document.createElement('ul');
-        ul.className = 'mt-1 space-y-2.5';
-        [['Mağaza & API', '%99,99'], ["Ödeme webhook'ları", '%99,97'], ['Teslimat servisi', '%99,99'], ['Dosya indirme (CDN)', '%99,95'], ['Discord webhook', '%99,90']].forEach(function (s) {
-          var li = document.createElement('li');
-          li.className = 'flex items-center justify-between rounded-lg border border-[#262c33] bg-[#0e1114] px-4 py-3';
-          li.innerHTML = '<span class="inline-flex items-center gap-2.5 text-[13.5px] font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-[#74c091] pulse-dot text-[#74c091]"></span></span><span class="font-mono2 text-[11.5px] text-[#74c091]"></span>';
-          li.firstChild.appendChild(document.createTextNode(s[0]));
-          li.lastChild.textContent = s[1];
-          ul.appendChild(li);
-        });
-        body.appendChild(ul);
-        var p = document.createElement('p');
-        p.className = 'mt-4 font-mono2 text-[11px] text-[#7d858e]';
-        p.textContent = 'son olay: v2.4.1 yayını • 12 Şub 2026 • tamamlandı • kesinti yok';
-        body.appendChild(p);
-      }
-    } else {
-      var doc = LEGAL[act];
-      if (!doc) return;
-      if (title) title.textContent = doc.title;
-      if (meta) meta.textContent = doc.updated;
-      if (body) {
-        body.innerHTML = '';
-        var wrap = document.createElement('div');
-        wrap.className = 'space-y-4';
-        doc.body.forEach(function (par) {
-          var el = document.createElement('p');
-          el.className = 'text-[13.5px] leading-relaxed text-[#9aa3ac]';
-          el.textContent = par;
-          wrap.appendChild(el);
-        });
-        body.appendChild(wrap);
-      }
+    var doc = LEGAL[act];
+    if (!doc) return;
+    if (title) title.textContent = doc.title;
+    if (meta) meta.textContent = doc.updated;
+    if (body) {
+      body.innerHTML = '';
+      var wrap = document.createElement('div');
+      wrap.className = 'space-y-4';
+      doc.body.forEach(function (par) {
+        var el = document.createElement('p');
+        el.className = 'text-[13.5px] leading-relaxed text-[#9aa3ac]';
+        el.textContent = par;
+        wrap.appendChild(el);
+      });
+      body.appendChild(wrap);
     }
     m.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -371,8 +317,8 @@
     var more = $('#ckMore'), accept = $('#ckAccept'), reject = $('#ckReject'), panel = $('#ckSettings');
     var settingsOpen = false;
     function paintBtns() {
-      if (more) more.textContent = settingsOpen ? 'Geri' : 'Diğer Seçenekler';
-      if (accept) accept.textContent = settingsOpen ? 'Kaydet' : 'Kabul Et';
+      if (more) more.textContent = settingsOpen ? 'Back' : 'More Options';
+      if (accept) accept.textContent = settingsOpen ? 'Save' : 'Accept';
     }
     if (more) more.addEventListener('click', function () {
       settingsOpen = !settingsOpen;
@@ -443,7 +389,7 @@
     if (!inp || !grid) return;
     var cards = $all('[data-search]', grid);
     var empty = $('#featEmpty'), count = $('#featCount');
-    function norm(s) { return (s || '').toLocaleLowerCase('tr-TR'); }
+    function norm(s) { return (s || '').toLowerCase(); }
     function run() {
       var q = norm(inp.value.trim()), n = 0;
       cards.forEach(function (c) {
@@ -465,7 +411,6 @@
   document.addEventListener('DOMContentLoaded', function () {
     safe(onScroll);
     safe(initReveal);
-    safe(initCountUp);
     safe(initMarquee);
     safe(initRotate);
     safe(initStepspy);

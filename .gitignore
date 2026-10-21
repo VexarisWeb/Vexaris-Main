@@ -1,0 +1,39 @@
+# ── Vexaris mainsite .gitignore ─────────────────────────────
+# Webroot icinde tutulan kod; gizli/uretilen dosyalar repoya girmez.
+
+# Git meta (webroot disinda tutulur: /srv/vexaris/git/vexaris.net)
+.git
+
+# Sirlar / ortam
+.env
+*.env
+install/config.php
+config/local.php
+
+# Loglar
+*.log
+error_log
+error_log.*
+
+# Yuklenen dosyalar (binary, repoda tutulmaz)
+uploads/products/*
+uploads/versions/*
+uploads/store-logos/*
+uploads/tickets/*
+uploads/avatars/*
+uploads/blog/*
+!uploads/**/.htaccess
+!uploads/**/index.html
+
+# Lokal arac dosyalari
+.kilo/
+.vscode/
+.idea/
+*.swp
+*.bak
+*.old
+.DS_Store
+
+# Gecici
+tmp/
+cache/

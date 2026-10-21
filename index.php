@@ -64,16 +64,10 @@ $LOGOS = [
   ['name'=>'Google Analytics','file'=>null],
 ];
 $STEPS = [
-  ['n'=>'01','title'=>'Publish your product','desc'=>'Upload your file or paste one-per-line e-pins / license content. Price, discount, category, and ordering in a single form.','meta'=>'zip / rar / 7z / jar • product_stocks'],
+  ['n'=>'01','title'=>'Publish your product','desc'=>'Upload your file or paste one-per-line e-pins / license content. Price, discount, category, and ordering in a single form.','meta'=>'zip / rar / 7z / jar • stock line tracking'],
   ['n'=>'02','title'=>'Customer checks out','desc'=>'The customer finds the product, adds it to the cart, applies a coupon, and pays by balance or card. Turnstile verifies silently.','meta'=>'coupons + balance + 12 payment providers'],
-  ['n'=>'03','title'=>'Let the system deliver','desc'=>'The second payment is approved, a line is pulled from stock, the license key is signed, and the file and key land in "My Purchases".','meta'=>'delivery automation'],
-  ['n'=>'04','title'=>'Support and updates','desc'=>'If a customer gets stuck, they open a ticket; when you release a new version, every previous buyer gets the updated file from their download list.','meta'=>'tickets • version tracking • deferrals'],
-];
-$TESTIMONIALS = [
-  ['quote'=>'I actively use the service myself; the team is genuinely attentive and implements every suggestion. Highly recommended.','name'=>'Vixians','role'=>'VProject Owner','ini'=>'VX'],
-  ['quote'=>'They helped me end to end during my website setup. We put in a lot of work, but the result turned out excellent. The site design is top quality and the admin panel is so organized that nothing is confusing — I find everything instantly. Many thanks to the Vexaris team for their support.','name'=>'Roda','role'=>'Owner of dcevin.com.tr','ini'=>'RO'],
-  ['quote'=>'Real customer reviews will be listed here.','name'=>'Sample User','role'=>'Review pending','ini'=>'SU'],
-  ['quote'=>'Real customer reviews will be listed here.','name'=>'Sample User','role'=>'Review pending','ini'=>'SU'],
+  ['n'=>'03','title'=>'Let the system deliver','desc'=>'Once the payment is approved, a line is pulled from stock, the license key is signed, and the file and key land in "My Purchases".','meta'=>'delivery automation'],
+  ['n'=>'04','title'=>'Support and updates','desc'=>'If a customer gets stuck, they open a ticket; when you release a new version, every previous buyer gets the updated file from their download list.','meta'=>'tickets • version tracking • update notices'],
 ];
 $NEWS = [];
 try {
@@ -142,21 +136,21 @@ function vex_logo_item($l){
         <div class="grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           <div class="lg:col-span-6">
             <h1 class="font-display font-extrabold tracking-tight text-[2.1rem] sm:text-6xl xl:text-[4.2rem] leading-[1.02]">
-              <span class="line-mask"><span style="--ld:120ms">Your digital products</span></span>
-              <span class="line-mask"><span style="--ld:230ms">delivered the moment</span></span>
-              <span class="line-mask"><span style="--ld:340ms" class="text-[#4f8fc0]">they sell.</span></span>
+              <span class="line-mask"><span style="--ld:120ms">Sell digital products.</span></span>
+              <span class="line-mask"><span style="--ld:230ms" class="text-[#4f8fc0]">0% commission.</span></span>
+              <span class="line-mask"><span style="--ld:340ms">Delivered instantly.</span></span>
             </h1>
             <div>
               <p class="mt-6 max-w-lg text-[15.5px] leading-relaxed text-[#9aa3ac]">
-                Vexaris lets you sell e-pins, e-books, license keys and software packages from a single panel.
-                The second payment is approved, files and keys land in customer accounts automatically.
+                The all-in-one store for e-pins, license keys, plugins and e-books. The moment a payment is
+                approved, files and keys land in the customer's account automatically — no manual sending.
               </p>
             </div>
             <div class="mt-8 flex flex-wrap items-center gap-3">
-              <a href="#pricing" class="btn-primary px-6 py-3 text-sm inline-flex items-center gap-2">Get started
+              <a href="<?= $loggedIn ? '/dashboard' : '/register' ?>" class="btn-primary px-6 py-3 text-sm inline-flex items-center gap-2">Start for free
                 <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
               </a>
-              <a href="#features" class="btn-ghost px-6 py-3 text-sm font-semibold">Explore features</a>
+              <a href="https://demo.vexaris.net" target="_blank" rel="noopener" class="btn-ghost px-6 py-3 text-sm font-semibold">See the live demo</a>
             </div>
             <div class="mt-8 lg:mt-10 overflow-hidden pt-3 sm:pt-11 pb-1 [mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]">
               <div id="logoTrack" class="marquee-track items-center">
@@ -174,7 +168,7 @@ function vex_logo_item($l){
                 <div class="flex gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#3a434e]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#3a434e]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#4f8fc0]/70"></span></div>
                 <div class="flex-1 flex items-center gap-2 rounded-md bg-[#0b0d10] border border-[#262c33] px-3 py-1 text-[11px] font-mono2 text-[#7d858e]">
                   <svg viewBox="0 0 24 24" class="w-3 h-3 text-[#74c091]" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-                  demo.vexaris.com/admin
+                  demo.vexaris.net/admin
                 </div>
                 <span class="hidden sm:block text-[10px] font-mono2 uppercase tracking-wider text-[#7d858e]">admin panel</span>
               </div>
@@ -209,7 +203,7 @@ function vex_logo_item($l){
           <div class="reveal">
             <h2 class="font-display font-bold tracking-tight text-3xl sm:text-4xl lg:text-[2.9rem] leading-[1.05]">Automated delivery<br />in four steps.</h2>
             <p class="mt-5 max-w-md text-[15px] leading-relaxed text-[#9aa3ac]">Sellers enter files or stock lines once; then orders, payments, delivery and support flow as links of one chain. No manual sending, no waiting customers.</p>
-            <a href="#features" class="btn-ghost mt-7 inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold">Watch the chain live <?= vex_icon('arrow','w-4 h-4') ?></a>
+            <a href="/features" class="btn-ghost mt-7 inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold">See all features <?= vex_icon('arrow','w-4 h-4') ?></a>
           </div>
         </div></div>
         <ol class="lg:col-span-7 relative">
@@ -231,7 +225,7 @@ function vex_logo_item($l){
       <div class="max-w-7xl mx-auto px-5 sm:px-8">
         <div class="reveal flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-12 md:mb-16">
           <h2 class="font-display font-bold tracking-tight text-3xl sm:text-4xl lg:text-[2.9rem] leading-[1.05] max-w-2xl">A store that runs<br />with zero seller effort.</h2>
-          <p class="text-[15px] leading-relaxed text-[#9aa3ac] md:max-w-sm md:text-right md:pb-1">Every tab in the admin panel maps to a visible store behavior. These are the six most-used modules.</p>
+          <p class="text-[15px] leading-relaxed text-[#9aa3ac] md:max-w-sm md:text-right md:pb-1">Every tab in the admin panel maps to a visible store behavior. These are the seven most-used modules.</p>
         </div>
         <div class="grid lg:grid-cols-6 gap-4">
           <div class="reveal lg:col-span-3 lg:row-span-2" style="--rd:0ms">
@@ -240,7 +234,7 @@ function vex_logo_item($l){
               <h3 class="mt-4 font-display font-bold text-lg tracking-tight">Product &amp; stock management</h3>
               <p class="mt-2 text-[13.5px] leading-relaxed text-[#9aa3ac]">zip/rar/7z/jar files or line-by-line single e-pins and license content. When stock runs out, sales close automatically.</p>
               <div class="mt-5 rounded-lg border border-[#262c33] bg-[#0e1114] overflow-hidden font-mono2 text-[11px]">
-                <div class="flex items-center justify-between px-3 py-2 border-b border-[#262c33] text-[#7d858e]"><span>product_stocks</span><span>3/5 lines</span></div>
+                <div class="flex items-center justify-between px-3 py-2 border-b border-[#262c33] text-[#7d858e]"><span>stock_lines</span><span>3/5 lines</span></div>
                 <?php foreach ([['VEX-8QMD-7F3K','sold','#7d858e'],['VEX-2LPA-9K4T','sold','#7d858e'],['VEX-9K2L-M4PQ','sold','#7d858e'],['VEX-4TRB-6HZX','ready','#74c091'],['VEX-7NWJ-3VDS','ready','#74c091']] as $r): ?>
                 <div class="flex items-center justify-between px-3 py-1.5 border-b border-[#1a1f25] last:border-0 text-[#9aa3ac]"><span><?= $r[0] ?></span><span style="color:<?= $r[2] ?>"><?= $r[1] ?></span></div>
                 <?php endforeach; ?>
@@ -289,11 +283,18 @@ function vex_logo_item($l){
               </div>
             </article>
           </div>
-          <div class="reveal lg:col-span-6" style="--rd:350ms">
+          <div class="reveal lg:col-span-3" style="--rd:350ms">
             <article class="card card-hover h-full p-6 flex flex-col">
               <span class="feat-ic grid place-items-center w-11 h-11 rounded-xl border border-[#262c33] bg-[#0e1114] text-[#4f8fc0]"><?= vex_icon('mail') ?></span>
               <h3 class="mt-4 font-display font-bold text-lg tracking-tight">Mail templates &amp; SEO</h3>
               <p class="mt-2 text-[13.5px] leading-relaxed text-[#9aa3ac]">Delivery and verification mails go out with customizable templates; title, description and OG fields live in the panel.</p>
+            </article>
+          </div>
+          <div class="reveal lg:col-span-3" style="--rd:420ms">
+            <article class="card card-hover h-full p-6 flex flex-col">
+              <span class="feat-ic grid place-items-center w-11 h-11 rounded-xl border border-[#262c33] bg-[#0e1114] text-[#4f8fc0]"><?= vex_icon('coin') ?></span>
+              <h3 class="mt-4 font-display font-bold text-lg tracking-tight">Multi-currency</h3>
+              <p class="mt-2 text-[13.5px] leading-relaxed text-[#9aa3ac]">Automatic rates with central-bank fallback, stale-rate warnings and limits shown in store currency.</p>
             </article>
           </div>
         </div>
@@ -330,33 +331,37 @@ function vex_logo_item($l){
       </div>
     </section>
 
-    <!-- ============ REFERANSLAR ============ -->
-    <section id="testimonials" class="relative py-24 md:py-32 border-t border-[#262c33] scroll-mt-24">
+    <!-- ============ GÜVEN ŞERİDİ ============ -->
+    <section id="trust" class="relative py-20 md:py-28 border-t border-[#262c33] scroll-mt-24">
       <div class="max-w-7xl mx-auto px-5 sm:px-8">
-        <div class="reveal flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-12 md:mb-16">
-          <h2 class="font-display font-bold tracking-tight text-3xl sm:text-4xl lg:text-[2.9rem] leading-[1.05] max-w-2xl">What do sellers say?</h2>
-          <p class="text-[15px] leading-relaxed text-[#9aa3ac] md:max-w-sm md:text-right md:pb-1">Notes from teams selling with Vexaris, from e-pin stores to plugin developers.</p>
+        <div class="reveal text-center max-w-2xl mx-auto mb-10 md:mb-14">
+          <div class="font-mono2 text-[12px] uppercase tracking-[0.2em] text-[#4f8fc0]">Why sellers pick Vexaris</div>
+          <h2 class="mt-3 font-display font-bold tracking-tight text-3xl sm:text-4xl lg:text-[2.9rem] leading-[1.05]">Built on facts,<br />not promises.</h2>
         </div>
-      </div>
-      <div class="reveal relative mt-12 md:mt-16" id="refSlider">
-        <div class="overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_6%,#000_94%,transparent)]">
-          <div id="refTrack" class="flex gap-4 w-max py-2 px-2">
-            <?php for ($dup = 0; $dup < 2; $dup++): ?>
-            <?php foreach ($TESTIMONIALS as $t): ?>
-            <article class="ref-card card w-[300px] sm:w-[360px] shrink-0 p-6 flex flex-col min-h-[280px] sm:min-h-[260px]">
-              <svg viewBox="0 0 48 36" class="w-6 h-5 text-[#4f8fc0]/50" fill="currentColor" aria-hidden="true"><path d="M0 36V20.8C0 8.9 6.9 1.4 18.4 0l2 5.6c-6.3 1.7-9.7 5.5-10 11.2H20V36H0Zm28 0V20.8C28 8.9 34.9 1.4 46.4 0l2 5.6c-6.3 1.7-9.7 5.5-10 11.2H48V36H28Z"/></svg>
-              <p class="mt-4 text-[14px] leading-relaxed text-[#c8ccd1] italic flex-1">“<?= htmlspecialchars($t['quote']) ?>”</p>
-              <div class="mt-5 pt-5 border-t border-[#262c33] flex items-center gap-3">
-                <span class="grid place-items-center w-10 h-10 rounded-full border border-[#262c33] bg-[#0e1114] font-mono2 text-[12px] text-[#4f8fc0] shrink-0"><?= $t['ini'] ?></span>
-                <div class="min-w-0"><div class="text-[13.5px] font-bold truncate"><?= htmlspecialchars($t['name']) ?></div><div class="text-[11.5px] text-[#9aa3ac] truncate"><?= htmlspecialchars($t['role']) ?></div></div>
-                <div class="ml-auto flex gap-0.5 shrink-0" aria-label="5 out of 5 stars">
-                  <?php for ($s = 0; $s < 5; $s++): ?><svg viewBox="0 0 24 24" class="w-3.5 h-3.5 text-[#4f8fc0]" fill="currentColor"><path d="m12 2.6 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.5l-5.9 3.1 1.2-6.5L2.5 9.5l6.6-.9Z"/></svg><?php endfor; ?>
-                </div>
-              </div>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <?php
+          $TRUST = [
+            ['tag','0% commission','No per-sale cut. Keep your margin on every order.'],
+            ['bolt','Automatic delivery','Payment approved — file and license key delivered instantly.'],
+            ['wallet','12 payment integrations','Local and global gateways from a single panel.'],
+            ['shield','Cloudflare Turnstile','Bot-protected checkout and role-based admin access.'],
+            ['spark','Free plan','Start selling without a card, upgrade when you grow.'],
+            ['globe','Custom domain','Your brand, your URL, plus a working subdomain alias.'],
+            ['download','Automatic updates','Every previous buyer gets new versions from their dashboard.'],
+            ['users','Role &amp; permission matrix','Give your team exactly the access they need.'],
+          ];
+          foreach ($TRUST as $i => $t):
+          ?>
+          <div class="reveal" style="--rd:<?= ($i % 4) * 70 ?>ms">
+            <article class="card card-hover h-full p-5 flex items-start gap-3.5">
+              <span class="feat-ic grid place-items-center w-10 h-10 rounded-xl border border-[#262c33] bg-[#0e1114] text-[#4f8fc0] shrink-0"><?= vex_icon($t[0]) ?></span>
+              <span class="min-w-0">
+                <span class="block font-display font-bold text-[15px] tracking-tight"><?= $t[1] ?></span>
+                <span class="mt-1 block text-[13px] leading-relaxed text-[#9aa3ac]"><?= htmlspecialchars($t[2]) ?></span>
+              </span>
             </article>
-            <?php endforeach; ?>
-            <?php endfor; ?>
           </div>
+          <?php endforeach; ?>
         </div>
       </div>
     </section>
@@ -366,7 +371,7 @@ function vex_logo_item($l){
     <section id="blog" class="relative py-24 md:py-32 border-t border-[#262c33] scroll-mt-24">
       <div class="max-w-7xl mx-auto px-5 sm:px-8">
         <div class="reveal flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-12 md:mb-16">
-          <h2 class="font-display font-bold tracking-tight text-3xl sm:text-4xl lg:text-[2.9rem] leading-[1.05] max-w-2xl">Blog &amp; duyurular</h2>
+          <h2 class="font-display font-bold tracking-tight text-3xl sm:text-4xl lg:text-[2.9rem] leading-[1.05] max-w-2xl">Blog &amp; announcements</h2>
           <p class="text-[15px] leading-relaxed text-[#9aa3ac] md:max-w-sm md:text-right md:pb-1">Platform news and announcements — live here the moment they are published from the panel.</p>
         </div>
         <div class="grid md:grid-cols-3 gap-4">
@@ -395,7 +400,7 @@ function vex_logo_item($l){
           <div class="reveal">
             <h2 class="font-display font-bold tracking-tight text-3xl sm:text-4xl leading-[1.05]">Frequently asked<br />questions</h2>
             <p class="mt-4 text-[14.5px] leading-relaxed text-[#9aa3ac] max-w-xs">If you cannot find what you are looking for, our support team is one ticket away.</p>
-            <a href="mailto:destek@vexaris.net" class="btn-ghost mt-6 inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold">destek@vexaris.net</a>
+            <a href="mailto:info@vexaris.net" class="btn-ghost mt-6 inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold">info@vexaris.net</a>
           </div>
         </div></div>
         <div class="lg:col-span-8 space-y-3">

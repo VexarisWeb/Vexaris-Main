@@ -23,7 +23,11 @@ if ($slug === '' && is_string($uriPath)) {
     }
 }
 // Tasanmis slug'lar kalici olarak yeni adrese tasinir (tek hopta 301).
-$legacySlugs = ['gumroad-alternatives-2026' => 'gumroad/alternative-2026'];
+$legacySlugs = [
+  'gumroad-alternatives-2026' => 'gumroad/alternative-2026',
+  'dijital-urun-nasil-satilir' => 'requirements-for-selling-digital-products-automated-store-guide-2026',
+  'vexaris-nedir-dijital-urun-satisi-icin-gelistirilen-e-ticaret-altyapisi' => 'what-is-vexaris-saas-infrastructure-for-digital-product-sales',
+];
 if (isset($legacySlugs[$slug])) {
     header('Location: /' . $legacySlugs[$slug], true, 301);
     exit;

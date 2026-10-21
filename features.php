@@ -12,7 +12,7 @@ $GLOBALS['seoFallback'] = [
   'description' => 'Vexaris features: product and stock management, coupons, automatic delivery, license keys, 12+ payment integrations, visual theme editor, modules and more.',
 ];
 
-$BASE = 'index.php';
+$BASE = '/';
 
 $FEATS = [
   ['icon'=>'box','title'=>'Product & Stock Management','desc'=>'Unlimited and single stock modes, zip/rar/7z/jar uploads. Sales stop automatically when stock runs out.','keys'=>'product stock single zip file'],

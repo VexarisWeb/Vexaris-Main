@@ -32,7 +32,7 @@ $total_views = $pdo ? (int)$pdo->query("SELECT COUNT(*) FROM page_views")->fetch
 $total_tickets = $pdo ? (int)$pdo->query("SELECT COUNT(*) FROM support_tickets WHERE status != 'closed'")->fetchColumn() : 0;
 $unread_tickets = $pdo ? (int)$pdo->query("SELECT COUNT(*) FROM support_tickets t JOIN support_messages m ON m.ticket_id = t.id WHERE m.sender_role = 'user' AND m.is_read = 0")->fetchColumn() : 0;
 $unread_inbox = 0;
-if ($pdo) { try { $unread_inbox = (int)$pdo->query("SELECT COUNT(*) FROM inbound_emails WHERE is_read=0")->fetchColumn(); } catch (Exception $e) {} }
+if ($pdo) { try { $unread_inbox = (int)$pdo->query("SELECT COUNT(*) FROM inbound_emails WHERE is_read=0 AND deleted=0 AND spam=0 AND spam_checked=1")->fetchColumn(); } catch (Throwable $e) {} }
 
 $user = current_user();
 $myRole = user_role();

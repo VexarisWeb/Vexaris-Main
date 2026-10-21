@@ -29,7 +29,7 @@ $BASE = isset($BASE) ? $BASE : '';
           Sign up free <?= vex_icon('arrow', 'w-4 h-4') ?>
         </a>
         <?php endif; ?>
-        <a href="<?= $BASE ?>#top" class="btn-ghost w-full sm:w-auto px-7 py-3.5 text-sm font-semibold text-center">Explore the demo panel</a>
+        <a href="https://demo.vexaris.net" target="_blank" rel="noopener" class="btn-ghost w-full sm:w-auto px-7 py-3.5 text-sm font-semibold text-center">Explore the demo panel</a>
         <span class="font-mono2 text-[11px] text-[#7d858e] lg:text-right">0% commission • free plan • automated delivery</span>
       </div>
     </div>
