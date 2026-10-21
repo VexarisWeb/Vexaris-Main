@@ -58,6 +58,9 @@ if ($action === 'check') {
 }
 
 $secret = hosting_secret($pdo);
+/* Gecis: worker yeni surumde v2 siri kullanabilir. Iki siri da kabul edilir;
+   global sirlarin biri ele gecerse bile kiraci bazli sifir gecerliligini korur. */
+$secretV2 = hosting_secret_v2($pdo);
 $sig = (string)($_POST['signature'] ?? '');
 $ts = (int)($_POST['timestamp'] ?? 0);
 $nonce = strtolower(trim((string)($_POST['nonce'] ?? '')));
@@ -80,6 +83,7 @@ $domain = preg_replace('/[^a-z0-9.\-]/', '', $domain);
 $macOk = false;
 $macMode = '';
 $secretCandidates = [$secret];
+if ($secretV2 !== '' && $secretV2 !== $secret) $secretCandidates[] = $secretV2;
 // Kiracı (magaza) bazli sır: hosted_stores.api_secret
 $tenantSecret = '';
 if ($domain !== '') {
@@ -598,6 +602,14 @@ function hosting_setting(?PDO $pdo, string $key, string $default = ''): string {
         $v = $st->fetchColumn();
         return $v === false ? $default : (string)$v;
     } catch (Throwable $e) { return $default; }
+}
+
+/* v2 global API sirri: settings.hosting_api_secret_v2 (yoksa env dosyasi). */
+function hosting_secret_v2(?PDO $pdo): string {
+    $v = trim(hosting_setting($pdo, 'hosting_api_secret_v2', ''));
+    if ($v !== '') return $v;
+    if (function_exists('vx_secret')) return trim((string)vx_secret('VX_HOSTING_SECRET_V2', ''));
+    return '';
 }
 
 /* v2 MAC icin is alanlarinin kanonik ozeti. Alanlar action'a gore sabittir;

@@ -478,6 +478,16 @@ function run_migrations(): void {
             if (!(int)$hasUq) $pdo->exec("ALTER TABLE `orders` ADD UNIQUE KEY `uq_orders_no` (`order_no`)");
         } catch (Exception $e) {}
 
+        /* page_views tablosu her sayfa goruntulemesinde buyuyor (200k+ satir).
+           Dashboard'daki COUNT/GROUP BY sorgulari index olmadan tam tarama
+           yapiyordu -> created_at ve page indexleri eklenir. */
+        try {
+            foreach ([['idx_pv_created', 'created_at'], ['idx_pv_page', 'page']] as $ix) {
+                $has = $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'page_views' AND INDEX_NAME = '{$ix[0]}'")->fetchColumn();
+                if (!(int)$has) $pdo->exec("ALTER TABLE `page_views` ADD KEY `{$ix[0]}` (`{$ix[1]}`)");
+            }
+        } catch (Exception $e) {}
+
         $pdo->exec("CREATE TABLE IF NOT EXISTS downloads (
             id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             order_id         INT UNSIGNED NOT NULL,
