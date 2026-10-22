@@ -8,6 +8,62 @@ function blog_safe_url(string $url): string {
     return '#';
 }
 
+function blog_md_table_html(string $block): string {
+    $rows = [];
+    foreach (explode("\n", $block) as $line) {
+        $line = trim($line);
+        if ($line === '') continue;
+        $rows[] = array_map('trim', explode('|', trim($line, '|')));
+    }
+    if (count($rows) < 2) {
+        return $block;
+    }
+    $align = [];
+    $head = null;
+    $body = $rows;
+    if (preg_match('/^:?-{2,}:?$/', (string)($rows[1][0] ?? ''))) {
+        foreach ($rows[1] as $cell) {
+            if (preg_match('/^(:)?-+(:)?$/', $cell, $m)) {
+                $left = ($m[1] ?? '') !== '';
+                $right = ($m[2] ?? '') !== '';
+                $align[] = ($left && $right) ? 'center' : ($right ? 'right' : '');
+            } else {
+                $align[] = '';
+            }
+        }
+        $head = $rows[0];
+        $body = array_slice($rows, 2);
+    }
+    $cols = 0;
+    foreach ($rows as $r) {
+        $cols = max($cols, count($r));
+    }
+    $row = function (array $cells, string $tag) use ($align, $cols): string {
+        $cells = array_pad(array_slice($cells, 0, $cols), $cols, '');
+        $out = '<tr>';
+        foreach ($cells as $i => $cell) {
+            $style = (!empty($align[$i]) && $align[$i] !== 'left') ? ' style="text-align:' . $align[$i] . '"' : '';
+            $out .= '<' . $tag . $style . '>' . $cell . '</' . $tag . '>';
+        }
+        return $out . '</tr>';
+    };
+    $out = '<div class="md-table">';
+    if ($head !== null) {
+        $out .= '<table><thead>' . $row($head, 'th') . '</thead><tbody>';
+        foreach ($body as $cells) {
+            $out .= $row($cells, 'td');
+        }
+        $out .= '</tbody></table>';
+    } else {
+        $out .= '<table><tbody>';
+        foreach ($body as $cells) {
+            $out .= $row($cells, 'td');
+        }
+        $out .= '</tbody></table>';
+    }
+    return $out . '</div>';
+}
+
 function blog_markdown_to_html(string $md): string {
     $md = str_replace("\r\n", "\n", $md);
     $html = htmlspecialchars($md, ENT_QUOTES, 'UTF-8');
@@ -28,26 +84,31 @@ function blog_markdown_to_html(string $md): string {
     $html = preg_replace('/\*([^*]+)\*/', '<em>$1</em>', $html);
     $html = preg_replace('/_([^_]+)_/', '<em>$1</em>', $html);
     $html = preg_replace('/^---$/m', '<hr>', $html);
+    $html = preg_replace_callback('/(?:^\|.*\|[ \t]*$\n?)+/m', function ($m) {
+        return blog_md_table_html(trim($m[0])) . "\n";
+    }, $html);
     $lines = explode("\n", $html);
-    $out = []; $inUl = false;
+    $out = []; $list = null;
     foreach ($lines as $line) {
         if (preg_match('/^\s*[-*+]\s+(.+)$/', $line, $m)) {
-            if (!$inUl) { $out[] = '<ul>'; $inUl = true; }
+            if ($list !== 'ul') { if ($list) $out[] = '</' . $list . '>'; $out[] = '<ul>'; $list = 'ul'; }
+            $out[] = '<li>' . $m[1] . '</li>';
+        } elseif (preg_match('/^\s*\d+[.)]\s+(.+)$/', $line, $m)) {
+            if ($list !== 'ol') { if ($list) $out[] = '</' . $list . '>'; $out[] = '<ol>'; $list = 'ol'; }
             $out[] = '<li>' . $m[1] . '</li>';
         } else {
-            if ($inUl) { $out[] = '</ul>'; $inUl = false; }
+            if ($list) { $out[] = '</' . $list . '>'; $list = null; }
             $out[] = $line;
         }
     }
-    if ($inUl) $out[] = '</ul>';
+    if ($list) $out[] = '</' . $list . '>';
     $html = implode("\n", $out);
-    $html = preg_replace('/^\d+\.\s+(.+)$/m', '<li>$1</li>', $html);
     $parts = preg_split('/\n{2,}/', $html);
     $res = [];
     foreach ($parts as $p) {
         $p = trim($p);
         if ($p === '') continue;
-        if (preg_match('/^<(h[1-3]|ul|ol|pre|blockquote|hr|img|p|li)/', $p)) $res[] = $p;
+        if (preg_match('/^<(h[1-3]|ul|ol|pre|blockquote|hr|img|p|li|div|table)/', $p)) $res[] = $p;
         else $res[] = '<p>' . nl2br($p) . '</p>';
     }
     return implode("\n", $res);
@@ -57,7 +118,7 @@ function blog_content_render(string $content): string {
     if (strpos($content, '<') !== false && preg_match('/<[a-z][a-z0-9]*(\s[^<>]*)?\/?>/i', $content)) {
         return $content;
     }
-    if (preg_match('/(^|\n)\s*(#{1,3}\s|[-*+]\s|>\s|```|.*\*\*.+\*\*|.*\[[^\]]+\]\([^)]+\))/m', $content)) {
+    if (preg_match('/(^|\n)\s*(#{1,3}\s|[-*+]\s|>\s|```|\|)|(^|\n)\s*.*\*\*.+\*\*|(^|\n)\s*.*\[[^\]]+\]\([^)]+\)/m', $content)) {
         return blog_markdown_to_html($content);
     }
     return '<p>' . nl2br(htmlspecialchars($content, ENT_QUOTES, 'UTF-8')) . '</p>';

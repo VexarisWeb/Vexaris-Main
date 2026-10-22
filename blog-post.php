@@ -211,10 +211,16 @@ $GLOBALS['seoPost'] = $post;
     .blog-post__body a:hover { color: #fff; }
     .blog-post__body ul { list-style: disc; margin: 0 0 1.1rem 1.4rem; padding: 0; }
     .blog-post__body ol { list-style: decimal; margin: 0 0 1.1rem 1.4rem; padding: 0; }
-    .blog-post__body table { width: 100%; border-collapse: collapse; margin: 1.4rem 0; font-size: .92rem; display: block; overflow-x: auto; }
-    .blog-post__body th, .blog-post__body td { border: 1px solid rgba(255,255,255,.12); padding: .65rem .8rem; text-align: left; }
+    .blog-post__body table { width: 100%; border-collapse: collapse; margin: 0; font-size: .92rem; display: table; }
+    .blog-post__body .md-table { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.4rem 0; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; }
+    .blog-post__body .md-table table { border: none; }
+    .blog-post__body th, .blog-post__body td { border: 1px solid rgba(255,255,255,.12); padding: .65rem .8rem; text-align: left; vertical-align: top; }
     .blog-post__body thead th { background: rgba(0,212,255,.08); font-weight: 800; color: #fff; white-space: nowrap; }
     .blog-post__body tbody tr:nth-child(even) { background: rgba(255,255,255,.03); }
+    @media (max-width: 700px) {
+        .blog-post__body .md-table table { min-width: 520px; font-size: .86rem; }
+        .blog-post__body .md-table th, .blog-post__body .md-table td { padding: .5rem .6rem; }
+    }
     .blog-post__body li { margin-bottom: .4rem; }
     .blog-post__body li::marker { color: var(--cyan); }
     .blog-post__body img { max-width: 100%; height: auto; border-radius: 12px; margin: 1.2rem 0; display: inline-block; }
