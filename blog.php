@@ -51,7 +51,7 @@ $VEX_LOGO = '/assets/images/vexaris-logo.png';
             <a href="/<?= htmlspecialchars($p['slug']) ?>" class="blog-card" aria-label="<?= htmlspecialchars($p['title']) ?>">
                 <?php if ($p['cover_image']): ?>
                 <div class="blog-card__img-wrap">
-                    <img src="<?= htmlspecialchars($p['cover_image']) ?>" alt="<?= htmlspecialchars($p['title']) ?>" loading="lazy">
+                    <img src="<?= htmlspecialchars($p['cover_image']) ?>" alt="<?= htmlspecialchars($p['title']) ?>"<?= function_exists('vx_img_attrs') ? vx_img_attrs($p['cover_image']) : '' ?> loading="lazy">
                 </div>
                 <?php else: ?>
                 <div class="blog-card__img-wrap blog-card__img-wrap--empty">

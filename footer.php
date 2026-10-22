@@ -41,7 +41,7 @@ $BASE = isset($BASE) ? $BASE : '';
     <div class="grid sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
       <div class="sm:col-span-2 lg:col-span-4">
         <a href="<?= $BASE ?>#top" class="inline-flex items-center gap-2.5 group">
-          <img src="<?= htmlspecialchars($VEX_LOGO) ?>" alt="Vexaris" class="h-7 w-auto" />
+          <img src="<?= htmlspecialchars($VEX_LOGO) ?>" alt="Vexaris"<?= function_exists('vx_img_attrs') ? vx_img_attrs($VEX_LOGO) : '' ?> class="h-7 w-auto" />
         </a>
         <p class="mt-5 max-w-sm text-[14px] leading-relaxed text-[#9aa3ac]">
           Digital product sales infrastructure. A powerful marketplace platform with automated

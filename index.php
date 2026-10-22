@@ -100,7 +100,7 @@ function vex_logo_item($l){
   $out = '<span class="group relative flex items-center px-7 shrink-0">';
   if (!empty($l['file'])) {
     $chip = !empty($l['chip']) ? ' bg-[#e9e7e2] rounded-md px-2 py-1' : '';
-    $out .= '<img src="./assets/images/' . htmlspecialchars($l['file']) . '" alt="' . $name . '" loading="lazy" draggable="false" class="h-6 w-auto max-w-[110px] object-contain grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 select-none' . $chip . '" />';
+    $out .= '<img src="./assets/images/' . htmlspecialchars($l['file']) . '" alt="' . $name . '"' . (function_exists('vx_img_attrs') ? vx_img_attrs('./assets/images/' . $l['file']) : '') . ' loading="lazy" draggable="false" class="h-6 w-auto max-w-[110px] object-contain grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 select-none' . $chip . '" />';
   } else {
     $out .= '<span class="text-[12px] font-mono2 uppercase tracking-[0.18em] text-[#7d858e] whitespace-nowrap group-hover:text-white transition-colors select-none">' . $name . '</span>';
   }

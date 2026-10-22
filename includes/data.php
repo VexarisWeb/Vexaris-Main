@@ -15,3 +15,18 @@ $LEGAL = [
   'cookies'=>['title'=>'Cookie Policy','updated'=>'Last updated: January 4, 2026','body'=>['Strictly necessary cookies are used to protect sessions, remember carts and secure forms (CSRF), and cannot be disabled.','Analytics cookies (Google Analytics) load only with your consent; page activity is measured anonymously.','You can withdraw consent at any time via the cookie banner at the bottom of the panel or your account settings.']],
   'refund'=>['title'=>'Refund Policy','updated'=>'Last updated: January 4, 2026','body'=>['Digital products are exempt from withdrawal rights since delivery is instant; however, undelivered, faulty or misdescribed products carry a full refund guarantee.','Refund requests open via support ticket; once key non-use is verified, the amount returns to the payment method within 5 business days or loads instantly to balance.','For single-stock e-pin codes already viewed, refunds apply only if the code turns out invalid.']],
 ];
+
+function vx_img_size(string $src): ?array {
+    static $cache = [];
+    $path = (string)(parse_url($src, PHP_URL_PATH) ?: $src);
+    $path = '/' . ltrim(preg_replace('#^\./#', '', $path), '/');
+    if (array_key_exists($path, $cache)) return $cache[$path];
+    $fs = dirname(__DIR__) . $path;
+    $d = is_file($fs) ? @getimagesize($fs) : false;
+    return $cache[$path] = ($d ? [(int)$d[0], (int)$d[1]] : null);
+}
+
+function vx_img_attrs(string $src): string {
+    $d = vx_img_size($src);
+    return $d ? ' width="' . $d[0] . '" height="' . $d[1] . '"' : '';
+}

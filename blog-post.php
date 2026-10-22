@@ -145,7 +145,7 @@ $GLOBALS['seoPost'] = $post;
 
         <?php if ($post['cover_image']): ?>
         <div class="blog-post__cover">
-            <img src="<?= htmlspecialchars($post['cover_image']) ?>" alt="<?= htmlspecialchars($post['title']) ?>">
+            <img src="<?= htmlspecialchars($post['cover_image']) ?>" alt="<?= htmlspecialchars($post['title']) ?>"<?= function_exists('vx_img_attrs') ? vx_img_attrs($post['cover_image']) : '' ?>>
         </div>
         <?php endif; ?>
 

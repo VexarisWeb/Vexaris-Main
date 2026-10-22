@@ -17,7 +17,7 @@ $NAV = [
 
   <div id="headerBar" class="pointer-events-auto mx-auto flex items-center gap-4 transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] mt-0 max-w-7xl rounded-2xl border border-transparent bg-transparent px-2 sm:px-4 py-5">
     <a href="<?= $BASE ?>#top" class="flex items-center gap-2.5 shrink-0 group" aria-label="Vexaris home">
-      <img src="<?= htmlspecialchars($VEX_LOGO) ?>" alt="Vexaris" class="h-6 sm:h-7 w-auto transition-transform duration-500 group-hover:scale-[1.04]" />
+      <img src="<?= htmlspecialchars($VEX_LOGO) ?>" alt="Vexaris"<?= function_exists('vx_img_attrs') ? vx_img_attrs($VEX_LOGO) : '' ?> class="h-6 sm:h-7 w-auto transition-transform duration-500 group-hover:scale-[1.04]" />
     </a>
 
     <nav class="hidden lg:flex items-center gap-7 mx-auto text-[13.5px] font-semibold text-[#c8ccd1]">
