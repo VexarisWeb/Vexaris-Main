@@ -214,6 +214,10 @@ $GLOBALS['seoPost'] = $post;
     .blog-post__body table { width: 100%; border-collapse: collapse; margin: 0; font-size: .92rem; display: table; }
     .blog-post__body .md-table { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.4rem 0; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; }
     .blog-post__body .md-table table { border: none; }
+    .blog-post__body .md-table thead th:first-child, .blog-post__body .md-table tbody td:first-child { border-left: 0; }
+    .blog-post__body .md-table thead th:last-child, .blog-post__body .md-table tbody td:last-child { border-right: 0; }
+    .blog-post__body .md-table thead tr:first-child th { border-top: 0; }
+    .blog-post__body .md-table tbody tr:last-child td { border-bottom: 0; }
     .blog-post__body th, .blog-post__body td { border: 1px solid rgba(255,255,255,.12); padding: .65rem .8rem; text-align: left; vertical-align: top; }
     .blog-post__body thead th { background: rgba(0,212,255,.08); font-weight: 800; color: #fff; white-space: nowrap; }
     .blog-post__body tbody tr:nth-child(even) { background: rgba(255,255,255,.03); }

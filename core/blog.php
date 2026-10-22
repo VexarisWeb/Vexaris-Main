@@ -9,34 +9,47 @@ function blog_safe_url(string $url): string {
 }
 
 function blog_md_table_html(string $block): string {
+    $lines = [];
+    foreach (explode("\n", trim($block)) as $line) {
+        if (trim($line) === '') continue;
+        $lines[] = trim($line);
+    }
+    if (count($lines) < 2) {
+        return '';
+    }
+    $piped = str_starts_with($lines[0], '|');
+    $isSep = fn(string $line): bool => (bool)preg_match('/^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/', $line);
+    if (!$isSep($lines[1])) {
+        if (!$piped) {
+            return '';
+        }
+        $head = null;
+        $body = $lines;
+        $align = [];
+    } else {
+        $head = $lines[0];
+        $body = array_slice($lines, 2);
+        $align = [];
+        foreach (explode('|', trim($lines[1], '|')) as $cell) {
+            $cell = trim($cell);
+            $left = str_starts_with($cell, ':');
+            $right = str_ends_with($cell, ':');
+            $align[] = ($left && $right) ? 'center' : ($right ? 'right' : '');
+        }
+    }
     $rows = [];
-    foreach (explode("\n", $block) as $line) {
-        $line = trim($line);
-        if ($line === '') continue;
+    foreach ($body as $line) {
         $rows[] = array_map('trim', explode('|', trim($line, '|')));
     }
-    if (count($rows) < 2) {
-        return $block;
-    }
-    $align = [];
-    $head = null;
-    $body = $rows;
-    if (preg_match('/^:?-{2,}:?$/', (string)($rows[1][0] ?? ''))) {
-        foreach ($rows[1] as $cell) {
-            if (preg_match('/^(:)?-+(:)?$/', $cell, $m)) {
-                $left = ($m[1] ?? '') !== '';
-                $right = ($m[2] ?? '') !== '';
-                $align[] = ($left && $right) ? 'center' : ($right ? 'right' : '');
-            } else {
-                $align[] = '';
-            }
-        }
-        $head = $rows[0];
-        $body = array_slice($rows, 2);
+    if (!$rows) {
+        return '';
     }
     $cols = 0;
     foreach ($rows as $r) {
         $cols = max($cols, count($r));
+    }
+    if ($head !== null) {
+        $cols = max($cols, count(explode('|', trim($head, '|'))));
     }
     $row = function (array $cells, string $tag) use ($align, $cols): string {
         $cells = array_pad(array_slice($cells, 0, $cols), $cols, '');
@@ -47,21 +60,16 @@ function blog_md_table_html(string $block): string {
         }
         return $out . '</tr>';
     };
-    $out = '<div class="md-table">';
+    $out = '<div class="md-table"><table>';
     if ($head !== null) {
-        $out .= '<table><thead>' . $row($head, 'th') . '</thead><tbody>';
-        foreach ($body as $cells) {
-            $out .= $row($cells, 'td');
-        }
-        $out .= '</tbody></table>';
+        $out .= '<thead>' . $row(array_map('trim', explode('|', trim($head, '|'))), 'th') . '</thead><tbody>';
     } else {
-        $out .= '<table><tbody>';
-        foreach ($body as $cells) {
-            $out .= $row($cells, 'td');
-        }
-        $out .= '</tbody></table>';
+        $out .= '<tbody>';
     }
-    return $out . '</div>';
+    foreach ($rows as $cells) {
+        $out .= $row($cells, 'td');
+    }
+    return $out . '</tbody></table></div>';
 }
 
 function blog_markdown_to_html(string $md): string {
@@ -84,24 +92,42 @@ function blog_markdown_to_html(string $md): string {
     $html = preg_replace('/\*([^*]+)\*/', '<em>$1</em>', $html);
     $html = preg_replace('/_([^_]+)_/', '<em>$1</em>', $html);
     $html = preg_replace('/^---$/m', '<hr>', $html);
-    $html = preg_replace_callback('/(?:^\|.*\|[ \t]*$\n?)+/m', function ($m) {
-        return blog_md_table_html(trim($m[0])) . "\n";
-    }, $html);
     $lines = explode("\n", $html);
+    $n = count($lines);
     $out = []; $list = null;
-    foreach ($lines as $line) {
+    $flush = function () use (&$out, &$list) {
+        if ($list) { $out[] = '</' . $list . '>'; $list = null; }
+    };
+    for ($i = 0; $i < $n; $i++) {
+        $line = $lines[$i];
+        $isRow = (bool)preg_match('/^\s*\|.*\|\s*$/', $line);
+        $hasSep = isset($lines[$i + 1]) && preg_match('/^\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/', $lines[$i + 1]);
+        if (($isRow || ($hasSep && str_contains($line, '|'))) && !$list) {
+            $block = [];
+            $j = $i;
+            while ($j < $n && trim($lines[$j]) !== '' && str_contains($lines[$j], '|')) {
+                $block[] = $lines[$j];
+                $j++;
+            }
+            $table = blog_md_table_html(implode("\n", $block));
+            if ($table !== '') {
+                $out[] = $table;
+                $i = $j - 1;
+                continue;
+            }
+        }
         if (preg_match('/^\s*[-*+]\s+(.+)$/', $line, $m)) {
-            if ($list !== 'ul') { if ($list) $out[] = '</' . $list . '>'; $out[] = '<ul>'; $list = 'ul'; }
+            if ($list !== 'ul') { $flush(); $out[] = '<ul>'; $list = 'ul'; }
             $out[] = '<li>' . $m[1] . '</li>';
         } elseif (preg_match('/^\s*\d+[.)]\s+(.+)$/', $line, $m)) {
-            if ($list !== 'ol') { if ($list) $out[] = '</' . $list . '>'; $out[] = '<ol>'; $list = 'ol'; }
+            if ($list !== 'ol') { $flush(); $out[] = '<ol>'; $list = 'ol'; }
             $out[] = '<li>' . $m[1] . '</li>';
         } else {
-            if ($list) { $out[] = '</' . $list . '>'; $list = null; }
+            $flush();
             $out[] = $line;
         }
     }
-    if ($list) $out[] = '</' . $list . '>';
+    $flush();
     $html = implode("\n", $out);
     $parts = preg_split('/\n{2,}/', $html);
     $res = [];
