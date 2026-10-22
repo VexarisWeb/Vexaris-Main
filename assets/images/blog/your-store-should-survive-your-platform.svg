@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Your Store Should Survive Your Platform">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4d61c6"/>
+      <stop offset="1" stop-color="#151936"/>
+    </linearGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="1.6" cy="1.6" r="1.6" fill="#ffffff" opacity="0.11"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+  <circle cx="1040" cy="80" r="240" fill="#ffffff" opacity="0.06"/>
+  <circle cx="110" cy="600" r="220" fill="#000000" opacity="0.20"/>
+
+  <rect x="80" y="84" width="236" height="40" rx="20" fill="none" stroke="#ffffff" stroke-opacity="0.30"/>
+  <text x="102" y="111" font-family="Consolas,Menlo,monospace" font-size="14" letter-spacing="3" fill="#ffffff" fill-opacity="0.78">PLATFORM RISK</text>
+
+  <text x="76" y="296" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="100" font-weight="800" letter-spacing="-3" fill="#ffffff">PLATFORM</text>
+  <text x="80" y="356" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="25" fill="#ffffff" fill-opacity="0.74">Your store should survive</text>
+  <text x="80" y="392" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="25" fill="#ffffff" fill-opacity="0.74">the platform it runs on.</text>
+
+  <g transform="translate(760 120)">
+    <g transform="rotate(-11 170 160)">
+      <rect x="40" y="30" width="280" height="280" rx="26" fill="#ffffff" fill-opacity="0.07" stroke="#ffffff" stroke-opacity="0.22" stroke-width="3"/>
+      <path d="M60 60 L150 150 L120 200 L230 250" fill="none" stroke="#ffffff" stroke-opacity="0.30" stroke-width="5" stroke-linecap="round"/>
+      <path d="M180 40 L210 120 L170 165 L240 230" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="290" cy="80" r="5" fill="#ffffff" fill-opacity="0.35"/>
+      <circle cx="290" cy="110" r="5" fill="#ffffff" fill-opacity="0.25"/>
+      <circle cx="290" cy="140" r="5" fill="#ffffff" fill-opacity="0.18"/>
+    </g>
+
+    <g>
+      <path d="M170 34 L282 78 V188 C282 268 230 316 170 340 C110 316 58 268 58 188 V78 Z" fill="#ffffff" fill-opacity="0.10" stroke="#ffffff" stroke-opacity="0.88" stroke-width="8" stroke-linejoin="round"/>
+      <rect x="112" y="196" width="116" height="84" rx="8" fill="#ffffff" fill-opacity="0.90"/>
+      <path d="M112 196 L170 168 L228 196 Z" fill="#ffffff" fill-opacity="0.70"/>
+      <rect x="136" y="222" width="22" height="22" rx="4" fill="#4d61c6"/>
+      <rect x="182" y="222" width="22" height="22" rx="4" fill="#4d61c6"/>
+      <rect x="150" y="252" width="40" height="28" rx="4" fill="#4d61c6"/>
+      <path d="M138 120 L170 104 L202 120" fill="none" stroke="#ffffff" stroke-opacity="0.65" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M170 104 V150" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <text x="1124" y="574" text-anchor="end" font-family="Consolas,Menlo,monospace" font-size="17" letter-spacing="6" fill="#ffffff" fill-opacity="0.55">VEXARIS</text>
+</svg>

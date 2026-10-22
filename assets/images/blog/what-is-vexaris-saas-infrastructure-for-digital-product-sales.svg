@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="What Is Vexaris? SaaS Infrastructure for Digital Product Sales">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a6fe0"/>
+      <stop offset="0.6" stop-color="#14459c"/>
+      <stop offset="1" stop-color="#071a38"/>
+    </linearGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="1.6" cy="1.6" r="1.6" fill="#ffffff" opacity="0.12"/>
+    </pattern>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fd3ff" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#8fd3ff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+  <circle cx="1055" cy="75" r="240" fill="#ffffff" opacity="0.07"/>
+  <circle cx="115" cy="605" r="205" fill="#000000" opacity="0.22"/>
+
+  <rect x="80" y="84" width="176" height="40" rx="20" fill="none" stroke="#ffffff" stroke-opacity="0.32"/>
+  <text x="102" y="111" font-family="Consolas,Menlo,monospace" font-size="14" letter-spacing="3" fill="#ffffff" fill-opacity="0.80">PLATFORM</text>
+
+  <text x="76" y="300" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="106" font-weight="800" letter-spacing="-4" fill="#ffffff">VEXARIS</text>
+  <text x="80" y="366" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="25" fill="#ffffff" fill-opacity="0.76">SaaS infrastructure for digital sales.</text>
+  <text x="80" y="404" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="25" fill="#ffffff" fill-opacity="0.76">Store, delivery and licensing in one stack.</text>
+
+  <g transform="translate(720 96)">
+    <rect x="120" y="0" width="150" height="96" rx="12" fill="#ffffff" fill-opacity="0.16" stroke="#ffffff" stroke-opacity="0.72" stroke-width="3"/>
+    <path d="M146 30 H244 M146 48 H224 M146 66 H236" stroke="#ffffff" stroke-opacity="0.65" stroke-width="6" stroke-linecap="round"/>
+    <path d="M138 96 V126" stroke="#8fd3ff" stroke-opacity="0.65" stroke-width="3" stroke-dasharray="8 8"/>
+    <path d="M252 96 V126" stroke="#8fd3ff" stroke-opacity="0.65" stroke-width="3" stroke-dasharray="8 8"/>
+
+    <rect x="60" y="126" width="270" height="86" rx="14" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-opacity="0.62" stroke-width="3"/>
+    <circle cx="100" cy="169" r="15" fill="none" stroke="#ffffff" stroke-opacity="0.80" stroke-width="4"/>
+    <path d="M100 158 V180 M89 169 H111" stroke="#ffffff" stroke-opacity="0.80" stroke-width="3" stroke-linecap="round"/>
+    <rect x="132" y="156" width="90" height="10" rx="5" fill="#ffffff" fill-opacity="0.62"/>
+    <rect x="132" y="176" width="140" height="10" rx="5" fill="#ffffff" fill-opacity="0.38"/>
+
+    <path d="M120 212 V246 M270 212 V246" stroke="#8fd3ff" stroke-opacity="0.55" stroke-width="3" stroke-dasharray="8 8"/>
+
+    <rect x="0" y="246" width="390" height="86" rx="14" fill="#ffffff" fill-opacity="0.09" stroke="#ffffff" stroke-opacity="0.52" stroke-width="3"/>
+    <circle cx="46" cy="289" r="16" fill="#ffffff" fill-opacity="0.55"/>
+    <circle cx="100" cy="289" r="16" fill="#ffffff" fill-opacity="0.40"/>
+    <circle cx="154" cy="289" r="16" fill="#ffffff" fill-opacity="0.28"/>
+    <rect x="196" y="276" width="130" height="10" rx="5" fill="#ffffff" fill-opacity="0.55"/>
+    <rect x="196" y="296" width="86" height="10" rx="5" fill="#ffffff" fill-opacity="0.30"/>
+
+    <circle cx="46" cy="176" r="34" fill="url(#glow)"/>
+    <circle cx="346" cy="60" r="26" fill="#8fd3ff" fill-opacity="0.16" stroke="#8fd3ff" stroke-opacity="0.55" stroke-width="2"/>
+    <path d="M336 60 L344 68 L358 52" fill="none" stroke="#8fd3ff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="1124" y="574" text-anchor="end" font-family="Consolas,Menlo,monospace" font-size="17" letter-spacing="6" fill="#ffffff" fill-opacity="0.55">VEXARIS</text>
+</svg>

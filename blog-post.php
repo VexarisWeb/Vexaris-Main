@@ -145,7 +145,7 @@ $GLOBALS['seoPost'] = $post;
 
         <?php $postCover = $post['cover_image'] ?: ('/blog-cover.php?slug=' . rawurlencode((string)$post['slug'])); ?>
         <div class="blog-post__cover">
-            <img src="<?= htmlspecialchars($postCover) ?>" alt="<?= htmlspecialchars($post['title']) ?>"<?= $post['cover_image'] && function_exists('vx_img_attrs') ? vx_img_attrs($post['cover_image']) : ' width="1200" height="630"' ?>>
+            <img src="<?= htmlspecialchars($postCover) ?>" alt="<?= htmlspecialchars($post['title']) ?>"<?= (function_exists('vx_img_attrs') ? vx_img_attrs($postCover) : '') ?: ' width="1200" height="630"' ?>>
         </div>
 
         <?php if ($postExcerpt !== ''): ?>

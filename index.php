@@ -81,7 +81,7 @@ try {
         foreach ($rows as $r) {
             $d = date('j F Y', strtotime($r['created_at']));
             $desc = blog_excerpt_text($r, 140);
-            $NEWS[] = ['date'=>$d,'tag'=>'Blog','slug'=>$r['slug'],'title'=>$r['title'],'desc'=>$desc];
+            $NEWS[] = ['date'=>$d,'tag'=>'Blog','slug'=>$r['slug'],'title'=>$r['title'],'desc'=>$desc,'cover'=>(string)($r['cover_image'] ?? '')];
         }
     }
 } catch (Throwable $e) { $NEWS = []; }
@@ -391,9 +391,8 @@ function vex_logo_item($l){
           <?php foreach ($NEWS as $i => $n): ?>
           <div class="reveal" style="--rd:<?= $i * 90 ?>ms">
             <a href="/<?= htmlspecialchars($n['slug']) ?>" class="card card-hover h-full flex flex-col group overflow-hidden">
-              <div class="relative aspect-[16/9] overflow-hidden border-b border-[#262c33] bg-[#0e1114]">
-                <img src="<?= htmlspecialchars($n['cover'] ?? ('/blog-cover.php?slug=' . rawurlencode((string)$n['slug']))) ?>" alt="<?= htmlspecialchars($n['title']) ?>" width="1200" height="630" loading="lazy" decoding="async" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                <span class="absolute left-3 top-3 font-mono2 text-[10px] uppercase tracking-wider rounded-full px-2.5 py-1 border border-white/20 bg-black/45 text-white backdrop-blur-[3px]"><?= htmlspecialchars($n['tag']) ?></span>
+              <div class="relative aspect-[40/21] overflow-hidden border-b border-[#262c33] bg-[#0e1114]">
+                <img src="<?= htmlspecialchars(($n['cover'] ?? '') ?: ('/blog-cover.php?slug=' . rawurlencode((string)$n['slug']))) ?>" alt="<?= htmlspecialchars($n['title']) ?>" width="1200" height="630" loading="lazy" decoding="async" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
               </div>
               <div class="p-6 flex flex-col flex-1">
                 <time class="font-mono2 text-[11px] text-[#7d858e]"><?= htmlspecialchars($n['date']) ?></time>

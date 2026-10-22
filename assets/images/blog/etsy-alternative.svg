@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Etsy vs Vexaris (2026): Which Platform Keeps More of Your Digital Sales?">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2691f"/>
+      <stop offset="0.52" stop-color="#b4441f"/>
+      <stop offset="0.54" stop-color="#2f63d8"/>
+      <stop offset="1" stop-color="#16224f"/>
+    </linearGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="1.6" cy="1.6" r="1.6" fill="#ffffff" opacity="0.12"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#dots)"/>
+  <circle cx="1080" cy="90" r="230" fill="#ffffff" opacity="0.07"/>
+  <circle cx="140" cy="600" r="200" fill="#000000" opacity="0.22"/>
+
+  <rect x="80" y="84" width="196" height="40" rx="20" fill="none" stroke="#ffffff" stroke-opacity="0.34"/>
+  <text x="102" y="111" font-family="Consolas,Menlo,monospace" font-size="14" letter-spacing="3" fill="#ffffff" fill-opacity="0.82">COMPARISON</text>
+
+  <text x="76" y="300" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="112" font-weight="800" letter-spacing="-4" fill="#ffffff">ETSY vs</text>
+  <text x="76" y="416" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="112" font-weight="800" letter-spacing="-4" fill="#ffffff">VEXARIS</text>
+  <text x="80" y="474" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="24" fill="#ffffff" fill-opacity="0.76">Which platform keeps more of your sales?</text>
+
+  <g transform="translate(690 130)">
+    <g>
+      <rect x="0" y="0" width="180" height="300" rx="22" fill="#000000" fill-opacity="0.26" stroke="#ffffff" stroke-opacity="0.35" stroke-width="3"/>
+      <text x="90" y="44" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="16" letter-spacing="2" fill="#ffffff" fill-opacity="0.80">ETSY</text>
+      <rect x="30" y="76" width="120" height="22" rx="6" fill="#ffffff" fill-opacity="0.85"/>
+      <rect x="30" y="112" width="86" height="22" rx="6" fill="#ffffff" fill-opacity="0.55"/>
+      <rect x="30" y="148" width="104" height="22" rx="6" fill="#ffffff" fill-opacity="0.45"/>
+      <rect x="30" y="184" width="66" height="22" rx="6" fill="#ffffff" fill-opacity="0.30"/>
+      <text x="90" y="256" text-anchor="middle" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="46" font-weight="800" fill="#ffffff">6.5%</text>
+      <text x="90" y="280" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="12" letter-spacing="1.5" fill="#ffffff" fill-opacity="0.70">FEES</text>
+    </g>
+
+    <circle cx="212" cy="150" r="30" fill="#0e1430" stroke="#ffffff" stroke-opacity="0.55" stroke-width="3"/>
+    <text x="212" y="157" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="17" font-weight="800" fill="#ffffff">vs</text>
+
+    <g transform="translate(244 26)">
+      <rect x="0" y="0" width="196" height="300" rx="22" fill="#ffffff" fill-opacity="0.14" stroke="#ffd79a" stroke-opacity="0.85" stroke-width="4"/>
+      <text x="98" y="44" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="16" letter-spacing="2" fill="#ffe6bf">VEXARIS</text>
+      <rect x="34" y="76" width="128" height="22" rx="6" fill="#ffffff" fill-opacity="0.95"/>
+      <rect x="34" y="112" width="128" height="22" rx="6" fill="#ffffff" fill-opacity="0.70"/>
+      <rect x="34" y="148" width="128" height="22" rx="6" fill="#ffffff" fill-opacity="0.55"/>
+      <rect x="34" y="184" width="128" height="22" rx="6" fill="#ffffff" fill-opacity="0.40"/>
+      <text x="98" y="256" text-anchor="middle" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="46" font-weight="800" fill="#ffe6bf">0%</text>
+      <text x="98" y="280" text-anchor="middle" font-family="Consolas,Menlo,monospace" font-size="12" letter-spacing="1.5" fill="#ffe6bf" fill-opacity="0.85">COMMISSION</text>
+    </g>
+  </g>
+
+  <text x="1124" y="574" text-anchor="end" font-family="Consolas,Menlo,monospace" font-size="17" letter-spacing="6" fill="#ffffff" fill-opacity="0.60">VEXARIS</text>
+</svg>
