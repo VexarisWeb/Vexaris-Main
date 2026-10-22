@@ -29,6 +29,20 @@ function seo_page_build(PDO $pdo, string $key, array $fallback, ?array $post = n
         $def['modified']    = (string)($post['updated_at'] ?? '');
         $def['author']      = (string)($post['author_name'] ?? '');
         $def['slug']        = (string)($post['slug'] ?? '');
+        $def['faq']         = [];
+        $html = (string)($post['content'] ?? '');
+        if ($html !== '' && preg_match('#<h2[^>]*>\s*(?:Frequently Asked Questions|FAQ)\s*</h2>(.*?)(?=<h2|$)#is', $html, $sec)) {
+            if (preg_match_all('#<h3[^>]*>(.*?)</h3>\s*<p[^>]*>(.*?)</p>#is', $sec[1], $pairs, PREG_SET_ORDER)) {
+                foreach ($pairs as $pair) {
+                    $q = trim(html_entity_decode(strip_tags($pair[1]), ENT_QUOTES, 'UTF-8'));
+                    $a = trim(html_entity_decode(strip_tags($pair[2]), ENT_QUOTES, 'UTF-8'));
+                    if ($q !== '' && $a !== '') {
+                        $def['faq'][] = ['q' => mb_substr($q, 0, 200, 'UTF-8'), 'a' => mb_substr($a, 0, 700, 'UTF-8')];
+                    }
+                    if (count($def['faq']) >= 10) break;
+                }
+            }
+        }
         return $def;
     }
     $prefix = 'seo_' . $key . '_';
@@ -242,5 +256,17 @@ function seo_render_head(array $seo): void {
             ],
         ];
         echo '    <script type="application/ld+json">' . json_encode($bc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
+    }
+    if (!empty($seo['faq']) && is_array($seo['faq'])) {
+        $items = [];
+        foreach ($seo['faq'] as $f) {
+            if (empty($f['q']) || empty($f['a'])) continue;
+            $items[] = ['@type' => 'Question', 'name' => (string)$f['q'],
+                'acceptedAnswer' => ['@type' => 'Answer', 'text' => (string)$f['a']]];
+        }
+        if ($items) {
+            $faqLd = ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => $items];
+            echo '    <script type="application/ld+json">' . json_encode($faqLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
+        }
     }
 }

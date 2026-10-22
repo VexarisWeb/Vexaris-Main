@@ -200,6 +200,18 @@ foreach ($PLANS as $pl) {
       </div>
     </section>
 
+    <section class="relative pb-4" aria-label="Platform comparisons">
+      <div class="max-w-3xl mx-auto px-5 sm:px-8 text-center">
+        <p class="text-[13.5px] leading-relaxed text-[#7d858e]">
+          Comparing platforms before you commit?
+          <a class="underline hover:text-[#e6ebef] transition-colors" href="/gumroad/alternative-2026">Gumroad</a> ·
+          <a class="underline hover:text-[#e6ebef] transition-colors" href="/sellfy/alternatives-2026">Sellfy</a> ·
+          <a class="underline hover:text-[#e6ebef] transition-colors" href="/etsy/alternative">Etsy</a>
+          — each fee breakdown is costed line by line.
+        </p>
+      </div>
+    </section>
+
     <section class="relative py-16 md:py-24 border-t border-[#262c33]" aria-label="Pricing questions">
       <div class="max-w-3xl mx-auto px-5 sm:px-8">
         <div class="reveal text-center mb-10">
