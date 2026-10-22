@@ -589,8 +589,8 @@ img, video, svg { max-width: 100%; }
   transform: translateY(-2px);
 }
 .plan-popular {
-  border-color: rgba(79, 143, 192, 0.45);
-  box-shadow: 0 0 0 1px rgba(79, 143, 192, 0.15), 0 24px 55px -24px rgba(0, 0, 0, 0.9);
+  border-color: rgba(224, 164, 88, 0.45);
+  box-shadow: 0 0 0 1px rgba(224, 164, 88, 0.15), 0 24px 55px -24px rgba(0, 0, 0, 0.9);
 }
 .plan-badge {
   position: absolute;
@@ -611,17 +611,17 @@ img, video, svg { max-width: 100%; }
   min-height: 96px;
 }
 .plan-price-hot {
-  background: linear-gradient(120deg, #fff 20%, #9fd0ef 55%, #4f8fc0 90%);
+  background: linear-gradient(120deg, #fff 18%, #f3d7b0 58%, #e0a458 92%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 .plan-glow {
-  box-shadow: 0 0 0 1px rgba(79, 143, 192, 0.12), 0 30px 70px -28px rgba(79, 143, 192, 0.45);
+  box-shadow: 0 0 0 1px rgba(224, 164, 88, 0.14), 0 30px 70px -28px rgba(224, 164, 88, 0.40);
   transition: box-shadow 0.45s, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .plan-glow:hover {
-  box-shadow: 0 0 0 1px rgba(79, 143, 192, 0.25), 0 36px 80px -26px rgba(79, 143, 192, 0.6);
+  box-shadow: 0 0 0 1px rgba(224, 164, 88, 0.30), 0 36px 80px -26px rgba(224, 164, 88, 0.55);
   transform: translateY(-6px);
 }
 .bill-btn {

@@ -18,9 +18,9 @@ $GLOBALS['seoFallback'] = [
 $BASE = 'index.php';
 
 function cmp_cell($v) {
-  if ($v === true) return '<span class="inline-grid place-items-center w-6 h-6 rounded-full bg-[#3ddc84]/12 text-[#3ddc84]">' . vex_icon('check','w-3.5 h-3.5') . '</span>';
+  if ($v === true) return '<span class="inline-grid place-items-center w-6 h-6 rounded-full bg-[#e0a458]/12 text-[#e0a458]">' . vex_icon('check','w-3.5 h-3.5') . '</span>';
   if ($v === false) return '<span class="inline-block text-[#3a434e]">' . vex_icon('x','w-5 h-5') . '</span>';
-  if ($v === '0%') return '<span class="inline-block rounded-md bg-[#3ddc84]/15 px-2.5 py-1 text-[13px] font-bold text-[#3ddc84]">0%</span>';
+  if ($v === '0%') return '<span class="inline-block rounded-md bg-[#e0a458]/15 px-2.5 py-1 text-[13px] font-bold text-[#e0a458]">0%</span>';
   return '<span class="inline-block rounded-md bg-[#4f8fc0]/10 px-2.5 py-1 text-[13px] font-semibold text-[#cfe3f2]">' . htmlspecialchars((string)$v) . '</span>';
 }
 $faqJson = [];
@@ -109,7 +109,7 @@ foreach ($PLANS as $pl) {
           <p class="mt-4 text-[15px] leading-relaxed text-[#9aa3ac]">Every limit, feature and support tier — side by side. Start free, upgrade when you grow.</p>
           <div class="mt-7 inline-flex items-center gap-1 rounded-full border border-[#262c33] bg-[#12151a] p-1 text-[13px] font-semibold" role="group" aria-label="Billing period">
             <button type="button" data-bill="m" class="bill-btn rounded-full px-5 py-2 transition-all duration-300" aria-pressed="true">Monthly</button>
-            <button type="button" data-bill="y" class="bill-btn rounded-full px-5 py-2 transition-all duration-300" aria-pressed="false">Yearly <span class="ml-1 rounded-full bg-[#3ddc84]/15 px-2 py-0.5 text-[11px] font-bold text-[#3ddc84]">−20%</span></button>
+            <button type="button" data-bill="y" class="bill-btn rounded-full px-5 py-2 transition-all duration-300" aria-pressed="false">Yearly <span class="ml-1 rounded-full bg-[#e0a458]/15 px-2 py-0.5 text-[11px] font-bold text-[#e0a458]">−20%</span></button>
           </div>
         </div>
 
@@ -117,8 +117,8 @@ foreach ($PLANS as $pl) {
           <?php foreach ($PLANS as $i => $pl): ?>
           <div class="reveal" style="--rd:<?= $i * 80 ?>ms">
             <?php if ($pl['popular']): ?>
-            <div class="plan-glow h-full rounded-2xl bg-gradient-to-b from-[#4f8fc0] via-[#4f8fc0]/30 to-transparent p-px">
-              <div class="rounded-t-[15px] bg-gradient-to-r from-[#4f8fc0] to-[#7fb3d9] px-4 py-2 text-center font-mono2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#0b0d10]">Most popular</div>
+            <div class="plan-glow h-full rounded-2xl bg-gradient-to-b from-[#e0a458] via-[#e0a458]/30 to-transparent p-px">
+              <div class="rounded-t-[15px] bg-gradient-to-r from-[#e0a458] to-[#f0c78e] px-4 py-2 text-center font-mono2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#1a1207]">Most popular</div>
             <?php endif; ?>
             <article class="plan-card <?= $pl['popular'] ? 'plan-popular rounded-t-none rounded-b-[15px] border-0 p-6 flex flex-col flex-1 bg-[#141a20]' : 'card h-full p-6 flex flex-col' ?>">
               <div class="flex items-center gap-3">
@@ -193,9 +193,9 @@ foreach ($PLANS as $pl) {
         </div>
         <p class="mt-4 text-[12px] leading-relaxed text-[#5b636b]">* Unlimited traffic is subject to a fair-use policy against abusive patterns such as bot floods. Prices in USD.</p>
         <div class="mt-6 flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[12.5px] text-[#7d858e]">
-          <span class="inline-flex items-center gap-1.5"><span class="text-[#3ddc84]"><?= vex_icon('check','w-3.5 h-3.5') ?></span>Cancel anytime</span>
-          <span class="inline-flex items-center gap-1.5"><span class="text-[#3ddc84]"><?= vex_icon('check','w-3.5 h-3.5') ?></span>No setup fees</span>
-          <span class="inline-flex items-center gap-1.5"><span class="text-[#3ddc84]"><?= vex_icon('check','w-3.5 h-3.5') ?></span>Upgrade or downgrade anytime</span>
+          <span class="inline-flex items-center gap-1.5"><span class="text-[#e0a458]"><?= vex_icon('check','w-3.5 h-3.5') ?></span>Cancel anytime</span>
+          <span class="inline-flex items-center gap-1.5"><span class="text-[#e0a458]"><?= vex_icon('check','w-3.5 h-3.5') ?></span>No setup fees</span>
+          <span class="inline-flex items-center gap-1.5"><span class="text-[#e0a458]"><?= vex_icon('check','w-3.5 h-3.5') ?></span>Upgrade or downgrade anytime</span>
         </div>
       </div>
     </section>
