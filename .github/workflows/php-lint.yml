@@ -1,0 +1,66 @@
+name: PHP Lint
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: php-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: php -l + BOM kontrolu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: none
+
+      - name: Degisen PHP dosyalarini dogrula
+        shell: bash
+        run: |
+          set -uo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="$(git rev-parse HEAD~1 2>/dev/null || true)"
+          fi
+          if [ -z "${BASE:-}" ]; then
+            FILES="$(git ls-files '*.php')"
+          else
+            FILES="$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.php' || true)"
+          fi
+          if [ -z "$FILES" ]; then
+            echo "PHP degisikligi yok."
+            exit 0
+          fi
+          fail=0
+          count=0
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            [ -f "$f" ] || continue
+            count=$((count + 1))
+            if ! php -l "$f" >/dev/null 2>&1; then
+              echo "::error file=$f::php -l hatasi"
+              php -l "$f" || true
+              fail=1
+            fi
+            bom=$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')
+            if [ "$bom" = "efbbbf" ]; then
+              echo "::error file=$f::UTF-8 BOM bulundu (BOM yasak)"
+              fail=1
+            fi
+          done <<< "$FILES"
+          echo "kontrol edilen dosya: $count"
+          exit $fail
