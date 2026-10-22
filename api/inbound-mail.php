@@ -8,6 +8,21 @@ $pdo = db();
 if (!$pdo) { http_response_code(503); echo json_encode(['ok' => false]); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok' => false]); exit; }
 
+function inbound_normalize(string $s): string {
+    if ($s === '') return $s;
+    if (substr_count($s, '\\n') > 3 || substr_count($s, '\\t') > 3) {
+        $s = str_replace(['\\r\\n', '\\n', '\\t'], ["\n", "\n", "\t"], $s);
+    }
+    if (preg_match('/=[0-9A-F]{2}/', $s) || preg_match('/=\r?\n/', $s)) {
+        $decoded = quoted_printable_decode($s);
+        if ($decoded !== '' && strlen($decoded) > 10) $s = $decoded;
+    } elseif (preg_match('/^[A-Za-z0-9+\/=\r\n]{200,}$/', $s) && strlen(preg_replace('/\s+/', '', $s)) % 4 === 0) {
+        $b64 = base64_decode(preg_replace('/\s+/', '', $s), true);
+        if ($b64 !== false && strlen($b64) > 10) $s = $b64;
+    }
+    return $s;
+}
+
 $raw = file_get_contents('php://input');
 if (strlen($raw) > 300000) { http_response_code(413); echo json_encode(['ok' => false]); exit; }
 $d = json_decode($raw, true);
@@ -57,6 +72,16 @@ if (!hash_equals($calc, $sig)) {
 } elseif ($html !== '' && $htmlsum !== '' && !hash_equals(hash('sha256', $html), strtolower($htmlsum))) {
     http_response_code(403); echo json_encode(['ok' => false]); exit;
 }
+
+function inbound_header(string $s): string {
+    if ($s === '' || strpos($s, '=?') === false) return $s;
+    $out = @iconv_mime_decode($s, ICONV_MIME_DECODE_CONTINUE_ON_ERROR, 'UTF-8');
+    return ($out !== false && trim((string)$out) !== '') ? trim((string)$out) : $s;
+}
+
+$text = inbound_normalize($text);
+$html = inbound_normalize($html);
+$subject = inbound_header($subject);
 
 if ($nonce !== '') {
     try {
