@@ -11,8 +11,10 @@
   --ember2: #7fb3d9;
   --ember-deep: #2c5a7c;
   --ok: #74c091;
+  --gold: #e0a458;
+  --gold-soft: rgba(224, 164, 88, 0.14);
   --warn: #e0b13c;
-  --font-display: "Bricolage Grotesque", "Manrope", sans-serif;
+  --font-display: "Manrope", sans-serif;
   --font-body: "Manrope", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -497,28 +499,26 @@ img, video, svg { max-width: 100%; }
 /* ---------- buttons ---------- */
 .btn-primary {
   background: var(--ember);
-  color: #16100b;
+  color: #ffffff;
   font-weight: 700;
-  border-radius: 10px;
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), background 0.25s, box-shadow 0.25s;
+  border-radius: 8px;
+  transition: background 0.18s ease, border-color 0.18s ease;
 }
 .btn-primary:hover {
-  background: var(--ember2);
-  transform: translateY(-2px);
+  background: #5a9bcc;
 }
 .btn-primary:active {
-  transform: translateY(0) scale(0.98);
+  background: var(--ember-deep);
 }
 .btn-ghost {
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text);
-  transition: border-color 0.25s, background 0.25s, transform 0.25s;
+  transition: border-color 0.18s ease, background 0.18s ease;
 }
 .btn-ghost:hover {
   border-color: var(--line2);
   background: rgba(255, 255, 255, 0.04);
-  transform: translateY(-2px);
 }
 
 .link-u {
@@ -536,7 +536,8 @@ img, video, svg { max-width: 100%; }
   transform-origin: right;
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.link-u:hover::after {
+.link-u:hover::after,
+.link-u.nav-active::after {
   transform: scaleX(1);
   transform-origin: left;
 }

@@ -20,9 +20,10 @@ $NAV = [
       <img src="<?= htmlspecialchars($VEX_LOGO) ?>" alt="Vexaris"<?= function_exists('vx_img_attrs') ? vx_img_attrs($VEX_LOGO) : '' ?> class="h-6 sm:h-7 w-auto transition-transform duration-500 group-hover:scale-[1.04]" />
     </a>
 
+    <?php $curPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'; $curPath = rtrim($curPath, '/'); if ($curPath === '') $curPath = '/'; ?>
     <nav class="hidden lg:flex items-center gap-7 mx-auto text-[13.5px] font-semibold text-[#c8ccd1]">
-      <?php foreach ($NAV as $n): ?>
-        <a href="<?= $n['href'] ?>" class="link-u hover:text-white transition-colors"><?= $n['label'] ?></a>
+      <?php foreach ($NAV as $n): $nh = rtrim($n['href'], '/'); if ($nh === '') $nh = '/'; $nActive = ($nh === '/') ? ($curPath === '/' || $curPath === '/index.php') : ($curPath === $nh || str_starts_with($curPath, $nh . '/')); ?>
+        <a href="<?= $n['href'] ?>" class="link-u hover:text-white transition-colors <?= $nActive ? 'text-white nav-active' : '' ?>"<?= $nActive ? ' aria-current="page"' : '' ?>><?= $n['label'] ?></a>
       <?php endforeach; ?>
       <!-- SAHİBİ BAĞLAYACAK: href'leri kendi linklerinle değiştir -->
       <a id="linkDemo" href="https://demo.vexaris.net/demo" target="_blank" rel="noopener" class="link-u hover:text-white transition-colors">Demo</a>

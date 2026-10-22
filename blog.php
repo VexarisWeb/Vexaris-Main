@@ -49,15 +49,10 @@ $VEX_LOGO = '/assets/images/vexaris-logo.png';
         <div class="blog-grid">
             <?php foreach ($posts as $p): ?>
             <a href="/<?= htmlspecialchars($p['slug']) ?>" class="blog-card" aria-label="<?= htmlspecialchars($p['title']) ?>">
-                <?php if ($p['cover_image']): ?>
+                <?php $cardCover = $p['cover_image'] ?: ('/blog-cover.php?slug=' . rawurlencode((string)$p['slug'])); ?>
                 <div class="blog-card__img-wrap">
-                    <img src="<?= htmlspecialchars($p['cover_image']) ?>" alt="<?= htmlspecialchars($p['title']) ?>"<?= function_exists('vx_img_attrs') ? vx_img_attrs($p['cover_image']) : '' ?> loading="lazy">
+                    <img src="<?= htmlspecialchars($cardCover) ?>" alt="<?= htmlspecialchars($p['title']) ?>"<?= $p['cover_image'] && function_exists('vx_img_attrs') ? vx_img_attrs($p['cover_image']) : ' width="1200" height="630"' ?> loading="lazy" decoding="async">
                 </div>
-                <?php else: ?>
-                <div class="blog-card__img-wrap blog-card__img-wrap--empty">
-                    <i class="fas fa-pen-nib"></i>
-                </div>
-                <?php endif; ?>
                 <div class="blog-card__body">
                     <div class="blog-card__meta">
                         <span><i class="fas fa-calendar"></i> <?= date('d.m.Y', strtotime($p['created_at'])) ?></span>
