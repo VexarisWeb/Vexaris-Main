@@ -345,7 +345,7 @@ try {
     $store = $st->fetch() ?: null;
 } catch (Throwable $e) {}
 $myPlan = function_exists('user_effective_plan') ? user_effective_plan($uid) : ['plan' => 'free', 'until' => 0];
-$planQuotaGB = ['free' => 10, 'starter' => 50, 'professional' => 200, 'enterprise' => 1000];
+$planQuotaGB = ['free' => 50, 'starter' => 0, 'professional' => 0, 'enterprise' => 0]; // 0 = limitsiz
 $hasActive = $store !== null;
 $traf14 = [];
 if ($store) {
@@ -431,11 +431,11 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
         <div style="background:rgba(255,255,255,.04);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:1rem;text-align:center;">
             <div style="font-size:11px;color:var(--muted,#9aa3ac);font-weight:700;text-transform:uppercase;margin-bottom:4px;"><i class="fas fa-traffic-light"></i> Traffic</div>
             <div style="font-size:20px;font-weight:900;"><?= htmlspecialchars(nx_fmt_bytes($usedB)) ?></div>
-            <div style="font-size:11px;color:#9aa3ac;">of <?= (int)$quotaGB ?> GB</div>
+            <div style="font-size:11px;color:#9aa3ac;"><?= $quotaGB > 0 ? 'of ' . (int)$quotaGB . ' GB' : 'unlimited' ?></div>
         </div>
     </div>
     <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;">
-        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.3rem;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:8px;"><span><i class="fas fa-gauge-high"></i> Monthly bandwidth</span><span><?= htmlspecialchars(nx_fmt_bytes($usedB)) ?> / <?= (int)$quotaGB ?> GB (<?= htmlspecialchars((string)$trafPct) ?>%)</span></div>
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.3rem;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:8px;"><span><i class="fas fa-gauge-high"></i> Monthly bandwidth</span><span><?= $quotaGB > 0 ? htmlspecialchars(nx_fmt_bytes($usedB)) . ' / ' . (int)$quotaGB . ' GB (' . htmlspecialchars((string)$trafPct) . '%)' : htmlspecialchars(nx_fmt_bytes($usedB)) . ' used &middot; unlimited' ?></span></div>
         <div style="height:10px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:14px;"><div style="height:100%;width:<?= htmlspecialchars((string)$trafPct) ?>%;border-radius:999px;background:linear-gradient(90deg,#ff7a1a,#2bd4ff);transition:width .6s ease;"></div></div>
         <div style="font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:8px;">Last 14 days</div>
         <div style="display:flex;align-items:flex-end;gap:5px;height:90px;">
