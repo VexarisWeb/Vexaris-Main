@@ -25,7 +25,7 @@ $NAV = [
         <a href="<?= $n['href'] ?>" class="link-u hover:text-white transition-colors"><?= $n['label'] ?></a>
       <?php endforeach; ?>
       <!-- SAHİBİ BAĞLAYACAK: href'leri kendi linklerinle değiştir -->
-      <a id="linkDemo" href="https://demo.vexaris.net" target="_blank" rel="noopener" class="link-u hover:text-white transition-colors">Demo</a>
+      <a id="linkDemo" href="https://demo.vexaris.net/demo" target="_blank" rel="noopener" class="link-u hover:text-white transition-colors">Demo</a>
       <a id="linkLicense" href="/license-check" class="link-u hover:text-white transition-colors">Check License</a>
     </nav>
 
@@ -60,7 +60,7 @@ $NAV = [
         <a href="<?= $n['href'] ?>" data-close-menu class="px-3 py-2.5 rounded-lg text-sm font-semibold text-[#c8ccd1] hover:bg-white/5 hover:text-white transition-colors"><?= $n['label'] ?></a>
       <?php endforeach; ?>
       <!-- SAHİBİ BAĞLAYACAK: href'leri kendi linklerinle değiştir -->
-      <a id="linkDemoM" href="https://demo.vexaris.net" target="_blank" rel="noopener" class="px-3 py-2.5 rounded-lg text-sm font-semibold text-[#c8ccd1] hover:bg-white/5 hover:text-white transition-colors">Demo</a>
+      <a id="linkDemoM" href="https://demo.vexaris.net/demo" target="_blank" rel="noopener" class="px-3 py-2.5 rounded-lg text-sm font-semibold text-[#c8ccd1] hover:bg-white/5 hover:text-white transition-colors">Demo</a>
       <a id="linkLicenseM" href="/license-check" class="px-3 py-2.5 rounded-lg text-sm font-semibold text-[#c8ccd1] hover:bg-white/5 hover:text-white transition-colors">Check License</a>
       <div class="mt-2 grid grid-cols-2 gap-2">
         <?php if (!empty($loggedIn)): ?>

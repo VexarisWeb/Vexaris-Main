@@ -154,7 +154,7 @@ function vex_logo_item($l){
               <a href="<?= $loggedIn ? '/dashboard' : '/register' ?>" class="btn-primary px-6 py-3 text-sm inline-flex items-center gap-2">Start for free
                 <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
               </a>
-              <a href="https://demo.vexaris.net" target="_blank" rel="noopener" class="btn-ghost px-6 py-3 text-sm font-semibold">See the live demo</a>
+              <a href="https://demo.vexaris.net/demo" target="_blank" rel="noopener" class="btn-ghost px-6 py-3 text-sm font-semibold">See the live demo</a>
             </div>
             <div class="mt-8 lg:mt-10 overflow-hidden pt-3 sm:pt-11 pb-1 [mask-image:linear-gradient(to_right,transparent,#000_10%,#000_90%,transparent)]">
               <div id="logoTrack" class="marquee-track items-center">
