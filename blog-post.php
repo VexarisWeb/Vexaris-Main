@@ -219,6 +219,7 @@ $GLOBALS['seoPost'] = $post;
     .blog-post__body .md-table tbody tr:last-child td { border-bottom: 0; }
     .blog-post__body th, .blog-post__body td { border: 1px solid rgba(255,255,255,.12); padding: .65rem .8rem; text-align: left; vertical-align: top; }
     .blog-post__body thead th { background: rgba(0,212,255,.08); font-weight: 800; color: #fff; white-space: nowrap; }
+    .blog-post__body .md-table tbody td:first-child { white-space: nowrap; }
     .blog-post__body tbody tr:nth-child(even) { background: rgba(255,255,255,.03); }
     @media (max-width: 700px) {
         .blog-post__body .md-table table { min-width: 520px; font-size: .86rem; }
