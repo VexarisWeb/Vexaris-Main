@@ -22,6 +22,7 @@ $tabPermissions = [
     'seo'         => 'seo',
     'tickets'     => 'tickets',
     'inbox'       => 'tickets',
+    'reports'     => 'reports',
     'permissions' => 'permissions',
     'api'         => 'settings',
 ];
@@ -43,6 +44,7 @@ $pageTitles = [
     'seo'         => 'SEO Yönetimi',
     'tickets'     => 'Destek Talepleri',
     'inbox'       => 'Gelen Kutusu',
+    'reports'     => 'Raporlar',
     'permissions' => 'Rol & Yetkiler',
     'api'         => 'API & AI',
 ];

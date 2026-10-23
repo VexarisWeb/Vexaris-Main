@@ -18,6 +18,7 @@ const PERM_RESOURCES = <?= json_encode([
     'dashboard'   => 'Dashboard',
     'users'       => 'Kullanıcılar',
     'tickets'     => 'Destek Talepleri',
+    'reports'     => 'Raporlar',
     'products'    => 'Ürünler',
     'blog'        => 'Blog',
     'seo'         => 'SEO Yönetimi',

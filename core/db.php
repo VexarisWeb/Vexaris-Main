@@ -719,8 +719,8 @@ function run_migrations(): void {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         $pdo->exec("INSERT IGNORE INTO permissions (role, resource) VALUES
-            ('admin','dashboard'),('admin','users'),('admin','products'),('admin','licenses'),('admin','versions'),('admin','demo'),('admin','settings'),('admin','legal'),('admin','tickets'),('admin','permissions'),('admin','blog'),('admin','seo'),
-            ('yonetici','dashboard'),('yonetici','users'),('yonetici','products'),('yonetici','licenses'),('yonetici','versions'),('yonetici','settings'),('yonetici','legal'),('yonetici','tickets'),('yonetici','blog'),('yonetici','seo'),
+            ('admin','dashboard'),('admin','users'),('admin','products'),('admin','licenses'),('admin','versions'),('admin','demo'),('admin','settings'),('admin','legal'),('admin','tickets'),('admin','reports'),('admin','permissions'),('admin','blog'),('admin','seo'),
+            ('yonetici','dashboard'),('yonetici','users'),('yonetici','products'),('yonetici','licenses'),('yonetici','versions'),('yonetici','settings'),('yonetici','legal'),('yonetici','tickets'),('yonetici','reports'),('yonetici','blog'),('yonetici','seo'),
             ('moderator','dashboard'),('moderator','users'),('moderator','tickets'),
             ('destek_ekibi','dashboard'),('destek_ekibi','tickets')");
 
@@ -749,9 +749,37 @@ function run_migrations(): void {
             KEY idx_ect_token (token)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        $pdo->exec("CREATE TABLE IF NOT EXISTS store_reports (
+            id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            store_name     VARCHAR(120) NOT NULL DEFAULT '',
+            store_category VARCHAR(30)  NOT NULL DEFAULT '',
+            domain         VARCHAR(190) NOT NULL DEFAULT '',
+            origin         VARCHAR(190) NOT NULL DEFAULT '',
+            reason         VARCHAR(40)  NOT NULL DEFAULT '',
+            message        VARCHAR(2000) NOT NULL DEFAULT '',
+            lang           VARCHAR(5)   NOT NULL DEFAULT 'en',
+            ip             VARCHAR(45)  NOT NULL DEFAULT '',
+            user_agent     VARCHAR(255) NOT NULL DEFAULT '',
+            status         VARCHAR(10)  NOT NULL DEFAULT 'new',
+            spam           TINYINT(1)   NOT NULL DEFAULT 0,
+            spam_score     TINYINT      NOT NULL DEFAULT 0,
+            spam_reason    VARCHAR(190) NOT NULL DEFAULT '',
+            spam_checked   TINYINT(1)   NOT NULL DEFAULT 0,
+            created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_sr_ip (ip, created_at),
+            KEY idx_sr_status (status, created_at),
+            KEY idx_sr_checked (spam_checked, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_enabled','0')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_site_key','')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_secret','')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_enabled','1')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_rate_hours','12')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_clef_enabled','1')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_clef_model','clef')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_spam_threshold','0.7')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_clef_prompt','')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('google_indexing_enabled','0')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('google_service_json','')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('google_oauth_enabled','0')");

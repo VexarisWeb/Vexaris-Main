@@ -20,6 +20,7 @@ $tabPermissions = [
     'seo'         => 'seo',
     'tickets'     => 'tickets',
     'inbox'       => 'tickets',
+    'reports'     => 'reports',
     'permissions' => 'permissions',
     'api'         => 'settings',
 ];
@@ -33,6 +34,8 @@ $total_tickets = $pdo ? (int)$pdo->query("SELECT COUNT(*) FROM support_tickets W
 $unread_tickets = $pdo ? (int)$pdo->query("SELECT COUNT(*) FROM support_tickets t JOIN support_messages m ON m.ticket_id = t.id WHERE m.sender_role = 'user' AND m.is_read = 0")->fetchColumn() : 0;
 $unread_inbox = 0;
 if ($pdo) { try { $unread_inbox = (int)$pdo->query("SELECT COUNT(*) FROM inbound_emails WHERE is_read=0 AND deleted=0 AND spam=0 AND spam_checked=1")->fetchColumn(); } catch (Throwable $e) {} }
+$new_reports = 0;
+if ($pdo) { try { $new_reports = (int)$pdo->query("SELECT COUNT(*) FROM store_reports WHERE status='new' AND spam=0")->fetchColumn(); } catch (Throwable $e) {} }
 
 $user = current_user();
 $myRole = user_role();
@@ -309,6 +312,14 @@ $csrf = csrf_token();
             <i class="fas fa-inbox"></i> Gelen Kutusu
             <?php if ($unread_inbox > 0): ?>
                 <span class="sidebar__count"><?= $unread_inbox ?></span>
+            <?php endif; ?>
+        </a>
+        <?php endif; ?>
+        <?php if (has_permission('reports')): ?>
+        <a href="/admin?tab=reports" class="sidebar__link <?= $tab === 'reports' ? 'active' : '' ?>">
+            <i class="fas fa-flag"></i> Raporlar
+            <?php if ($new_reports > 0): ?>
+                <span class="sidebar__count"><?= $new_reports ?></span>
             <?php endif; ?>
         </a>
         <?php endif; ?>
