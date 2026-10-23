@@ -156,20 +156,13 @@ function vex_logo_item($l){
         </div>
 
         <div class="relative mt-12 lg:mt-14 mx-auto max-w-5xl">
-          <div class="relative rounded-xl border border-[#262c33] bg-[#12151a] overflow-hidden shadow-[0_40px_80px_-40px_rgba(0,0,0,.9)]">
-            <div class="flex items-center gap-3 px-4 py-2.5 border-b border-[#262c33] bg-[#15191e]">
-              <div class="flex gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#3a434e]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#3a434e]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#4f8fc0]/70"></span></div>
-              <div class="flex-1 flex items-center gap-2 rounded-md bg-[#0b0d10] border border-[#262c33] px-3 py-1 text-[11px] font-mono2 text-[#7d858e]">
-                <svg viewBox="0 0 24 24" class="w-3 h-3 text-[#74c091]" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-                demo.vexaris.net/admin
-              </div>
-              <span class="hidden sm:block text-[10px] font-mono2 uppercase tracking-wider text-[#7d858e]">admin panel</span>
-            </div>
-            <div class="overflow-hidden bg-[#0e1114] aspect-[1350/704]">
-              <img src="./assets/images/dashboard.png" alt="Vexaris admin panel/dashboard screenshot" width="1350" height="704" fetchpriority="high" decoding="async" style="width:100%;height:auto;display:block" class="w-full h-auto max-w-full block select-none" draggable="false" />
-            </div>
-            <div class="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0b0d10] to-transparent"></div>
-          </div>
+          <a href="https://demo.vexaris.net/demo" target="_blank" rel="noopener" aria-label="Open the live Vexaris demo" class="group relative block rounded-2xl border border-[#262c33] bg-[#12151a] overflow-hidden shadow-[0_40px_80px_-40px_rgba(0,0,0,.9)]">
+            <picture>
+              <source srcset="./assets/images/demo-epin.png.webp" type="image/webp">
+              <img src="./assets/images/demo-epin.png" alt="Vexaris demo storefront — E-PIN store homepage" width="1200" height="620" fetchpriority="high" decoding="async" style="width:100%;height:auto;display:block" class="w-full h-auto max-w-full block select-none" draggable="false" />
+            </picture>
+            <span class="absolute left-1/2 bottom-3.5 -translate-x-1/2 whitespace-nowrap rounded-full border border-[#2f3945] bg-[#0b0d10]/90 px-4 py-2 text-[12.5px] font-bold text-white backdrop-blur-sm transition-colors group-hover:border-[#4f8fc0]">Open the live demo →</span>
+          </a>
           <div class="floaty hidden sm:block absolute -left-6 bottom-6 card px-4 py-3 w-[220px] shadow-[0_24px_50px_-24px_rgba(0,0,0,.9)]">
             <div class="flex items-center gap-2 text-[11px] font-mono2 text-[#74c091]"><span class="pulse-dot w-1.5 h-1.5 rounded-full bg-[#74c091] inline-block"></span>order #4821 delivered</div>
             <div class="mt-1.5 font-mono2 text-[13px] text-[#e9e7e2] tracking-wide">VEX-9K2L-M4PQ</div>
