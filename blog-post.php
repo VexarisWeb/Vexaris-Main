@@ -100,7 +100,7 @@ try {
     $viewCount = (int)$stV->fetchColumn();
 } catch (Throwable $e) { $viewCount = 0; }
 $postExcerpt = blog_excerpt_text($post, 200);
-$other = $pdo->query("SELECT slug, title FROM blog_posts WHERE status='published' AND slug <> " . $pdo->quote($slug) . " ORDER BY created_at DESC LIMIT 4")->fetchAll();
+$other = $pdo->query("SELECT slug, title, cover_image, created_at FROM blog_posts WHERE status='published' AND slug <> " . $pdo->quote($slug) . " ORDER BY created_at DESC LIMIT 3")->fetchAll();
 $GLOBALS['seoKey'] = 'blog-post';
 $GLOBALS['seoPost'] = $post;
 ?>
@@ -163,12 +163,20 @@ $GLOBALS['seoPost'] = $post;
         <?php if ($other): ?>
         <div class="blog-post__other">
             <h3 class="blog-post__other-title">Other Posts</h3>
-            <div class="blog-grid">
-                <?php foreach ($other as $o): ?>
-                <a href="/<?= htmlspecialchars($o['slug']) ?>" class="blog-card">
-                    <div class="blog-card__body">
-                        <h2 class="blog-card__title"><?= htmlspecialchars($o['title']) ?></h2>
-                        <span class="blog-card__more">Read More <i class="fas fa-arrow-right"></i></span>
+            <div class="blog-post__other-grid">
+                <?php foreach ($other as $o):
+                    $oCover = ((string)($o['cover_image'] ?? '')) !== '' ? $o['cover_image'] : ('/blog-cover.php?slug=' . rawurlencode((string)$o['slug']));
+                ?>
+                <a href="/<?= htmlspecialchars($o['slug']) ?>" class="other-card" aria-label="<?= htmlspecialchars($o['title']) ?>">
+                    <div class="other-card__img">
+                        <img src="<?= htmlspecialchars($oCover) ?>" alt="<?= htmlspecialchars($o['title']) ?>" width="1200" height="630" loading="lazy" decoding="async">
+                    </div>
+                    <div class="other-card__body">
+                        <?php if (!empty($o['created_at'])): ?>
+                        <span class="other-card__date"><i class="fas fa-calendar"></i> <?= date('d.m.Y', strtotime($o['created_at'])) ?></span>
+                        <?php endif; ?>
+                        <h4 class="other-card__title"><?= htmlspecialchars($o['title']) ?></h4>
+                        <span class="other-card__more">Read article <i class="fas fa-arrow-right"></i></span>
                     </div>
                 </a>
                 <?php endforeach; ?>
@@ -236,9 +244,23 @@ $GLOBALS['seoPost'] = $post;
     .blog-post__body pre code { background: none; padding: 0; color: #e06c75; }
     .blog-post__body hr { border: none; border-top: 1px solid rgba(255,255,255,.12); margin: 1.6rem 0; }
     .blog-post__back { text-align: center; margin: 3rem 0; }
-    .blog-post__other { margin-top: 3rem; padding-top: 2.5rem; border-top: 1px solid rgba(255,255,255,.06); }
-    .blog-post__other-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 1.4rem; text-align: center; }
-    .blog-post__other .blog-card { background: rgba(255,255,255,.04); }
+    .blog-post__other { margin-top: 3.4rem; padding-top: 2.6rem; border-top: 1px solid rgba(255,255,255,.07); }
+    .blog-post__other-title { font-size: 1.1rem; font-weight: 800; letter-spacing: .02em; margin-bottom: 1.5rem; text-align: center; text-transform: uppercase; color: rgba(255,255,255,.62); }
+    .blog-post__other-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.15rem; }
+    .other-card { display: flex; flex-direction: column; background: rgba(255,255,255,.04); border: 1px solid var(--cyan-border); border-radius: 16px; overflow: hidden; text-decoration: none; color: var(--white); transition: border-color .25s ease, transform .25s ease, box-shadow .25s ease; }
+    .other-card:hover { border-color: var(--cyan); transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,212,255,.14); }
+    .other-card__img { aspect-ratio: 40 / 21; overflow: hidden; background: linear-gradient(135deg,#0d1b3e,#0a1628); border-bottom: 1px solid rgba(255,255,255,.07); }
+    .other-card__img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
+    .other-card:hover .other-card__img img { transform: scale(1.04); }
+    .other-card__body { display: flex; flex-direction: column; gap: .45rem; padding: 1rem 1.05rem 1.1rem; flex: 1; }
+    .other-card__date { display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; color: var(--text-muted); }
+    .other-card__date i { color: var(--cyan); }
+    .other-card__title { font-size: .97rem; font-weight: 800; line-height: 1.42; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .other-card__more { margin-top: auto; padding-top: .5rem; font-size: .8rem; font-weight: 700; color: var(--cyan); display: inline-flex; align-items: center; gap: 6px; }
+    .other-card__more i { transition: transform .25s ease; }
+    .other-card:hover .other-card__more i { transform: translateX(4px); }
+    @media (max-width: 820px) { .blog-post__other-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 560px) { .blog-post__other-grid { grid-template-columns: 1fr; } }
 </style>
 
 <?php if ($viewId > 0): ?>
