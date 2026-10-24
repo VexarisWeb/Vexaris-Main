@@ -28,6 +28,16 @@ $BASE = '';
 $VEX_DASH = './assets/images/dashboard.png.webp';
 // Not: footer linkleri tek kaynaktan gelir (includes/data.php).
 
+$HERO_WORDS = [
+  ['t' => 'e-pins',     'c' => '#7fb3d9'],
+  ['t' => 'accounts',   'c' => '#74c091'],
+  ['t' => 'e-books',    'c' => '#e0a458'],
+  ['t' => 'licenses',   'c' => '#9b8cf0'],
+  ['t' => 'softwares',  'c' => '#e0735c'],
+];
+$HERO_FIRST = $HERO_WORDS[0];
+$HERO_JSON = htmlspecialchars(json_encode($HERO_WORDS, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
 $PAYMENTS = [
   ['id'=>'shopier','name'=>'Shopier','tag'=>'Local','desc'=>"Turkey's local payment solution",'detail'=>'The fastest start for individual and business sellers. The delivery chain triggers the moment the payment approval webhook arrives.','features'=>['3D Secure','Webhook approval','Same-day delivery trigger'],'icon'=>'wallet'],
   ['id'=>'iyzico','name'=>'iyzico','tag'=>'Virtual POS','desc'=>'Easy integration, secure infrastructure','detail'=>'One-click saved cards and a protected checkout flow; process refunds from the panel in one click.','features'=>['Saved cards','Panel refunds','Fraud filters'],'icon'=>'lock'],
@@ -134,17 +144,18 @@ function vex_logo_item($l){
     <!-- ============ HERO ============ -->
     <section id="top" class="relative overflow-hidden pt-24 md:pt-28 pb-0">
       <div class="absolute inset-0 dotgrid opacity-60 [mask-image:radial-gradient(70%_60%_at_50%_20%,#000_20%,transparent_100%)]"></div>
-      <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full bg-[#4f8fc0]/[.06] blur-[120px] mob-noglow"></div>
+      <div class="hero-orb-m" aria-hidden="true"></div>
+      <div class="hero-aurora absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full bg-[#4f8fc0]/[.06] blur-[120px] mob-noglow"></div>
       <div class="relative max-w-7xl mx-auto px-5 sm:px-8">
-        <div class="text-center max-w-3xl mx-auto">
+        <div class="text-center max-w-4xl mx-auto">
           <h1 class="font-display font-extrabold tracking-tight text-[2.15rem] sm:text-[3rem] xl:text-[3.7rem] leading-[1.06]">
-            <span class="block">Sell digital products.</span>
+            <span class="block">Sell <span class="hero-type" id="heroTypeBox" data-words="<?= $HERO_JSON ?>"><span class="hero-type-text" id="heroType" style="color:<?= htmlspecialchars($HERO_FIRST['c']) ?>"><?= htmlspecialchars($HERO_FIRST['t']) ?></span></span><span class="hero-rest"> in minutes.</span></span>
             <span class="block text-[#4f8fc0]">0% commission.</span>
             <span class="block">Delivered instantly.</span>
           </h1>
           <p class="mt-6 mx-auto max-w-2xl text-[15.5px] leading-relaxed text-[#9aa3ac]">
-            The all-in-one store for e-pins, license keys, plugins and e-books. The moment a payment is
-            approved, files and keys land in the customer's account automatically — no manual sending.
+            The all-in-one store for e-pins, game accounts, e-books, license keys and softwares. The moment
+            a payment is approved, files and keys land in the customer's account automatically — no manual sending.
           </p>
           <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
             <a href="<?= $loggedIn ? '/dashboard' : '/register' ?>" class="btn-primary px-6 py-3 text-sm inline-flex items-center gap-2">Start for free
@@ -156,6 +167,7 @@ function vex_logo_item($l){
         </div>
 
         <div class="relative mt-12 lg:mt-14 mx-auto max-w-5xl">
+          <div class="pointer-events-none absolute -inset-x-10 -bottom-8 h-56 rounded-full bg-[#e0a458]/[.05] blur-[110px] mob-noglow" aria-hidden="true"></div>
           <a href="https://demo.vexaris.net/demo" target="_blank" rel="noopener" aria-label="Open the live Vexaris demo" class="group relative block rounded-2xl border border-[#262c33] bg-[#12151a] overflow-hidden shadow-[0_40px_80px_-40px_rgba(0,0,0,.9)]">
             <picture>
               <source srcset="./assets/images/demo-epin.png.webp" type="image/webp">

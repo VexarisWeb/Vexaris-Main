@@ -680,3 +680,67 @@ img, video, svg { max-width: 100%; }
     opacity: 0;
   }
 }
+
+/* ---------- hero: yazılan slogan ---------- */
+.hero-type {
+  display: inline-block;
+  white-space: nowrap;
+  margin-right: 0.12em;
+}
+.hero-type-text {
+  display: inline-block;
+  white-space: nowrap;
+  color: #7fb3d9;
+  transition: color 0.35s ease, filter 0.35s ease;
+  filter: drop-shadow(0 0 18px var(--hero-glow, rgba(127, 179, 217, 0.4)));
+}
+.hero-type-text::after {
+  content: "";
+  display: inline-block;
+  width: 0.07em;
+  height: 0.8em;
+  margin-left: 0.04em;
+  vertical-align: -0.02em;
+  background: currentColor;
+  animation: heroCaret 1.05s steps(1, end) infinite;
+}
+@keyframes heroCaret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.hero-rest {
+  display: block;
+}
+@media (min-width: 768px) {
+  .hero-rest {
+    display: inline;
+  }
+}
+
+/* ---------- hero: nefes alan parlama ---------- */
+.hero-aurora {
+  transform-origin: 50% 40%;
+  animation: auroraBreath 9s ease-in-out infinite;
+}
+@keyframes auroraBreath {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+/* ---------- hero: mobil parlama (blur yok, saf gradient) ---------- */
+.hero-orb-m {
+  display: none;
+}
+@media (max-width: 768px) {
+  .hero-orb-m {
+    display: block;
+    position: absolute;
+    top: -70px;
+    left: 50%;
+    width: 640px;
+    height: 440px;
+    margin-left: -320px;
+    pointer-events: none;
+    background: radial-gradient(closest-side, rgba(79, 143, 192, 0.2), rgba(224, 164, 88, 0.05) 62%, transparent 78%);
+  }
+}

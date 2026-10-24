@@ -155,6 +155,71 @@
     }, 3000);
   }
 
+  /* ---------- hero: yazılan slogan (typing) ---------- */
+  function initHeroType() {
+    var box = $('#heroTypeBox');
+    var el = $('#heroType');
+    if (!box || !el) return;
+
+    var words = [];
+    try { words = JSON.parse(box.getAttribute('data-words') || '[]'); } catch (e) { words = []; }
+    if (!words.length) return;
+
+    var TYPE_MS = 65, ERASE_MS = 32, HOLD_MS = 1500, GAP_MS = 160, PAUSE_MS = 400;
+    var idx = 0, timer = null, inView = true;
+
+    function paused() { return document.hidden || !inView; }
+    function step(fn, ms) {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        if (paused()) { step(fn, PAUSE_MS); return; }
+        fn();
+      }, ms);
+    }
+    var boxEl = box;
+    function color(w) {
+      el.style.color = w.c;
+      el.style.setProperty('--hero-glow', w.c + '66');
+      if (boxEl) {
+        boxEl.style.setProperty('--hero-tint', w.c + '42');
+        boxEl.style.setProperty('--hero-tint-bg', w.c + '10');
+      }
+    }
+    function typeWord() {
+      var w = words[idx];
+      color(w);
+      var n = 0;
+      step(function tick() {
+        n++;
+        el.textContent = w.t.slice(0, n);
+        if (n < w.t.length) { step(tick, TYPE_MS); return; }
+        step(eraseWord, HOLD_MS);
+      }, 220);
+    }
+    function eraseWord() {
+      var w = words[idx];
+      var n = w.t.length;
+      step(function tick() {
+        n--;
+        el.textContent = w.t.slice(0, n);
+        if (n > 0) { step(tick, ERASE_MS); return; }
+        idx = (idx + 1) % words.length;
+        step(typeWord, GAP_MS);
+      }, ERASE_MS);
+    }
+
+    color(words[0]);
+    el.textContent = words[0].t;
+
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        inView = entries[0].isIntersecting;
+      }, { threshold: 0 }).observe(box);
+    }
+
+    step(eraseWord, HOLD_MS + 400);
+  }
+
   /* ---------- referans şeridi: yavaş akan slider ---------- */
   function initRefSlider() {
     var track = $('#refTrack');
@@ -413,6 +478,7 @@
     safe(initReveal);
     safe(initMarquee);
     safe(initRotate);
+    safe(initHeroType);
     safe(initStepspy);
     safe(initRefSlider);
     safe(initFeatSearch);
