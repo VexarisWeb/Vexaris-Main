@@ -92,5 +92,10 @@ function indexing_local_host(string $host): bool {
 function indexing_notify_slug(string $slug, string $type): array {
     $host = strtolower(trim($_SERVER['HTTP_HOST'] ?? ''));
     if (indexing_local_host($host)) return ['ok' => false, 'msg' => 'Yerel ortam, atlandı.'];
-    return indexing_publish(indexing_site_base() . '/' . ltrim($slug, '/'), $type);
+    $url = indexing_site_base() . '/' . ltrim($slug, '/');
+    try {
+        require_once __DIR__ . '/indexnow.php';
+        if (indexnow_configured()) indexnow_notify_url($url);
+    } catch (Throwable $e) {}
+    return indexing_publish($url, $type);
 }
