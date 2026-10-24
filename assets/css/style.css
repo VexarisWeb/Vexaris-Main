@@ -704,6 +704,20 @@ img, video, svg { max-width: 100%; }
   background: currentColor;
   animation: heroCaret 1.05s steps(1, end) infinite;
 }
+.hero-accent {
+  display: inline-block;
+  color: #7fb3d9;
+  transition: color 0.4s ease;
+  animation: heroAccentGlow 3.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(127, 179, 217, 0.45));
+}
+@keyframes heroAccentGlow {
+  0%, 100% { filter: drop-shadow(0 0 7px color-mix(in srgb, currentColor 38%, transparent)); }
+  50% { filter: drop-shadow(0 0 22px color-mix(in srgb, currentColor 68%, transparent)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-accent { animation: none; }
+}
 @keyframes heroCaret {
   0%, 49% { opacity: 1; }
   50%, 100% { opacity: 0; }

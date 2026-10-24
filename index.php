@@ -33,7 +33,7 @@ $HERO_WORDS = [
   ['t' => 'accounts',   'c' => '#74c091'],
   ['t' => 'e-books',    'c' => '#e0a458'],
   ['t' => 'licenses',   'c' => '#9b8cf0'],
-  ['t' => 'softwares',  'c' => '#e0735c'],
+  ['t' => 'software',   'c' => '#e0735c'],
 ];
 $HERO_FIRST = $HERO_WORDS[0];
 $HERO_JSON = htmlspecialchars(json_encode($HERO_WORDS, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
@@ -150,11 +150,11 @@ function vex_logo_item($l){
         <div class="text-center max-w-4xl mx-auto">
           <h1 class="font-display font-extrabold tracking-tight text-[2.15rem] sm:text-[3rem] xl:text-[3.7rem] leading-[1.06]">
             <span class="block">Sell <span class="hero-type" id="heroTypeBox" data-words="<?= $HERO_JSON ?>"><span class="hero-type-text" id="heroType" style="color:<?= htmlspecialchars($HERO_FIRST['c']) ?>"><?= htmlspecialchars($HERO_FIRST['t']) ?></span></span><span class="hero-rest"> in minutes.</span></span>
-            <span class="block text-[#4f8fc0]">0% commission.</span>
+            <span class="block"><span class="hero-accent" id="heroAccent" style="color:<?= htmlspecialchars($HERO_FIRST['c']) ?>">0% commission.</span></span>
             <span class="block">Delivered instantly.</span>
           </h1>
           <p class="mt-6 mx-auto max-w-2xl text-[15.5px] leading-relaxed text-[#9aa3ac]">
-            The all-in-one store for e-pins, game accounts, e-books, license keys and softwares. The moment
+            The all-in-one store for e-pins, game accounts, e-books, license keys and software. The moment
             a payment is approved, files and keys land in the customer's account automatically — no manual sending.
           </p>
           <div class="mt-8 flex flex-wrap items-center justify-center gap-3">

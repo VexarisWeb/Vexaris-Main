@@ -176,14 +176,11 @@
         fn();
       }, ms);
     }
-    var boxEl = box;
+    var accent = $('#heroAccent');
     function color(w) {
       el.style.color = w.c;
       el.style.setProperty('--hero-glow', w.c + '66');
-      if (boxEl) {
-        boxEl.style.setProperty('--hero-tint', w.c + '42');
-        boxEl.style.setProperty('--hero-tint-bg', w.c + '10');
-      }
+      if (accent) accent.style.color = w.c;
     }
     function typeWord() {
       var w = words[idx];
