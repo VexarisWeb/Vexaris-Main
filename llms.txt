@@ -10,16 +10,17 @@ Vexaris is a selling platform for digital goods: e-pins, license keys, software 
 - Blog: https://vexaris.net/blog
 - License check: https://vexaris.net/license-check
 - Live demo: https://demo.vexaris.net
-- Status: https://status.vexaris.com.tr
+- Status: https://status.vexaris.net
 - Contact: info@vexaris.net
 
 ## Pricing and plans
 
-- Free — $0 forever: 7 products, $100 revenue cap, 10 GB traffic, hosted store, `x.vexaris.app` subdomain, 1 theme, support tickets.
-- Starter — $6.99/month (or $5.59/month billed yearly): 35 products, $1,000 revenue, 50 GB traffic, custom domain, coupon system, 2 themes.
-- Professional — $14.99/month (or $11.99/month billed yearly): 75 products, $5,000 revenue, 200 GB traffic, API access, Vexaris AI, 3 themes.
-- Enterprise — $39.99/month (or $31.99/month billed yearly): unlimited products and revenue, 1,000 GB traffic, 30+ team seats, all themes.
+- Free — $0 forever: 7 products, $100 revenue cap, 50 GB traffic, hosted store, `x.vexaris.app` subdomain, 1 theme, support tickets.
+- Starter — $6.99/month (or $5.59/month billed yearly): 35 products, $1,000 revenue, unlimited traffic, custom domain, coupon system, 2 themes, 3 team seats.
+- Professional — $14.99/month (or $11.99/month billed yearly): 75 products, $5,000 revenue, unlimited traffic, API access, Vexaris AI, 3 themes, 10 team seats.
+- Enterprise — $39.99/month (or $31.99/month billed yearly): unlimited products and revenue, unlimited traffic, 30 team seats, all themes.
 - Vexaris takes 0% commission on sales. No listing fees, no monthly platform fee on Free.
+- Unlimited traffic on paid plans is subject to a fair-use policy against abusive patterns such as bot floods.
 
 ## How it works
 
@@ -50,7 +51,7 @@ Vexaris is a selling platform for digital goods: e-pins, license keys, software 
 - Sign-in supports email/password plus Google, Discord, GitHub and Microsoft OAuth.
 - Forgot-password flow uses a 6-digit emailed code; sessions can be managed per device.
 - Free plan: self-serve, hosted store on an `x.vexaris.app` subdomain, 7 products.
-- Paid plans add a custom domain, higher product/revenue/traffic limits, API access and Vexaris AI.
+- Paid plans add a custom domain, higher product/revenue limits, unlimited traffic, API access and Vexaris AI.
 
 ## Licensing
 
