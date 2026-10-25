@@ -20,7 +20,7 @@ function turnstile_verify(?string $token, ?string $ip = null): bool {
 function turnstile_widget(string $id='cf-turnstile'): string {
     if (!turnstile_enabled()) return '';
     $key = htmlspecialchars(turnstile_site_key(), ENT_QUOTES, 'UTF-8');
-    return '<div id="'.$id.'" class="cf-turnstile" data-sitekey="'.$key.'" data-theme="dark" style="margin:12px 0"></div>';
+    return '<div id="'.$id.'" class="cf-turnstile" data-sitekey="'.$key.'" data-theme="dark" data-size="flexible" style="margin:12px 0;max-width:100%"></div>';
 }
 function turnstile_script(): string {
     if (!turnstile_enabled()) return '';

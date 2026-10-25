@@ -390,15 +390,17 @@ $latestVer = function_exists('saas_latest_version') ? saas_latest_version($pdo) 
 $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['app_version'] ?? ''), '>');
 ?>
 <div class="panel-card"><div class="panel-card__body">
-    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1.1rem;flex-wrap:wrap;">
-        <div style="width:52px;height:52px;flex:none;background:linear-gradient(135deg,rgba(255,122,26,.2),rgba(255,60,17,.1));border:1px solid rgba(255,122,26,.35);border-radius:15px;display:flex;align-items:center;justify-content:center;color:#ff7a1a;font-size:20px;"><i class="fas fa-store"></i></div>
-        <div style="min-width:0;flex:1;">
-            <div style="font-weight:800;font-size:17px;"><?= $sname !== '' ? htmlspecialchars($sname) : htmlspecialchars($store['domain']) ?></div>
-            <div style="font-size:13px;color:#8cb8ff;font-weight:700;"><?= htmlspecialchars($store['domain']) ?></div>
+    <div class="nx-shead">
+        <div class="nx-sic"><i class="fas fa-store"></i></div>
+        <div class="nx-stxt">
+            <div class="nx-sname"><?= $sname !== '' ? htmlspecialchars($sname) : htmlspecialchars($store['domain']) ?></div>
+            <div class="nx-sdom"><?= htmlspecialchars($store['domain']) ?></div>
         </div>
         <?php $scat = strtolower((string)($store['category'] ?? 'other')); $scMap = ['epin' => 'E-PIN', 'ebook' => 'E-Book', 'design' => 'Design', 'software' => 'Software', 'other' => 'Other']; ?>
-        <span style="font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:4px 12px;border-radius:999px;background:rgba(139,92,246,.14);color:#c4a5fb;"><?= htmlspecialchars($scMap[$scat] ?? 'Other') ?></span>
-        <span style="font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:4px 12px;border-radius:999px;background:<?= $sp === 'free' ? 'rgba(255,255,255,.07);color:#cfd6e4' : 'rgba(0,212,255,.12);color:#7dd7fc' ?>;"><?= htmlspecialchars($sp) ?></span>
+        <div class="nx-sbadges">
+            <span class="nx-sbadge" style="background:rgba(139,92,246,.14);color:#c4a5fb;"><?= htmlspecialchars($scMap[$scat] ?? 'Other') ?></span>
+            <span class="nx-sbadge" style="background:<?= $sp === 'free' ? 'rgba(255,255,255,.07);color:#cfd6e4' : 'rgba(0,212,255,.12);color:#7dd7fc' ?>;"><?= htmlspecialchars($sp) ?></span>
+        </div>
     </div>
     <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:12px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <i class="fas fa-globe" style="color:#8cb8ff;"></i>
@@ -495,7 +497,44 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
 .nx-cat.on{border-color:rgba(43,212,255,.55)!important;background:rgba(43,212,255,.1)!important;color:var(--text,#e8eaf6)!important;}
 .nx-lang{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#aab3bd;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;flex:1;transition:border-color .15s,background .15s;}
 .nx-lang.on{border-color:rgba(43,212,255,.55)!important;background:rgba(43,212,255,.1)!important;color:var(--text,#e8eaf6)!important;}
+ .nx-shead{display:flex;align-items:center;gap:.8rem;margin-bottom:1.1rem;flex-wrap:wrap;}
+ .nx-sic{width:52px;height:52px;flex:none;background:linear-gradient(135deg,rgba(255,122,26,.2),rgba(255,60,17,.1));border:1px solid rgba(255,122,26,.35);border-radius:15px;display:flex;align-items:center;justify-content:center;color:#ff7a1a;font-size:20px;}
+ .nx-stxt{min-width:0;flex:1 1 150px;}
+ .nx-sname{font-weight:800;font-size:17px;line-height:1.25;overflow-wrap:anywhere;word-break:break-word;}
+ .nx-sdom{font-size:13px;color:#8cb8ff;font-weight:700;overflow-wrap:anywhere;}
+ .nx-sbadges{display:flex;gap:6px;flex-wrap:wrap;}
+ .nx-sbadge{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:4px 12px;border-radius:999px;white-space:nowrap;}
+ @media(max-width:520px){
+   .nx-shead{gap:.65rem;margin-bottom:.9rem;}
+   .nx-sic{width:44px;height:44px;border-radius:12px;font-size:17px;}
+   .nx-stxt{flex:1 1 100%;}
+   .nx-sname{font-size:16px;}
+ }
 @keyframes nxPop{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}@keyframes nxFade{from{opacity:0;}to{opacity:1;}}.nx-modal-show{animation:nxFade .18s ease;}.nx-modal-show>div{animation:nxPop .22s cubic-bezier(.22,1,.36,1);}.nx-spin{animation:nxRot 1s linear infinite;}@keyframes nxRot{to{transform:rotate(360deg);}}@keyframes nxPulse{0%,100%{opacity:1;}50%{opacity:.45;}}.nx-pulse{animation:nxPulse 1.6s ease-in-out infinite;}</style>
+<style>
+#nxStoreModal>div,#nxDeleteModal>div,#nxDomFreeModal>div,#nxDomModal>div{margin:auto;max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+#nxStoreModal>div{padding-bottom:0!important;}
+#nxSmStep2{padding-bottom:14px!important;}
+.nx-modal-actions{position:sticky;bottom:0;z-index:3;background:var(--bg-card,#131929);border-top:1px solid rgba(255,255,255,.06);padding:12px 0 calc(14px + env(safe-area-inset-bottom));}
+@media(max-width:520px){
+  #nxStoreModal,#nxDeleteModal,#nxDomFreeModal,#nxDomModal{padding:10px!important;}
+  #nxStoreModal>div{padding:18px 16px 0!important;border-radius:14px;}
+  #nxStoreModal h3{font-size:16.5px;}
+  #nxCatCards{gap:5px;margin-bottom:8px;}
+  .nx-cat{font-size:11.5px;padding:9px 8px;gap:6px;}
+  .nx-lang{font-size:11.5px;padding:9px 8px;gap:5px;}
+  /* Alt alan adi satiri: 320px'te de tasmasin */
+  #nxStoreSlug{font-size:16px!important;padding:11px 10px!important;}
+  #nxStoreSlug+span{font-size:12px!important;padding:11px 10px!important;letter-spacing:-.01em;}
+  #nxTsWrap{overflow:hidden;}
+  /* Turnstile iframe'i (normal modda 300px sabit) dar ekranda kirpilmasin */
+  #nxTsWrap .cf-turnstile,#nxTsWrap .cf-turnstile iframe{max-width:100%!important;width:100%!important;}
+  .nx-modal-actions{padding:10px 0 calc(12px + env(safe-area-inset-bottom));}
+}
+@media(max-height:600px){
+  #nxStoreModal>div,#nxDeleteModal>div,#nxDomFreeModal>div,#nxDomModal>div{max-height:calc(100vh - 12px);max-height:calc(100dvh - 12px);}
+}
+</style>
 <div id="nxStoreModal" style="display:none;position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px;">
     <div style="width:100%;max-width:460px;background:var(--bg-card,#131929);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:18px;padding:26px;">
         <div id="nxSmStep1">
@@ -535,7 +574,7 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div id="nxSlugMsg" style="font-size:12px;min-height:18px;"></div><div id="nxSlugCount" style="font-size:11px;color:#64748b;">0/40</div></div>
             <div id="nxTsWrap" style="margin-bottom:14px;"><?php require_once __DIR__ . '/../core/turnstile.php'; if (function_exists('turnstile_widget')) { echo turnstile_widget('nxTs'); echo turnstile_script(); } ?></div>
-            <div style="display:flex;gap:10px;">
+            <div class="nx-modal-actions" style="display:flex;gap:10px;">
                 <button class="btn-panel" id="nxSmCancel" style="flex:1;">Cancel</button>
                 <button class="btn-panel btn-cyan" id="nxSmCreate" style="flex:2;" disabled>Create Store</button>
             </div>
@@ -627,10 +666,36 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
 var NXD = null;
 var NX_SLUG = <?= json_encode($store ? (string)$store['slug'] : '') ?>;
 (function(){
+/* Modallar .main (position:relative;z-index:1) icinde oldugu icin kendi
+   stacking context'ine hapsoluyordu: sabit sidebar/mobil menu (z=100/200)
+   modalin USTUNE ciziliyor, sabit konum da sayfa kaydirinca kayiyordu.
+   Bu yuzden modallar body'ye tasinir. */
+['nxStoreModal','nxDeleteModal','nxDomFreeModal','nxDomModal'].forEach(function(id){
+  var el=document.getElementById(id);
+  if(el&&el.parentElement!==document.body)document.body.appendChild(el);
+});
+var nxOpen=0;
+window.nxBodyLock=function(on){ nxOpen=Math.max(0,nxOpen+(on?1:-1)); document.body.style.overflow=nxOpen>0?'hidden':''; };
+window.nxModalOpen=function(id){
+  var el=document.getElementById(id); if(!el)return;
+  el.classList.remove('nx-modal-show'); void el.offsetWidth;
+  el.style.display='flex'; el.classList.add('nx-modal-show'); window.nxBodyLock(true);
+};
+window.nxModalClose=function(id){
+  var el=document.getElementById(id); if(!el)return;
+  if(el.style.display==='none')return;
+  el.style.display='none'; el.classList.remove('nx-modal-show'); window.nxBodyLock(false);
+};
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape')return;
+  ['nxStoreModal','nxDeleteModal','nxDomFreeModal','nxDomModal'].forEach(function(id){ window.nxModalClose(id); });
+});
+})();
+(function(){
 var modal=document.getElementById('nxStoreModal');
 var openBtn=document.getElementById('nxNewStoreBtn');
-function openM(){ if(modal){modal.classList.remove('nx-modal-show');void modal.offsetWidth;modal.style.display='flex';modal.classList.add('nx-modal-show');} }
-function closeM(){ if(modal){modal.classList.remove('nx-modal-show');modal.style.display='none';} document.getElementById('nxSmStep1').style.display='block'; document.getElementById('nxSmStep2').style.display='none'; }
+function openM(){ if(modal){window.nxModalOpen('nxStoreModal');document.getElementById('nxSmStep1').style.display='block';document.getElementById('nxSmStep2').style.display='none';} }
+function closeM(){ if(modal){window.nxModalClose('nxStoreModal');} document.getElementById('nxSmStep1').style.display='block'; document.getElementById('nxSmStep2').style.display='none'; }
 if(openBtn){openBtn.addEventListener('click',openM);}
 var c1=document.getElementById('nxSmCancel'); if(c1){c1.addEventListener('click',closeM);}
 var c2=document.getElementById('nxSmClose2'); if(c2){c2.addEventListener('click',closeM);}
@@ -783,17 +848,17 @@ window.openStoreDelete=function(){
   document.getElementById('nxdDelName').textContent=NXD.domain||'';
   document.getElementById('nxDelPass').value='';
   document.getElementById('nxDelMsg').textContent='';
-  var dl=document.getElementById('nxDeleteModal');dl.classList.remove('nx-modal-show');void dl.offsetWidth;dl.style.display='flex';dl.classList.add('nx-modal-show');
+  window.nxModalOpen('nxDeleteModal');
 };
 var delCancel=document.getElementById('nxDelCancel');
-if(delCancel){delCancel.addEventListener('click',function(){document.getElementById('nxDeleteModal').style.display='none';});}
+if(delCancel){delCancel.addEventListener('click',function(){window.nxModalClose('nxDeleteModal');});}
 window.nxDeleteFor=function(id,domain){NXD={id:id,domain:domain};openStoreDelete();};
 window.nxStartUpdate=function(sid){
   var b=document.getElementById('nxUpdBtn');if(b){b.disabled=true;b.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Queuing…';}
   var fd=new FormData();fd.append('action','update-store');fd.append('store_id',sid);
   fetch('/dashboard/stores',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
     if(d&&d.ok&&d.job_id){
-      var m=document.getElementById('nxStoreModal');if(m){m.classList.remove('nx-modal-show');void m.offsetWidth;m.style.display='flex';m.classList.add('nx-modal-show');}
+      window.nxModalOpen('nxStoreModal');
       document.getElementById('nxSmStep1').style.display='none';
       document.getElementById('nxSmStep2').style.display='block';
       nxResetProg();progT0=Date.now();
@@ -818,8 +883,8 @@ window.nxCopyDom=function(id,btn){
   else fallback();
   function fallback(){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}ta.remove();}
 };
-function nxShowDom(id){var m=document.getElementById(id);if(!m)return;m.classList.remove('nx-modal-show');void m.offsetWidth;m.style.display='flex';m.classList.add('nx-modal-show');}
-function nxHideDom(id){var m=document.getElementById(id);if(m)m.style.display='none';}
+function nxShowDom(id){window.nxModalOpen(id);}
+function nxHideDom(id){window.nxModalClose(id);}
 var domBtn=document.getElementById('nxDomainBtn');
 if(domBtn){domBtn.addEventListener('click',function(){
   if(domBtn.getAttribute('data-paid')!=='1'){nxShowDom('nxDomFreeModal');return;}
