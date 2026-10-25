@@ -57,6 +57,11 @@ try {
     }
     if ($sec !== '') { $relayKeys[] = $sec; $hasStoreSecret = true; }
 } catch (Throwable $e) {}
+/* Barindirilan magazalar (.vexaris.app) yalniz kendi relay sirlariyla imzalayabilir;
+   ortak/legacy anahtarla baska bir magazanin kotasi tuketilemez. */
+if (!$hasStoreSecret && ($domain === 'vexaris.app' || preg_match('/\.vexaris\.app$/i', $domain))) {
+    http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'store secret required']); exit;
+}
 if (!$hasStoreSecret) $relayKeys[] = _vx_k();
 $sigOk = false;
 foreach ($relayKeys as $rk) {
