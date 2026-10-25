@@ -215,7 +215,7 @@ function oauth_find_or_create(string $p, array $n): ?array {
         $email = $n['email'] ?: ($uname . '@' . $p . '.local');
         $pwd = password_hash(bin2hex(random_bytes(32)), PASSWORD_BCRYPT);
         $normEmail = function_exists('multi_normalize_email') ? multi_normalize_email($email) : strtolower($email);
-        $pdo->prepare("INSERT INTO users (username, email, password, email_norm, reg_ip) VALUES (?, ?, ?, ?, ?)")
+        $pdo->prepare("INSERT INTO users (username, email, password, email_norm, reg_ip, password_set) VALUES (?, ?, ?, ?, ?, 0)")
             ->execute([$uname, $email, $pwd, $normEmail, function_exists('client_ip') ? client_ip() : '']);
         $id = (int)$pdo->lastInsertId();
         // Cihaz kaydını hemen işle (kayıt anında multi tespiti için).

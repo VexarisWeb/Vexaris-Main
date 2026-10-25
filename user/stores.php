@@ -8,6 +8,17 @@ $user = current_user();
 $uid = (int)$user['id'];
 $pdo = db();
 $uemail = strtolower(trim((string)($user['email'] ?? '')));
+/* Magazaya ozel sifre karti yalnizca sosyal hesapla giris yapan kullanicilara
+   gosterilir. Hesap sifresi belirlemis olsalar bile magaza admin girisi bu
+   sifreyle yapilmadigi icin kart gizlenmez. */
+$storePassOauth = false;
+try {
+    if ($pdo) {
+        $stPP = $pdo->prepare("SELECT COUNT(*) FROM oauth_accounts WHERE user_id=?");
+        $stPP->execute([$uid]);
+        $storePassOauth = ((int)$stPP->fetchColumn() > 0);
+    }
+} catch (Throwable $ePP) { $storePassOauth = false; }
 
 function stores_json(array $a): void {
     while (ob_get_level() > 0) ob_end_clean();
@@ -171,37 +182,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
             stores_json(['ok' => false, 'msg' => 'Subdomain taken.']);
         }
         stores_json(['ok' => true, 'job_id' => $jid]);
-    } catch (Throwable $e) {
-        stores_json(['ok' => false, 'msg' => 'Server error.']);
-    }
-}
-
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? '') === 'delete-store')) {
-    csrf_check();
-    $sid = (int)($_POST['store_id'] ?? 0);
-    $pw = (string)($_POST['password'] ?? '');
-    try {
-        $st = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
-        $st->execute([$uid]);
-        $hash = (string)$st->fetchColumn();
-        if ($hash === '' || !password_verify($pw, $hash)) {
-            stores_json(['ok' => false, 'msg' => 'Wrong password.']);
-        }
-        $st = $pdo->prepare("SELECT slug FROM hosted_stores WHERE id=? AND (user_id=? OR owner=?) LIMIT 1");
-        $st->execute([$sid, $uid, $uemail]);
-        $row = $st->fetch();
-        if (!$row) stores_json(['ok' => false, 'msg' => 'Store not found.']);
-        $slug = (string)$row['slug'];
-        $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND kind='delete' AND status IN ('pending','claimed') LIMIT 1");
-        $st->execute([$slug]);
-        if ($st->fetch()) stores_json(['ok' => false, 'msg' => 'Delete already queued.']);
-        try {
-            $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status) VALUES (?,?,'free',?,'','en','delete','pending')");
-            $ins->execute([$uid, $slug, $uemail]);
-        } catch (Throwable $e2) {
-            stores_json(['ok' => false, 'msg' => 'Delete already queued.']);
-        }
-        stores_json(['ok' => true, 'job_id' => (int)$pdo->lastInsertId()]);
     } catch (Throwable $e) {
         stores_json(['ok' => false, 'msg' => 'Server error.']);
     }
@@ -414,7 +394,22 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
     </div>
     <?php endif; ?>
     <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <?php if ($storePassOauth): ?>
+        <div style="flex:1 1 100%;font-size:13px;color:#9aa3ac;"><i class="fas fa-key" style="color:#ff7a1a;"></i> Store admin — username <strong style="color:var(--text,#e8eaf6);">admin</strong>. You signed in with a social account, so this store has its own password below.</div>
+        <div class="nx-passbox" id="nxPassBox" style="flex:1 1 240px;">
+            <div class="nx-passrow">
+                <div class="nx-passval" id="nxPassVal" data-shown="0">
+                    <span id="nxPassText">••••••••</span>
+                </div>
+                <button type="button" class="nx-passbtn" id="nxPassEye" title="Show/hide"><i class="fas fa-eye"></i></button>
+                <button type="button" class="nx-passbtn" id="nxPassCopy" title="Copy"><i class="fas fa-copy"></i></button>
+            </div>
+            <div class="nx-passtip" id="nxPassTip">Tap to reveal the store password</div>
+        </div>
+        <button class="btn-panel" id="nxPassGen" style="font-size:12.5px;flex:none;"><i class="fas fa-rotate"></i> Generate new</button>
+        <?php else: ?>
         <div style="flex:1;min-width:200px;font-size:13px;color:#9aa3ac;"><i class="fas fa-key" style="color:#ff7a1a;"></i> Store admin — username <strong style="color:var(--text,#e8eaf6);">admin</strong>, password is your Vexaris password (also emailed at setup).</div>
+        <?php endif; ?>
         <a class="btn-panel btn-cyan" style="font-size:13px;" href="https://<?= htmlspecialchars($store['domain']) ?>/login" target="_blank" rel="noopener"><i class="fas fa-right-to-bracket"></i> Store Login</a>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.1rem">
@@ -509,6 +504,49 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
    .nx-sic{width:44px;height:44px;border-radius:12px;font-size:17px;}
    .nx-stxt{flex:1 1 100%;}
    .nx-sname{font-size:16px;}
+ }
+ .nx-passbox{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;}
+ .nx-passrow{display:flex;align-items:center;gap:6px;}
+ .nx-passval{flex:1;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;font-weight:800;color:#e8eaf6;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;padding:6px 4px;border-radius:8px;transition:background .15s;}
+ .nx-passval:hover{background:rgba(43,212,255,.08);}
+ .nx-passbtn{flex:none;width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#9aa3ac;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:border-color .15s,color .15s;}
+ .nx-passbtn:hover{border-color:rgba(43,212,255,.5);color:#7fd9ff;}
+ .nx-passtip{font-size:11px;color:#64748b;margin-top:2px;padding-left:4px;}
+ .nx-passtip.ok{color:#4ade80;}
+ .nx-copied{position:fixed;left:50%;transform:translateX(-50%) translateY(10px);bottom:28px;background:#0f172a;border:1px solid rgba(74,222,128,.5);color:#4ade80;font-size:12.5px;font-weight:800;padding:9px 16px;border-radius:999px;z-index:10050;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;box-shadow:0 10px 30px -8px rgba(0,0,0,.8);}
+ .nx-copied.show{opacity:1;transform:translateX(-50%) translateY(0);}
+ @media(max-width:520px){
+   .nx-passval{font-size:14px;}
+ }
+ .nxd-box{width:100%;max-width:440px;background:#161b22;border:1px solid rgba(239,68,68,.4);border-radius:18px;padding:1.5rem;max-height:calc(100dvh - 20px);overflow-y:auto;overscroll-behavior:contain;}
+ .nxd-ic{width:52px;height:52px;margin:0 auto 12px;border-radius:15px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);display:flex;align-items:center;justify-content:center;color:#f87171;font-size:21px;}
+ .nxd-h{margin:0 0 8px;font-size:17.5px;font-weight:800;text-align:center;color:#f87171;}
+ .nxd-p{font-size:13px;color:#9aa3ac;line-height:1.6;margin:0 0 12px;text-align:center;}
+ .nxd-name,.nxd-mail{color:#e8eaf6;word-break:break-all;}
+ .nxd-name{color:#fca5a5;}
+ .nxd-msg{font-size:12.5px;min-height:18px;margin:4px 0 10px;text-align:center;color:#9aa3ac;line-height:1.5;}
+ .nxd-actions{display:flex;gap:10px;margin-top:6px;}
+ .nxd-danger{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.55);color:#fca5a5;font-weight:800;}
+ .nxd-danger:hover{background:rgba(239,68,68,.26);}
+ .nxd-danger:disabled{opacity:.6;cursor:wait;}
+ .nxd-code{display:flex;gap:7px;justify-content:center;margin:6px 0 10px;}
+ .nxd-digit{width:100%;max-width:46px;height:52px;text-align:center;font-size:21px;font-weight:800;font-family:ui-monospace,Menlo,monospace;color:#fff;background:#0f1422;border:1px solid rgba(255,255,255,.14);border-radius:10px;outline:none;transition:border-color .15s,background .15s;}
+ .nxd-digit:focus{border-color:rgba(239,68,68,.7);background:#141a29;}
+ .nxd-digit.filled{border-color:rgba(239,68,68,.5);}
+ .nxd-resend{text-align:center;font-size:12.5px;color:#9aa3ac;margin-bottom:8px;line-height:1.5;}
+ .nxd-link{background:none;border:none;color:#7fd9ff;font-weight:800;font-size:12.5px;cursor:pointer;padding:0 2px;font-family:inherit;text-decoration:underline;}
+ .nxd-link:hover{color:#a8e5ff;}
+ .nxd-steps{text-align:left;display:flex;flex-direction:column;gap:11px;margin:0 auto;max-width:300px;}
+ .nxd-step{display:flex;gap:10px;align-items:center;font-size:13.5px;color:#9aa3ac;transition:opacity .4s;}
+ .nxd-step.is-done{opacity:.45;color:#6b7280;}
+ .nxd-step.is-off{opacity:.28;color:#6b7280;text-decoration:line-through;}
+ .nxd-step.is-run{opacity:1;color:#fca5a5;}
+ .nxd-ic-s{width:18px;text-align:center;flex:none;}
+ @media(max-width:430px){
+   .nxd-box{padding:1.15rem 1rem;border-radius:15px;}
+   .nxd-code{gap:5px;}
+   .nxd-digit{height:46px;font-size:19px;border-radius:9px;}
+   .nxd-h{font-size:16px;}
  }
 @keyframes nxPop{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}@keyframes nxFade{from{opacity:0;}to{opacity:1;}}.nx-modal-show{animation:nxFade .18s ease;}.nx-modal-show>div{animation:nxPop .22s cubic-bezier(.22,1,.36,1);}.nx-spin{animation:nxRot 1s linear infinite;}@keyframes nxRot{to{transform:rotate(360deg);}}@keyframes nxPulse{0%,100%{opacity:1;}50%{opacity:.45;}}.nx-pulse{animation:nxPulse 1.6s ease-in-out infinite;}</style>
 <style>
@@ -606,15 +644,69 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
     </div>
 </div>
 
-<div id="nxDeleteModal" style="display:none;position:fixed;inset:0;z-index:9995;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px;">
-    <div style="width:100%;max-width:400px;background:#0d1b3e;border:1px solid rgba(239,68,68,.35);border-radius:18px;padding:1.6rem;">
-        <h3 style="margin:0 0 6px;font-size:17px;font-weight:800;color:#f87171;"><i class="fas fa-triangle-exclamation"></i> Delete Store?</h3>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 14px;">This permanently deletes <strong id="nxdDelName" style="color:var(--text);"></strong> and all its data. Enter your password to confirm.</p>
-        <input id="nxDelPass" type="password" placeholder="Your password" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;outline:none;margin-bottom:12px;">
-        <div id="nxDelMsg" style="font-size:12px;min-height:18px;margin-bottom:8px;"></div>
-        <div style="display:flex;gap:10px;">
-            <button class="btn-panel" id="nxDelCancel" style="flex:1;">Cancel</button>
-            <button class="btn-panel" id="nxDelGo" style="flex:1;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171;">Delete Forever</button>
+<div id="nxDeleteModal" style="display:none;position:fixed;inset:0;z-index:9995;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:12px;">
+    <div class="nxd-box">
+        <!-- Step 1 -->
+        <div id="nxdStep1">
+            <div class="nxd-ic"><i class="fas fa-triangle-exclamation"></i></div>
+            <h3 class="nxd-h">Delete your store?</h3>
+            <p class="nxd-p">This permanently deletes <strong id="nxdDelName" class="nxd-name"></strong> and all its products, orders and uploaded files. This cannot be undone.</p>
+            <p class="nxd-p">We will send a <strong>6-digit code</strong> to <strong id="nxdMail" class="nxd-mail">your email</strong>. Enter it to confirm.</p>
+            <div id="nxDelMsg" class="nxd-msg"></div>
+            <div class="nxd-actions">
+                <button class="btn-panel" id="nxDelCancel" style="flex:1;">Cancel</button>
+                <button class="btn-panel nxd-danger" id="nxDelSend" style="flex:1.3;"><i class="fas fa-paper-plane"></i> Send code</button>
+            </div>
+        </div>
+        <!-- Step 2 -->
+        <div id="nxdStep2" style="display:none;">
+            <div class="nxd-ic"><i class="fas fa-envelope-open-text"></i></div>
+            <h3 class="nxd-h">Enter your code</h3>
+            <p class="nxd-p">We sent a 6-digit code to <strong id="nxdMail2" class="nxd-mail"></strong>. It expires in 10 minutes.</p>
+            <div class="nxd-code" id="nxdCodeWrap">
+                <input class="nxd-digit" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="Digit 1">
+                <input class="nxd-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 2">
+                <input class="nxd-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 3">
+                <input class="nxd-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 4">
+                <input class="nxd-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 5">
+                <input class="nxd-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 6">
+            </div>
+            <div id="nxDelMsg2" class="nxd-msg"></div>
+            <div class="nxd-resend">
+                <span id="nxdResendTxt">Didn't get it?</span>
+                <button type="button" class="nxd-link" id="nxdResend">Resend code</button>
+            </div>
+            <div class="nxd-actions">
+                <button class="btn-panel" id="nxdBack" style="flex:1;">Back</button>
+                <button class="btn-panel nxd-danger" id="nxdVerify" style="flex:1.3;"><i class="fas fa-check"></i> Delete store</button>
+            </div>
+        </div>
+        <!-- Step 3: deleting animation (reverse of create) -->
+        <div id="nxdStep3" style="display:none;text-align:center;padding:6px 0;">
+            <h3 class="nxd-h" style="color:#f87171;">Deleting your store…</h3>
+            <p id="nxdProgStore" class="nxd-p" style="color:#fca5a5;font-weight:700;margin-bottom:14px;"></p>
+            <div style="position:relative;width:120px;height:120px;margin:0 auto 14px;">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(239,68,68,.14)" stroke-width="10"/>
+                    <circle id="nxdProgRing" cx="60" cy="60" r="52" fill="none" stroke="url(#nxdGrad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0" transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .7s ease;"/>
+                    <defs><linearGradient id="nxdGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ef4444"/><stop offset="1" stop-color="#b91c1c"/></linearGradient></defs>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                    <span id="nxdProgPct" style="font-size:24px;font-weight:900;color:#fca5a5;">100%</span>
+                    <span id="nxdProgSec" style="font-size:11px;color:#9aa3ac;">0s</span>
+                </div>
+            </div>
+            <div id="nxdProgSteps" class="nxd-steps">
+                <div data-ds="queue" class="nxd-step"><span class="nxd-ic-s"><i class="fas fa-circle-check"></i></span><span>Queued</span></div>
+                <div data-ds="db" class="nxd-step"><span class="nxd-ic-s"><i class="fas fa-circle-check"></i></span><span>Database ready</span></div>
+                <div data-ds="build" class="nxd-step"><span class="nxd-ic-s"><i class="fas fa-circle-check"></i></span><span>Container building</span></div>
+                <div data-ds="done" class="nxd-step"><span class="nxd-ic-s"><i class="fas fa-circle-check"></i></span><span>Store live</span></div>
+            </div>
+            <div id="nxdProgMsg" class="nxd-p" style="min-height:20px;margin-top:10px;"></div>
+            <div id="nxdProgDone" style="display:none;margin-top:14px;">
+                <div style="font-size:15px;font-weight:800;color:#4ade80;margin-bottom:10px;"><i class="fas fa-circle-check"></i> Store deleted</div>
+                <button class="btn-panel btn-cyan" id="nxdNewStore" style="width:100%;justify-content:center;"><i class="fas fa-plus"></i> Create a new store</button>
+            </div>
         </div>
     </div>
 </div>
@@ -688,7 +780,12 @@ window.nxModalClose=function(id){
 };
 document.addEventListener('keydown',function(e){
   if(e.key!=='Escape')return;
-  ['nxStoreModal','nxDeleteModal','nxDomFreeModal','nxDomModal'].forEach(function(id){ window.nxModalClose(id); });
+  /* Silme modalinda kod/asamalar acikken yanlislikla kapanmasin. */
+  var dm=document.getElementById('nxDeleteModal');
+  var dmBusy=dm&&dm.style.display!=='none'&&((document.getElementById('nxdStep2')||{}).style||{}).display==='block';
+  ['nxStoreModal','nxDomFreeModal','nxDomModal'].forEach(function(id){ window.nxModalClose(id); });
+  if(dmBusy)return;
+  window.nxModalClose('nxDeleteModal');
 });
 })();
 (function(){
@@ -846,12 +943,32 @@ function startProgress(job){
 window.openStoreDelete=function(){
   if(!NXD)return;
   document.getElementById('nxdDelName').textContent=NXD.domain||'';
-  document.getElementById('nxDelPass').value='';
-  document.getElementById('nxDelMsg').textContent='';
+  nxDelGoStep(1);
+  nxDelClearCode();
+  nxDelMsg('', '');
+  nxDelMsg2('', '');
+  var mail='<?= htmlspecialchars($uemail, ENT_QUOTES) ?>';
+  document.getElementById('nxdMail').textContent=nxDelMask(mail);
+  document.getElementById('nxdMail2').textContent=nxDelMask(mail);
   window.nxModalOpen('nxDeleteModal');
 };
-var delCancel=document.getElementById('nxDelCancel');
-if(delCancel){delCancel.addEventListener('click',function(){window.nxModalClose('nxDeleteModal');});}
+function nxDelMask(e){ if(!e)return 'your email'; var at=e.indexOf('@'); if(at<=1)return e; return e.charAt(0)+'***'+e.slice(at); }
+window.nxDelGoStep=function(n){
+  [1,2,3].forEach(function(i){ var el=document.getElementById('nxdStep'+i); if(el)el.style.display=(i===n?'block':'none'); });
+  var box=document.querySelector('#nxDeleteModal .nxd-box'); if(box&&n===2){ setTimeout(function(){ var f=document.querySelector('.nxd-digit'); if(f)f.focus(); },120); }
+}
+function nxDelMsg(t,color){ var m=document.getElementById('nxDelMsg'); if(!m)return; m.textContent=t||''; m.style.color=color||'#9aa3ac'; }
+function nxDelMsg2(t,color){ var m=document.getElementById('nxDelMsg2'); if(!m)return; m.textContent=t||''; m.style.color=color||'#9aa3ac'; }
+function nxDelClearCode(){ var ds=document.querySelectorAll('.nxd-digit'); ds.forEach(function(d){ d.value=''; d.classList.remove('filled'); }); if(ds[0])ds[0].focus(); }
+function nxDelCode(){ var ds=document.querySelectorAll('.nxd-digit'); var v=''; ds.forEach(function(d){ v+=(d.value||''); }); return v.replace(/[^0-9]/g,''); }
+function nxDelResendState(s){
+  var btn=document.getElementById('nxdResend'), txt=document.getElementById('nxdResendTxt');
+  if(!btn)return;
+  if(s==='locked'){ btn.style.display='none'; txt.textContent='No more codes for this request. Close the window and start again later.'; return; }
+  if(s==='wait'){ btn.style.display='none'; txt.textContent='You can request another code in 5 minutes.'; return; }
+  btn.style.display='inline'; txt.textContent="Didn't get it?";
+}
+window.nxDeleteFor=function(id,domain){NXD={id:id,domain:domain};openStoreDelete();};
 window.nxDeleteFor=function(id,domain){NXD={id:id,domain:domain};openStoreDelete();};
 window.nxStartUpdate=function(sid){
   var b=document.getElementById('nxUpdBtn');if(b){b.disabled=true;b.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Queuing…';}
@@ -934,6 +1051,68 @@ var ds=document.getElementById('nxDomSave');
 if(ds){ds.addEventListener('click',function(){nxDomPost(document.getElementById('nxDomInput').value,ds,'Save Domain');});}
 var dr=document.getElementById('nxDomRemove');
 if(dr){dr.addEventListener('click',function(){if(!confirm('Remove the custom domain?'))return;nxDomPost('',dr,'Remove');});}
+(function(){
+  var box=document.getElementById('nxPassBox');
+  if(!box)return;
+  var val=document.getElementById('nxPassVal');
+  var txt=document.getElementById('nxPassText');
+  var tip=document.getElementById('nxPassTip');
+  var eye=document.getElementById('nxPassEye');
+  var cp=document.getElementById('nxPassCopy');
+  var gen=document.getElementById('nxPassGen');
+  var plain='';
+  var toastEl=null;
+  function toast(msg){
+    if(!toastEl){toastEl=document.createElement('div');toastEl.className='nx-copied';document.body.appendChild(toastEl);}
+    toastEl.textContent=msg;toastEl.classList.add('show');
+    clearTimeout(toast._t);toast._t=setTimeout(function(){toastEl.classList.remove('show');},1800);
+  }
+  function render(){
+    if(!plain){txt.textContent='••••••••';return;}
+    txt.textContent=val.getAttribute('data-shown')==='1'?plain:'••••••••';
+  }
+  function reveal(){
+    if(plain){val.setAttribute('data-shown',val.getAttribute('data-shown')==='1'?'0':'1');render();return;}
+    var fd=new FormData();
+    fd.append('action','store-pass');fd.append('action_mode','reveal');fd.append('slug',NX_SLUG);
+    fetch('/api/admin-token.php',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(d&&d.ok&&d.password){plain=d.password;val.setAttribute('data-shown','1');render();tip.textContent='Tap to hide';tip.classList.add('ok');}
+        else{tip.textContent='No store password yet — tap Generate new';tip.classList.remove('ok');}
+      }).catch(function(){tip.textContent='Could not load the password, try again';});
+  }
+  function copy(){
+    if(!plain){tip.textContent='Tap the password first to reveal it';return;}
+    var done=function(){toast('Store password copied');tip.textContent='Copied to clipboard';tip.classList.add('ok');};
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(plain).then(done,function(){fallback();});
+    } else fallback();
+    function fallback(){
+      var ta=document.createElement('textarea');ta.value=plain;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}ta.remove();
+    }
+  }
+  val.addEventListener('click',function(e){e.preventDefault();reveal();});
+  val.addEventListener('mouseenter',function(){if(plain&&val.getAttribute('data-shown')!=='1'){val.setAttribute('data-shown','1');render();}});
+  val.addEventListener('mouseleave',function(){if(plain&&val.getAttribute('data-shown')==='1'&&!('ontouchstart' in window)){val.setAttribute('data-shown','0');render();}});
+  eye.addEventListener('click',function(e){e.preventDefault();reveal();});
+  cp.addEventListener('click',function(e){e.preventDefault();copy();});
+  if(gen){gen.addEventListener('click',function(e){
+    e.preventDefault();
+    if(!confirm('Generate a new store password? The current one stops working immediately.'))return;
+    var old=gen.innerHTML;gen.disabled=true;gen.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Generating…';
+    var fd=new FormData();
+    fd.append('action','store-pass');fd.append('slug',NX_SLUG);
+    fetch('/api/admin-token.php',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        gen.disabled=false;gen.innerHTML=old;
+        if(d&&d.ok&&d.password){plain=d.password;val.setAttribute('data-shown','1');render();tip.textContent='New password active — it may take a few seconds to apply to the store';tip.classList.add('ok');toast('New store password generated');}
+        else{tip.textContent=(d&&d.msg)||'Failed to generate password';tip.classList.remove('ok');}
+      }).catch(function(){gen.disabled=false;gen.innerHTML=old;tip.textContent='Failed to generate password';});
+  });}
+})();
 window.nxAdminLogin=function(){
   if(!NX_SLUG)return;
   var fd=new FormData();fd.append('action','issue-owner');fd.append('slug',NX_SLUG);
@@ -942,19 +1121,166 @@ window.nxAdminLogin=function(){
   }).catch(function(){alert('Failed');});
 };
 
-var delGo=document.getElementById('nxDelGo');
-if(delGo){delGo.addEventListener('click',function(){
-  if(!NXD)return;
-  var m=document.getElementById('nxDelMsg');m.textContent='Deleting…';m.style.color='#9aa3ac';
-  var fd=new FormData();
-  fd.append('action','delete-store');
-  fd.append('store_id',NXD.id);
-  fd.append('password',document.getElementById('nxDelPass').value);
-  fetch('/dashboard/stores',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
-    if(d&&d.ok&&d.job_id){m.textContent='Delete queued. This page will reload.';m.style.color='#4ade80';setTimeout(function(){location.reload();},2500);}
-    else{m.textContent=(d&&d.msg)||'Failed';m.style.color='#f87171';}
-  }).catch(function(){m.textContent='Failed';m.style.color='#f87171';});
-});}
+(function(){
+  var btnSend=document.getElementById('nxDelSend');
+  var btnBack=document.getElementById('nxdBack');
+  var btnVerify=document.getElementById('nxdVerify');
+  var btnResend=document.getElementById('nxdResend');
+  var digits=Array.prototype.slice.call(document.querySelectorAll('.nxd-digit'));
+  var delJobId=0, delTick=null, delT0=0;
+
+  function sdcPost(payload){
+    var fd=new FormData();
+    Object.keys(payload).forEach(function(k){fd.append(k,payload[k]);});
+    return fetch('/api/store-delete.php',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json();});
+  }
+
+  function sendCode(isResend){
+    if(!NXD)return;
+    var btn=isResend?btnResend:btnSend;
+    var old=btn.innerHTML;
+    btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Sending…';
+    sdcPost({action:'send',store_id:NXD.id}).then(function(d){
+      btn.disabled=false;btn.innerHTML=old;
+      if(d&&d.ok){
+        nxDelGoStep(2);
+        nxDelClearCode();
+        nxDelMsg2('Code sent to '+(d.masked||'your email')+'.', '#4ade80');
+        nxDelResendState('wait');
+        setTimeout(function(){ if(delJobId===0) nxDelResendState('ready'); }, 300000);
+      } else {
+        var msg=(d&&d.msg)||'Could not send the code.';
+        if(d&&d.locked) nxDelResendState('locked');
+        if(isResend) nxDelMsg2(msg,'#f87171'); else nxDelMsg(msg,'#f87171');
+      }
+    }).catch(function(){ btn.disabled=false;btn.innerHTML=old; (isResend?nxDelMsg2:nxDelMsg)('Network error. Try again.','#f87171'); });
+  }
+
+  if(btnSend){ btnSend.addEventListener('click',function(){ sendCode(false); }); }
+  if(btnResend){ btnResend.addEventListener('click',function(){ sendCode(true); }); }
+  if(btnBack){ btnBack.addEventListener('click',function(){ nxDelGoStep(1); nxDelMsg('',''); }); }
+  var cancelBtn=document.getElementById('nxDelCancel');
+  if(cancelBtn){ cancelBtn.addEventListener('click',function(){ window.nxModalClose('nxDeleteModal'); }); }
+
+  digits.forEach(function(inp,idx){
+    inp.addEventListener('input',function(){
+      var v=(inp.value||'').replace(/[^0-9]/g,'');
+      if(v.length>1){ // paste or fast typing: distribute
+        var chars=v.split('');
+        for(var i=0;i<chars.length&&idx+i<digits.length;i++){ digits[idx+i].value=chars[i]; digits[idx+i].classList.add('filled'); }
+        var next=Math.min(digits.length-1, idx+chars.length);
+        digits[next].focus();
+      } else {
+        inp.value=v;
+        inp.classList.toggle('filled', !!v);
+        if(v) { var n=digits[idx+1]; if(n)n.focus(); }
+      }
+      if(nxDelCode().length===6) setTimeout(function(){ if(btnVerify&&!btnVerify.disabled) btnVerify.click(); }, 120);
+    });
+    inp.addEventListener('keydown',function(e){
+      if(e.key==='Backspace'&&!inp.value){ var p=digits[idx-1]; if(p){p.focus();p.value='';p.classList.remove('filled');} }
+      if(e.key==='ArrowLeft'&&idx>0) digits[idx-1].focus();
+      if(e.key==='ArrowRight'&&idx<digits.length-1) digits[idx+1].focus();
+    });
+    inp.addEventListener('paste',function(e){
+      var t='';
+      try{ t=(e.clipboardData||window.clipboardData).getData('text'); }catch(err){}
+      t=(t||'').replace(/[^0-9]/g,'').slice(0,6);
+      if(!t)return;
+      e.preventDefault();
+      for(var i=0;i<6;i++){ digits[i].value=t[i]||''; digits[i].classList.toggle('filled', !!t[i]); }
+      var nf=Math.min(5,t.length); digits[nf].focus();
+      if(t.length===6) setTimeout(function(){ if(btnVerify&&!btnVerify.disabled) btnVerify.click(); },120);
+    });
+  });
+
+  function delAnimStart(store){
+    nxDelGoStep(3);
+    var el=document.getElementById('nxdProgStore');
+    if(el){ var sd=(store||''); if(sd && sd.indexOf('.')===-1) sd+='.vexaris.app'; el.textContent=sd; }
+    var ring=document.getElementById('nxdProgRing');
+    var pct=document.getElementById('nxdProgPct');
+    var sec=document.getElementById('nxdProgSec');
+    var msg=document.getElementById('nxdProgMsg');
+    delT0=Date.now(); var p=100;
+    if(ring){ring.style.strokeDashoffset='0';}
+    if(pct)pct.textContent='100%';
+    if(msg)msg.textContent='Revoking domain and SSL…';
+    /* Ters animasyon: olusturma adimlari sondan basa dogru soner.
+       her adim kendi esiginde 'is-off' olur (ustuste binmesin diye tek tek). */
+    var order=Array.prototype.slice.call(document.querySelectorAll('#nxdProgSteps .nxd-step')).reverse();
+    var offIdx=0;
+    clearInterval(delTick);
+    delTick=setInterval(function(){
+      var e=Math.floor((Date.now()-delT0)/1000);
+      if(sec)sec.textContent=e+'s';
+      /* Halka %85'te bekler: is gercekte bitmeden animasyon tamamlanmis gorunmesin. */
+      if(p>15){
+        p-=Math.max(1,Math.round(p*0.08));
+        if(p<15)p=15;
+        if(ring)ring.style.strokeDashoffset=String(326.7*(1-p/100));
+        if(pct)pct.textContent=p+'%';
+      }
+      /* Adimlar zamana bagli, tek tek soner (ters sira: en alttan yukari). */
+      var wantOff=Math.min(order.length, Math.floor(e/6)+1);
+      while(offIdx<wantOff && offIdx<order.length){
+        var st=order[offIdx];
+        st.classList.remove('is-run');
+        st.classList.add('is-off');
+        st.querySelector('.nxd-ic-s').innerHTML='<i class="fas fa-circle-minus"></i>';
+        offIdx++;
+        if(msg){
+          if(offIdx===1)msg.textContent='Taking the store offline…';
+          else if(offIdx===2)msg.textContent='Removing container and files…';
+          else if(offIdx===3)msg.textContent='Dropping database…';
+          else msg.textContent='Revoking domain and SSL…';
+        }
+      }
+    },380);
+  }
+  function delAnimFinish(){
+    clearInterval(delTick);
+    var ring=document.getElementById('nxdProgRing');
+    var pct=document.getElementById('nxdProgPct');
+    if(ring)ring.style.strokeDashoffset='326.7';
+    if(pct)pct.textContent='0%';
+    var steps=document.querySelectorAll('#nxdProgSteps .nxd-step');
+    steps.forEach(function(st){
+      st.classList.remove('is-run');
+      st.classList.add('is-off');
+      st.querySelector('.nxd-ic-s').innerHTML='<i class="fas fa-circle-minus"></i>';
+    });
+    var msg=document.getElementById('nxdProgMsg'); if(msg){ msg.textContent='Your store and all its data have been removed.'; msg.style.color='#4ade80'; }
+    document.getElementById('nxdProgDone').style.display='block';
+    var ns=document.getElementById('nxdNewStore');
+    if(ns){ ns.onclick=function(){ window.nxModalClose('nxDeleteModal'); setTimeout(function(){location.href='/dashboard/stores';},150); }; }
+  }
+  function delPoll(jobId){
+    var tries=0;
+    var iv=setInterval(function(){
+      tries++;
+      sdcPost({action:'status',job_id:jobId}).then(function(d){
+        if(d&&d.ok){
+          if(d.status==='done'){ clearInterval(iv); delAnimFinish(); }
+          else if(d.status==='failed'){ clearInterval(iv); clearInterval(delTick); var m=document.getElementById('nxdProgMsg'); if(m){ m.textContent=(d.message||'Deletion failed. Please contact support.'); m.style.color='#f87171'; } }
+        }
+        if(tries>150){ clearInterval(iv); }
+      }).catch(function(){});
+    },4000);
+  }
+  if(btnVerify){ btnVerify.addEventListener('click',function(){
+    if(!NXD)return;
+    var code=nxDelCode();
+    if(code.length!==6){ nxDelMsg2('Enter all 6 digits.','#f87171'); return; }
+    var old=btnVerify.innerHTML;
+    btnVerify.disabled=true;btnVerify.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> Verifying…';
+    sdcPost({action:'verify',store_id:NXD.id,code:code}).then(function(d){
+      btnVerify.disabled=false;btnVerify.innerHTML=old;
+      if(d&&d.ok){ delJobId=d.job_id||1; delAnimStart(NXD.domain); delPoll(d.job_id||0); }
+      else { nxDelMsg2((d&&d.msg)||'Verification failed.','#f87171'); nxDelClearCode(); }
+    }).catch(function(){ btnVerify.disabled=false;btnVerify.innerHTML=old; nxDelMsg2('Network error. Try again.','#f87171'); });
+  }); }
+})();
 })();
 </script>
 <?php require_once __DIR__ . '/_inc/footer.php'; ?>

@@ -9,6 +9,16 @@ $linkedAccounts = oauth_linked_accounts((int)$u['id']);
 $linkedOk = (string)($_GET['linked'] ?? '');
 $oauthErr = (string)($_GET['err'] ?? '');
 $providerLabels = ['google' => 'Google', 'discord' => 'Discord', 'github' => 'GitHub', 'microsoft' => 'Microsoft'];
+$passwordSet = true;
+try {
+    $pdoP = db();
+    if ($pdoP) {
+        $stP = $pdoP->prepare("SELECT password_set FROM users WHERE id=? LIMIT 1");
+        $stP->execute([(int)$u['id']]);
+        $vP = $stP->fetchColumn();
+        if ($vP !== false && $vP !== null) $passwordSet = ((int)$vP === 1);
+    }
+} catch (Throwable $eP) { $passwordSet = true; }
 $activationOn = false;
 $isActive = true;
 try {
@@ -86,10 +96,18 @@ $subLive = $mySub && ($mySub['status'] ?? '') === 'active' && (int)($mySub['curr
         </div>
     </div>
     <div class="panel-card">
-        <div class="panel-card__head"><div class="panel-card__title"><i class="fas fa-key"></i> Change Password</div></div>
+        <div class="panel-card__head"><div class="panel-card__title"><i class="fas fa-key"></i> <?= $passwordSet ? 'Change Password' : 'Set a Password' ?></div></div>
         <div class="panel-card__body">
+            <?php if (!$passwordSet): ?>
+            <div style="background:rgba(79,143,192,.08);border:1px solid rgba(79,143,192,.35);border-radius:12px;padding:.8rem 1rem;margin-bottom:1rem;font-size:.83rem;color:#9fc3e0;line-height:1.6;">
+                <i class="fas fa-circle-info"></i> You signed in with a social account and have no password yet. Set one to also sign in with email and password.
+            </div>
+            <p style="font-size:.83rem;color:var(--muted);margin-bottom:1rem">Choose a password with at least 8 characters. Other devices are signed out after it is set.</p>
+            <button onclick="document.getElementById('passModal').style.display='flex'" class="btn-panel btn-cyan" style="width:100%;justify-content:center"><i class="fas fa-key"></i> Set a Password</button>
+            <?php else: ?>
             <p style="font-size:.83rem;color:var(--muted);margin-bottom:1rem">Update your password here for account security. Other devices are signed out when you change it.</p>
             <button onclick="document.getElementById('passModal').style.display='flex'" class="btn-panel btn-cyan" style="width:100%;justify-content:center"><i class="fas fa-key"></i> Change Password</button>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -129,18 +147,25 @@ $subLive = $mySub && ($mySub['status'] ?? '') === 'active' && (int)($mySub['curr
 <div id="passModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:9000;align-items:center;justify-content:center;padding:1.5rem" onclick="if(event.target===this)this.style.display='none'">
     <div style="background:linear-gradient(180deg,#161b21,#12161a);border:1px solid var(--border);border-radius:16px;padding:1.6rem;max-width:400px;width:92%">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem">
-            <div style="font-size:1rem;font-weight:800;color:#fff"><i class="fas fa-key" style="color:var(--cyan);margin-right:8px"></i>Change Password</div>
+            <div style="font-size:1rem;font-weight:800;color:#fff"><i class="fas fa-key" style="color:var(--cyan);margin-right:8px"></i><?= $passwordSet ? 'Change Password' : 'Set a Password' ?></div>
             <button onclick="document.getElementById('passModal').style.display='none'" style="margin-left:auto;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--muted);width:28px;height:28px;cursor:pointer">×</button>
         </div>
+        <?php if ($passwordSet): ?>
         <label style="font-size:.78rem;color:var(--muted)">Current password</label>
         <input id="curPass" type="password" style="width:100%;margin:.4rem 0 .8rem;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:#fff;padding:.65rem .9rem;outline:none">
+        <?php else: ?>
+        <input id="curPass" type="hidden" value="">
+        <p style="font-size:.8rem;color:#9fc3e0;background:rgba(79,143,192,.08);border:1px solid rgba(79,143,192,.3);border-radius:10px;padding:.6rem .8rem;margin:0 0 .8rem">You signed in with a social account, so no current password is needed.</p>
+        <?php endif; ?>
         <label style="font-size:.78rem;color:var(--muted)">New password</label>
         <input id="newPass" type="password" style="width:100%;margin:.4rem 0 .8rem;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:#fff;padding:.65rem .9rem;outline:none">
         <label style="font-size:.78rem;color:var(--muted)">Repeat new password</label>
         <input id="newPass2" type="password" style="width:100%;margin:.4rem 0 1rem;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:#fff;padding:.65rem .9rem;outline:none">
         <button onclick="changePass()" id="btnPass" class="btn-panel btn-cyan" style="width:100%;justify-content:center"><i class="fas fa-floppy-disk"></i> Update Password</button>
         <div id="passMsg" style="font-size:.82rem;margin-top:.7rem;display:none"></div>
+        <?php if ($passwordSet): ?>
         <div style="text-align:center;margin-top:.8rem"><a href="#" onclick="document.getElementById('passModal').style.display='none';fGo(1);document.getElementById('forgotModal').style.display='flex';return false" style="font-size:.82rem;color:var(--cyan);text-decoration:none">Forgot password</a></div>
+        <?php endif; ?>
     </div>
 </div>
 <div class="panel-card" style="margin-top:1.2rem">
@@ -301,14 +326,15 @@ async function changePass(){
     const cur=document.getElementById('curPass').value;
     const np=document.getElementById('newPass').value;
     const np2=document.getElementById('newPass2').value;
-    if(!cur||!np||!np2) return showMsg('passMsg',false,'Fill in all fields.');
+    const needCur=<?= $passwordSet ? 'true' : 'false' ?>;
+    if((needCur&&!cur)||!np||!np2) return showMsg('passMsg',false,'Fill in all fields.');
     if(np!==np2) return showMsg('passMsg',false,'New passwords do not match.');
     if(np.length<6) return showMsg('passMsg',false,'Min 6 characters.');
     const btn=document.getElementById('btnPass'); btn.disabled=true;
     try{
         const fd=new FormData(); fd.append('action','change_password'); fd.append('current',cur); fd.append('new',np);
         const r=await fetch('/api/account',{method:'POST',headers:{'X-CSRF-Token':ACC_CSRF},body:fd});
-        const d=await r.json(); showMsg('passMsg',d.ok,d.msg); if(d.ok){document.getElementById('curPass').value='';document.getElementById('newPass').value='';document.getElementById('newPass2').value='';document.getElementById('passModal').style.display='none';showPopup('Success','Password updated. Other devices have been signed out.');loadSessions();}
+        const d=await r.json(); showMsg('passMsg',d.ok,d.msg); if(d.ok){document.getElementById('curPass').value='';document.getElementById('newPass').value='';document.getElementById('newPass2').value='';document.getElementById('passModal').style.display='none';showPopup('Success',d.msg||'Password updated. Other devices have been signed out.');loadSessions();setTimeout(()=>location.reload(),1500);}
     }catch(e){showMsg('passMsg',false,'Connection error.');}
     btn.disabled=false;
 }

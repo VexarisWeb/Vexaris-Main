@@ -427,6 +427,7 @@ function run_migrations(): void {
 
         ensure_column($pdo, 'hosted_stores', 'relay_secret', "`relay_secret` VARCHAR(64) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'api_secret', "`api_secret` VARCHAR(64) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'hosted_stores', 'store_pass_enc', "`store_pass_enc` VARCHAR(400) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'custom_domain', "`custom_domain` VARCHAR(190) NOT NULL DEFAULT ''");
         ensure_column($pdo, 'hosted_stores', 'custom_status', "`custom_status` VARCHAR(20) NOT NULL DEFAULT ''");
 
@@ -803,6 +804,7 @@ function run_migrations(): void {
         // ── Hesap aktivasyonu / şifre sıfırlama / oturum takibi ──
         ensure_column($pdo, 'users', 'is_active', '`is_active` TINYINT(1) NOT NULL DEFAULT 1');
         ensure_column($pdo, 'users', 'session_version', '`session_version` INT UNSIGNED NOT NULL DEFAULT 0');
+        ensure_column($pdo, 'users', 'password_set', '`password_set` TINYINT(1) NOT NULL DEFAULT 1');
         ensure_column($pdo, 'support_messages', 'attachment', '`attachment` VARCHAR(255) NULL');
         ensure_column($pdo, 'user_sessions', 'device_label', '`device_label` VARCHAR(120) NULL');
         ensure_column($pdo, 'user_sessions', 'device_hash', '`device_hash` VARCHAR(64) NULL');
@@ -830,6 +832,20 @@ function run_migrations(): void {
             created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             KEY idx_pr_user (user_id),
             KEY idx_pr_email (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS store_delete_codes (
+            id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id       INT UNSIGNED NOT NULL,
+            store_id      INT UNSIGNED NOT NULL,
+            slug          VARCHAR(60) NOT NULL DEFAULT '',
+            code_hash     VARCHAR(255) NOT NULL,
+            attempts      INT UNSIGNED NOT NULL DEFAULT 0,
+            sends         INT UNSIGNED NOT NULL DEFAULT 1,
+            last_sent_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            expires_at    DATETIME NOT NULL,
+            created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_sdc_user (user_id),
+            KEY idx_sdc_store (store_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS user_sessions (

@@ -103,19 +103,36 @@ if ($act === 'change_password') {
     $nw = $_POST['new'] ?? '';
     if (strlen($nw) < 8) { echo json_encode(['ok'=>false,'msg'=>'New password must be at least 8 characters']); exit; }
     if (!preg_match('/[A-Z]/', $nw) || !preg_match('/[a-z]/', $nw) || !preg_match('/[0-9]/', $nw)) { echo json_encode(['ok'=>false,'msg'=>'New password must include uppercase, lowercase and a number']); exit; }
-    $st = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
+    $st = $pdo->prepare("SELECT password, password_set FROM users WHERE id=? LIMIT 1");
     $st->execute([$uid]);
-    $hash = (string)$st->fetchColumn();
-    if (!password_verify($cur, $hash)) { echo json_encode(['ok'=>false,'msg'=>'Current password is incorrect']); exit; }
+    $row = $st->fetch() ?: [];
+    $hash = (string)($row['password'] ?? '');
+    $hadPassword = (int)($row['password_set'] ?? 1) === 1;
+    if ($hadPassword && !password_verify($cur, $hash)) { echo json_encode(['ok'=>false,'msg'=>'Current password is incorrect']); exit; }
     $nh = password_hash($nw, PASSWORD_DEFAULT);
-    $pdo->prepare("UPDATE users SET password=? WHERE id=?")->execute([$nh,$uid]);
+    $pdo->prepare("UPDATE users SET password=?, password_set=1 WHERE id=?")->execute([$nh,$uid]);
     // Güvenlik: şifre değişince tüm oturumlar her yerde kapatılır (bu oturum hariç yaşatılır)
     $newVer = sessions_kill_all($pdo, $uid, true);
     $_SESSION['user']['sess_ver'] = $newVer;
     try {
         $pdo->prepare("DELETE FROM password_resets WHERE user_id=?")->execute([$uid]);
     } catch (Throwable $e2) {}
-    echo json_encode(['ok'=>true,'msg'=>'Password updated. Sessions on other devices have been signed out.']);
+    if (!$hadPassword) {
+        try {
+            $urow = $pdo->prepare("SELECT username, email FROM users WHERE id=? LIMIT 1");
+            $urow->execute([$uid]);
+            $u = $urow->fetch() ?: [];
+            $noreply = ['email' => setting_get('mail_noreply_email', 'noreply@vexaris.net'), 'name' => 'Vexaris'];
+            mail_send($pdo, (string)($u['email'] ?? ''), 'Your Vexaris password was set — Vexaris', '<p style="margin:0 0 14px 0;color:#e9e7e2;font-size:15px;">Hello {user_name},</p><p style="margin:0;color:#9aa3ac;font-size:14px;line-height:1.7;">A password has been set on your Vexaris account. From now on you can sign in with either your social account or this password. If this was not you, reset your password immediately.</p>', ['user_name' => (string)($u['username'] ?? '')], $noreply);
+        } catch (Throwable $e3) {}
+    }
+    echo json_encode(['ok'=>true,'msg'=>$hadPassword ? 'Password updated. Sessions on other devices have been signed out.' : 'Password set. You can now sign in with it.']);
+    exit;
+}
+if ($act === 'password_flags') {
+    $st = $pdo->prepare("SELECT password_set FROM users WHERE id=? LIMIT 1");
+    $st->execute([$uid]);
+    echo json_encode(['ok'=>true,'password_set'=>((int)$st->fetchColumn() === 1)]);
     exit;
 }
 if ($act === 'sessions_list') {

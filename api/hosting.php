@@ -325,7 +325,7 @@ try {
             exit;
         }
         $jobKind = strtolower(trim((string)($job['kind'] ?? '')));
-        if (!in_array($jobKind, ['provision', 'delete', 'update', 'domain'], true)) {
+        if (!in_array($jobKind, ['provision', 'delete', 'update', 'domain', 'passwd'], true)) {
             http_response_code(400);
             echo json_encode(['ok' => false, 'msg' => 'bad kind']);
             exit;
@@ -401,7 +401,9 @@ try {
         if ($ok) {
             $averDone = preg_replace('/[^A-Za-z0-9.\-+]/', '', substr((string)($_POST['app_ver'] ?? ''), 0, 30));
             try {
-                $pdo->prepare("UPDATE hosted_stores SET app_version=? WHERE slug=?")->execute([$averDone, $jobSlug]);
+                if ($averDone !== '') {
+                    $pdo->prepare("UPDATE hosted_stores SET app_version=? WHERE slug=?")->execute([$averDone, $jobSlug]);
+                }
             } catch (Throwable $e2) {}
             if ($jobKind === 'domain') {
                 $ddom = strtolower(trim((string)($job['site_name'] ?? '')));

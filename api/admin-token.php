@@ -80,6 +80,59 @@ if ($action === 'issue-owner') {
     exit;
 }
 
+if ($action === 'store-pass') {
+    boot_session();
+    require_login();
+    $me = current_user();
+    $meId = (int)($me['id'] ?? 0);
+    $meEmail = strtolower(trim((string)($me['email'] ?? '')));
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') { http_response_code(405); echo json_encode(['ok' => false]); exit; }
+    csrf_check();
+    $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim((string)($_POST['slug'] ?? ''))));
+    if ($slug === '' || $meId <= 0) { echo json_encode(['ok' => false, 'msg' => 'bad request']); exit; }
+    try {
+        $st = $pdo->prepare("SELECT id, store_pass_enc FROM hosted_stores WHERE slug=? AND status='active' AND (user_id=? OR owner=?) LIMIT 1");
+        $st->execute([$slug, $meId, $meEmail]);
+        $row = $st->fetch();
+        if (!$row) { http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'not yours']); exit; }
+        require_once __DIR__ . '/../core/ai.php';
+        $revealOnly = trim((string)($_POST['action_mode'] ?? '')) === 'reveal';
+        $plain = '';
+        if ($revealOnly) {
+            $enc = trim((string)($row['store_pass_enc'] ?? ''));
+            if ($enc !== '') $plain = (string)ai_decrypt($enc);
+            if ($plain === '') { echo json_encode(['ok' => false, 'msg' => 'no password yet']); exit; }
+            echo json_encode(['ok' => true, 'password' => $plain]);
+            exit;
+        }
+        $upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $lower = 'abcdefghijkmnopqrstuvwxyz';
+        $digits = '23456789';
+        $sym = '!@#$%^&*';
+        $all = $upper . $lower . $digits . $sym;
+        $p = $upper[random_int(0, strlen($upper) - 1)]
+           . $lower[random_int(0, strlen($lower) - 1)]
+           . $digits[random_int(0, strlen($digits) - 1)]
+           . $sym[random_int(0, strlen($sym) - 1)];
+        for ($i = 0; $i < 4; $i++) $p .= $all[random_int(0, strlen($all) - 1)];
+        $p = str_shuffle($p);
+        $enc = ai_encrypt($p);
+        $pdo->prepare("UPDATE hosted_stores SET store_pass_enc=? WHERE id=?")->execute([$enc, (int)$row['id']]);
+        $hash = password_hash($p, PASSWORD_BCRYPT);
+        $stJ = $pdo->prepare("SELECT COUNT(*) FROM hosting_jobs WHERE slug=? AND kind='passwd' AND status IN ('pending','claimed')");
+        $stJ->execute([$slug]);
+        if ((int)$stJ->fetchColumn() === 0) {
+            $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, lang, kind, status, owner_hash) VALUES (?,?,'free','en','passwd','pending',?)")
+                ->execute([$meId, $slug, $hash]);
+        }
+        echo json_encode(['ok' => true, 'password' => $p, 'queued' => true]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'msg' => 'server error']);
+    }
+    exit;
+}
+
 if ($action === 'consume') {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
         http_response_code(405);
