@@ -14,7 +14,7 @@ $logStart = microtime(true);
 $reqLog = ['domain' => '', 'ip' => client_ip(), 'plan' => '', 'lang' => '', 'mode' => '', 'provider' => '', 'model_id' => '', 'prompt' => '', 'messages' => '', 'tools' => '', 'tool_calls' => '', 'reply' => '', 'in_t' => 0, 'out_t' => 0, 'credits' => 0, 'ms' => 0, 'ok' => 0, 'status' => 0, 'err' => ''];
 
 try {
-    if (!api_rate_limit($pdo, 'ai', client_ip(), 30, 60)) { http_response_code(429); echo json_encode(['ok' => false, 'msg' => 'rate']); exit; }
+    if (!api_rate_limit($pdo, 'ai', client_ip(), 240, 60)) { http_response_code(429); echo json_encode(['ok' => false, 'msg' => 'rate']); exit; }
 } catch (Throwable $e) {}
 
 $domain = strtolower(trim((string)($_POST['domain'] ?? '')));
@@ -67,8 +67,9 @@ if (!$hasStoreSecret && ($domain === 'vexaris.app' || preg_match('/\.vexaris\.ap
 }
 if (!$hasStoreSecret) $relayKeys[] = _vx_k();
 $sigOk = false;
+$sigKeyUsed = '';
 foreach ($relayKeys as $rk) {
-    if (hash_equals(hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, $rk), $signature)) { $sigOk = true; break; }
+    if (hash_equals(hash_hmac('sha256', $domain . '|' . $timestamp . '|' . $nonce, $rk), $signature)) { $sigOk = true; $sigKeyUsed = $rk; break; }
 }
 if (!$sigOk) { http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'bad signature']); exit; }
 
@@ -89,6 +90,11 @@ $logExit = function (int $status, string $err = '') use (&$reqLog, $pdo, $logSta
     $reqLog['ms'] = (int)round((microtime(true) - $logStart) * 1000);
     ai_req_log($pdo, $reqLog);
 };
+try {
+    if (!api_rate_limit($pdo, 'ai_t', 'ai:' . substr(hash('sha256', $domain), 0, 24), 30, 60)) {
+        $logExit(429, 'rate'); http_response_code(429); echo json_encode(['ok' => false, 'msg' => 'rate']); exit;
+    }
+} catch (Throwable $e) {}
 
 try {
     /* Lisans eşleşmesi: en SPESIFIK eşleşme kazanır (tam alan adı > wildcard).
@@ -152,21 +158,27 @@ foreach ($clean as $cm) {
 $aiWindows = ['starter' => [12, 8], 'professional' => [30, 6], 'enterprise' => [70, 4]];
 if ($licPlan === '' || !isset($aiWindows[$licPlan])) $licPlan = 'free';
 $reqLog['plan'] = $licPlan;
-if (true) {
-    $wLim = $licPlan === 'free' ? 0 : $aiWindows[$licPlan][0];
-    $wH = $licPlan === 'free' ? 8 : $aiWindows[$licPlan][1];
-    $wStart = (int)(floor(time() / ($wH * 3600)) * ($wH * 3600));
-    try {
-        $wq = $pdo->prepare("SELECT COUNT(*) FROM ai_usage_log WHERE domain=? AND ok=1 AND created_at >= FROM_UNIXTIME(?)");
-        $wq->execute([$domain, $wStart]);
-        $wUsed = (int)$wq->fetchColumn();
-    } catch (Throwable $e) { $wUsed = 0; }
-    if ($wUsed >= $wLim) {
-        $logExit(402, 'plan_quota');
-        http_response_code(402);
-        echo json_encode(['ok' => false, 'msg' => 'plan_quota', 'quota' => ['limit' => $wLim, 'used' => $wUsed, 'window_h' => $wH, 'reset' => $wStart + $wH * 3600]]);
-        exit;
-    }
+$wLim = $aiWindows[$licPlan][0] ?? 0;
+$wH = $aiWindows[$licPlan][1] ?? 8;
+/* free (ve plani bilinmeyen) lisansta AI yok: kota penceresi yerine acik
+   bir plan hatasi doner, magaza "kota doldu" demez. */
+if ($wLim <= 0) {
+    $logExit(403, 'plan_ai');
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'msg' => 'plan_ai']);
+    exit;
+}
+$wStart = (int)(floor(time() / ($wH * 3600)) * ($wH * 3600));
+try {
+    $wq = $pdo->prepare("SELECT COUNT(*) FROM ai_usage_log WHERE domain=? AND ok=1 AND created_at >= FROM_UNIXTIME(?)");
+    $wq->execute([$domain, $wStart]);
+    $wUsed = (int)$wq->fetchColumn();
+} catch (Throwable $e) { $wUsed = 0; }
+if ($wUsed >= $wLim) {
+    $logExit(402, 'plan_quota');
+    http_response_code(402);
+    echo json_encode(['ok' => false, 'msg' => 'plan_quota', 'quota' => ['limit' => $wLim, 'used' => $wUsed, 'window_h' => $wH, 'reset' => $wStart + $wH * 3600]]);
+    exit;
 }
 
 $quota = ai_credit_use($pdo, $domain);
@@ -318,5 +330,20 @@ ai_req_log($pdo, $reqLog);
 
 $payload = ['ok' => true, 'text' => $finalText, 'tool_calls' => $pendingCalls, 'usage' => ['in' => $totalIn, 'out' => $totalOut], 'credits' => $charged, 'quota' => $quota, 'provider' => (string)($provider['provider'] ?? ''), 'model' => (string)($provider['model_id'] ?? ''), 'vision_dropped' => $visionDropped];
 $ts = time();
-$sig = hash_hmac('sha256', json_encode($payload) . '|' . $ts, _vx_k());
-echo json_encode(array_merge($payload, ['timestamp' => $ts, 'signature' => $sig]));
+$body = json_encode($payload) . '|' . $ts;
+/* Yanit imzasi: istegi dogrulayan anahtar (magaza sirri) + master + legacy.
+   Boylece hem kiracı bazli sirlar hem eski/yeni anahtarla calisan magazalar
+   ayni yaniti dogrulayabilir. */
+$signKeys = [];
+if ($sigKeyUsed !== '') $signKeys[] = $sigKeyUsed;
+foreach ([_vx_k(), (function_exists('_vx_k_legacy') ? _vx_k_legacy() : '')] as $sk) {
+    if ($sk !== '' && !in_array($sk, $signKeys, true)) $signKeys[] = $sk;
+}
+$out = $payload;
+$out['timestamp'] = $ts;
+$sigFields = ['signature', 'signature2', 'signature3'];
+foreach ($signKeys as $i => $sk) {
+    if (!isset($sigFields[$i])) break;
+    $out[$sigFields[$i]] = hash_hmac('sha256', $body, $sk);
+}
+echo json_encode($out);

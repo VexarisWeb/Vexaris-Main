@@ -310,7 +310,13 @@ function ai_call_provider(array $provider, array $messages, int $maxTokens = 102
             foreach ($files as $fl) {
                 $mime = (string)($fl['mime'] ?? '');
                 if (strncmp($mime, 'text/', 5) === 0) continue;
-                $content[] = ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $mime . ';base64,' . (string)$fl['b64']]];
+                $b64 = (string)($fl['b64'] ?? '');
+                if ($b64 === '') continue;
+                if (strncmp($mime, 'image/', 6) === 0) {
+                    $content[] = ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $mime . ';base64,' . $b64]];
+                } elseif ($mime === 'application/pdf' && !$isDahl) {
+                    $content[] = ['type' => 'file', 'file' => ['filename' => (string)($fl['name'] ?? 'dosya.pdf'), 'file_data' => 'data:application/pdf;base64,' . $b64]];
+                }
             }
         }
         $ofirst = false;

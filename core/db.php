@@ -873,12 +873,16 @@ function run_migrations(): void {
 }
 
 function ensure_column(\PDO $pdo, string $table, string $column, string $ddl): void {
+    static $done = [];
+    $key = $table . '.' . $column;
+    if (!empty($done[$key])) return;
     try {
         $st = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?");
         $st->execute([$table, $column]);
         if ((int)$st->fetchColumn() === 0) {
             $pdo->exec("ALTER TABLE `$table` ADD COLUMN $ddl");
         }
+        $done[$key] = true;
     } catch (Exception $e) {
         error_log('ensure_column hatası: ' . $e->getMessage());
     }
