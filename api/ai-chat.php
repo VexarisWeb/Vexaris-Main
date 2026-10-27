@@ -148,8 +148,10 @@ $maxTokens = max(512, min(2048, (int)($_POST['max_tokens'] ?? 1024)));
 $reqLang = strtolower(trim((string)($_POST['lang'] ?? '')));
 if ($reqLang !== 'en') $reqLang = 'tr';
 $writeMode = trim((string)($_POST['mode'] ?? '')) === 'write';
+$modeRaw = strtolower(trim((string)($_POST['mode'] ?? '')));
+$setupMode = $modeRaw === 'onboarding';
 $reqLog['lang'] = $reqLang;
-$reqLog['mode'] = $writeMode ? 'write' : 'chat';
+$reqLog['mode'] = $setupMode ? 'onboarding' : ($writeMode ? 'write' : 'chat');
 $reqLog['messages'] = mb_substr((string)json_encode($clean, JSON_UNESCAPED_UNICODE), 0, 60000);
 foreach ($clean as $cm) {
     if (($cm['role'] ?? '') === 'user') $reqLog['prompt'] = (string)($cm['content'] ?? '');
@@ -160,13 +162,28 @@ if ($licPlan === '' || !isset($aiWindows[$licPlan])) $licPlan = 'free';
 $reqLog['plan'] = $licPlan;
 $wLim = $aiWindows[$licPlan][0] ?? 0;
 $wH = $aiWindows[$licPlan][1] ?? 8;
-/* free (ve plani bilinmeyen) lisansta AI yok: kota penceresi yerine acik
-   bir plan hatasi doner, magaza "kota doldu" demez. */
-if ($wLim <= 0) {
+/* free (ve plani bilinmeyen) lisansta AI yok; tek istisna kurulum sihirbazi
+   (mode=onboarding): magaza basina omur boyu sinirli cagri. */
+if ($wLim <= 0 && !$setupMode) {
     $logExit(403, 'plan_ai');
     http_response_code(403);
     echo json_encode(['ok' => false, 'msg' => 'plan_ai']);
     exit;
+}
+if ($setupMode) {
+    $setupLimit = 90;
+    $setupUsed = 0;
+    try {
+        $sq = $pdo->prepare("SELECT COUNT(*) FROM ai_request_log WHERE domain=? AND mode='onboarding' AND ok=1");
+        $sq->execute([$domain]);
+        $setupUsed = (int)$sq->fetchColumn();
+    } catch (Throwable $e) { $setupUsed = 0; }
+    if ($setupUsed >= $setupLimit) {
+        $logExit(402, 'onboarding_limit');
+        http_response_code(402);
+        echo json_encode(['ok' => false, 'msg' => 'onboarding_limit', 'quota' => ['limit' => $setupLimit, 'used' => $setupUsed]]);
+        exit;
+    }
 }
 $wStart = (int)(floor(time() / ($wH * 3600)) * ($wH * 3600));
 try {
@@ -174,7 +191,7 @@ try {
     $wq->execute([$domain, $wStart]);
     $wUsed = (int)$wq->fetchColumn();
 } catch (Throwable $e) { $wUsed = 0; }
-if ($wUsed >= $wLim) {
+if (!$setupMode && $wUsed >= $wLim) {
     $logExit(402, 'plan_quota');
     http_response_code(402);
     echo json_encode(['ok' => false, 'msg' => 'plan_quota', 'quota' => ['limit' => $wLim, 'used' => $wUsed, 'window_h' => $wH, 'reset' => $wStart + $wH * 3600]]);
@@ -219,6 +236,7 @@ $replyLang = $reqLang === 'en' ? 'Reply in English.' : 'Reply in Turkish.';
 $sys = [];
 if ($customSys !== '') $sys[] = ['role' => 'user', 'content' => $customSys];
 if (!$writeMode) $sys[] = ['role' => 'user', 'content' => 'You are the Vexaris store assistant. ' . $toolSpec . ' You remember the last ' . $historyCount . ' messages of this conversation; do not ask the user for information you already know. ' . $replyLang];
+if ($setupMode) $sys[] = ['role' => 'user', 'content' => 'Onboarding mode: follow the store setup instructions above strictly. One question per reply, call the matching tool immediately after every answer, and finish with setup.finish when the store is ready. ' . $replyLang];
 $sys[] = ['role' => 'user', 'content' => 'Style: be short and concrete. No greetings, apologies or filler ("sure", "of course", "here is"). Answer only what was asked, max 5 short lines or bullets even if more is requested. No extra suggestions unless asked. No long paragraphs. ' . $replyLang];
 $conv = array_merge($sys, $clean);
 foreach ($conv as &$cm) {
@@ -271,18 +289,47 @@ for ($round = 0; $round < 3; $round++) {
     $text = (string)($r['text'] ?? '');
     $calls = [];
     $found = null;
-    if (preg_match('/```tool\s*(\{.*?\})\s*```/s', $text, $mm)) {
-        $found = $mm[1];
-    } elseif (preg_match('/\{\s*"calls"\s*:\s*\[(?:[^{}\[\]]|\{[^{}]*\}|\[[^\[\]]*\])*\]\s*\}/s', $text, $mm)) {
-        $found = $mm[0];
-    } elseif (preg_match('/<tool-call>\s*([a-z0-9_.]+)\s*((?:<arg_key>.*?<\/arg_key>\s*<arg-value>.*?<\/arg-value>\s*)*)<\/tool-call>/s', $text, $mm)) {
+    $bracket = function (string $s, int $off = 0): string {
+        $start = strpos($s, '{', $off);
+        if ($start === false) return '';
+        $depth = 0;
+        $inStr = false;
+        $esc = false;
+        for ($i = $start, $n = strlen($s); $i < $n; $i++) {
+            $ch = $s[$i];
+            if ($inStr) {
+                if ($esc) { $esc = false; continue; }
+                if ($ch === '\\') { $esc = true; continue; }
+                if ($ch === '"') $inStr = false;
+                continue;
+            }
+            if ($ch === '"') { $inStr = true; continue; }
+            if ($ch === '{') $depth++;
+            elseif ($ch === '}') {
+                $depth--;
+                if ($depth === 0) return substr($s, $start, $i - $start + 1);
+            }
+        }
+        return '';
+    };
+    if (preg_match('/```tool\b(.*?)```/s', $text, $mm)) {
+        $found = $bracket($mm[1]);
+    }
+    if ($found === '' || $found === null) {
+        if (preg_match('/\{\s*"calls"\s*:/', $text, $mm, PREG_OFFSET_CAPTURE)) {
+            $found = $bracket($text, (int)$mm[0][1]);
+        }
+    }
+    if ($found === '' || $found === null) {
+      if (preg_match('/<tool-call>\s*([a-z0-9_.]+)\s*((?:<arg_key>.*?<\/arg_key>\s*<arg-value>.*?<\/arg-value>\s*)*)<\/tool-call>/s', $text, $mm)) {
         $xargs = [];
         if (preg_match_all('/<arg_key>(.*?)<\/arg_key>\s*<arg-value>(.*?)<\/arg-value>/s', $mm[2], $am, PREG_SET_ORDER)) {
             foreach ($am as $pair) $xargs[trim($pair[1])] = trim($pair[2]);
         }
         $found = json_encode(['calls' => [['id' => '1', 'name' => trim($mm[1]), 'args' => $xargs]]]);
+      }
     }
-    if ($found !== null) {
+    if ($found !== null && $found !== '') {
         $dec = json_decode($found, true);
         if (is_array($dec) && isset($dec['calls']) && is_array($dec['calls'])) {
             foreach (array_slice($dec['calls'], 0, 5) as $c) {
