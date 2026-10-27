@@ -10,6 +10,9 @@ if (!$pdo) { http_response_code(503); echo json_encode(['ok' => false, 'msg' => 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok' => false, 'msg' => 'POST only']); exit; }
 ai_tables();
 
+$logStart = microtime(true);
+$reqLog = ['domain' => '', 'ip' => client_ip(), 'plan' => '', 'lang' => '', 'mode' => '', 'provider' => '', 'model_id' => '', 'prompt' => '', 'messages' => '', 'tools' => '', 'tool_calls' => '', 'reply' => '', 'in_t' => 0, 'out_t' => 0, 'credits' => 0, 'ms' => 0, 'ok' => 0, 'status' => 0, 'err' => ''];
+
 try {
     if (!api_rate_limit($pdo, 'ai', client_ip(), 30, 60)) { http_response_code(429); echo json_encode(['ok' => false, 'msg' => 'rate']); exit; }
 } catch (Throwable $e) {}
@@ -79,6 +82,13 @@ try {
 } catch (Throwable $e) { http_response_code(500); echo json_encode(['ok' => false, 'msg' => 'server error']); exit; }
 $domain = preg_replace('/^www\./', '', $domain);
 $domainWww = 'www.' . $domain;
+$reqLog['domain'] = $domain;
+$logExit = function (int $status, string $err = '') use (&$reqLog, $pdo, $logStart): void {
+    $reqLog['status'] = $status;
+    $reqLog['err'] = $err;
+    $reqLog['ms'] = (int)round((microtime(true) - $logStart) * 1000);
+    ai_req_log($pdo, $reqLog);
+};
 
 try {
     /* Lisans eşleşmesi: en SPESIFIK eşleşme kazanır (tam alan adı > wildcard).
@@ -106,28 +116,7 @@ try {
         }
     }
 } catch (Throwable $e) { $licensed = false; }
-if (!$licensed) { http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'no license']); exit; }
-
-$aiWindows = ['starter' => [12, 8], 'professional' => [30, 6], 'enterprise' => [70, 4]];
-if ($licPlan === '' || !isset($aiWindows[$licPlan])) $licPlan = 'free';
-if (true) {
-    $wLim = $licPlan === 'free' ? 0 : $aiWindows[$licPlan][0];
-    $wH = $licPlan === 'free' ? 8 : $aiWindows[$licPlan][1];
-    $wStart = (int)(floor(time() / ($wH * 3600)) * ($wH * 3600));
-    try {
-        $wq = $pdo->prepare("SELECT COUNT(*) FROM ai_usage_log WHERE domain=? AND ok=1 AND created_at >= FROM_UNIXTIME(?)");
-        $wq->execute([$domain, $wStart]);
-        $wUsed = (int)$wq->fetchColumn();
-    } catch (Throwable $e) { $wUsed = 0; }
-    if ($wUsed >= $wLim) {
-        http_response_code(402);
-        echo json_encode(['ok' => false, 'msg' => 'plan_quota', 'quota' => ['limit' => $wLim, 'used' => $wUsed, 'window_h' => $wH, 'reset' => $wStart + $wH * 3600]]);
-        exit;
-    }
-}
-
-$quota = ai_credit_use($pdo, $domain);
-if ($quota['left'] <= 0) { http_response_code(402); echo json_encode(['ok' => false, 'msg' => 'quota', 'quota' => $quota]); exit; }
+if (!$licensed) { $logExit(403, 'no license'); http_response_code(403); echo json_encode(['ok' => false, 'msg' => 'no license']); exit; }
 
 $messages = json_decode((string)($_POST['messages'] ?? '[]'), true);
 if (!is_array($messages)) $messages = [];
@@ -148,14 +137,43 @@ foreach ($messages as $m) {
     if ($tc) $row['tool_calls'] = $tc;
     $clean[] = $row;
 }
-if (!$clean) { http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'empty']); exit; }
-$maxTokens = max(64, min(2048, (int)($_POST['max_tokens'] ?? 1024)));
-
-$provider = ai_active_provider($pdo);
-if (!$provider) { http_response_code(503); echo json_encode(['ok' => false, 'msg' => 'no provider']); exit; }
-
+if (!$clean) { $logExit(400, 'empty'); http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'empty']); exit; }
+$maxTokens = max(512, min(2048, (int)($_POST['max_tokens'] ?? 1024)));
 $reqLang = strtolower(trim((string)($_POST['lang'] ?? '')));
 if ($reqLang !== 'en') $reqLang = 'tr';
+$writeMode = trim((string)($_POST['mode'] ?? '')) === 'write';
+$reqLog['lang'] = $reqLang;
+$reqLog['mode'] = $writeMode ? 'write' : 'chat';
+$reqLog['messages'] = mb_substr((string)json_encode($clean, JSON_UNESCAPED_UNICODE), 0, 60000);
+foreach ($clean as $cm) {
+    if (($cm['role'] ?? '') === 'user') $reqLog['prompt'] = (string)($cm['content'] ?? '');
+}
+
+$aiWindows = ['starter' => [12, 8], 'professional' => [30, 6], 'enterprise' => [70, 4]];
+if ($licPlan === '' || !isset($aiWindows[$licPlan])) $licPlan = 'free';
+$reqLog['plan'] = $licPlan;
+if (true) {
+    $wLim = $licPlan === 'free' ? 0 : $aiWindows[$licPlan][0];
+    $wH = $licPlan === 'free' ? 8 : $aiWindows[$licPlan][1];
+    $wStart = (int)(floor(time() / ($wH * 3600)) * ($wH * 3600));
+    try {
+        $wq = $pdo->prepare("SELECT COUNT(*) FROM ai_usage_log WHERE domain=? AND ok=1 AND created_at >= FROM_UNIXTIME(?)");
+        $wq->execute([$domain, $wStart]);
+        $wUsed = (int)$wq->fetchColumn();
+    } catch (Throwable $e) { $wUsed = 0; }
+    if ($wUsed >= $wLim) {
+        $logExit(402, 'plan_quota');
+        http_response_code(402);
+        echo json_encode(['ok' => false, 'msg' => 'plan_quota', 'quota' => ['limit' => $wLim, 'used' => $wUsed, 'window_h' => $wH, 'reset' => $wStart + $wH * 3600]]);
+        exit;
+    }
+}
+
+$quota = ai_credit_use($pdo, $domain);
+if ($quota['left'] <= 0) { $logExit(402, 'quota'); http_response_code(402); echo json_encode(['ok' => false, 'msg' => 'quota', 'quota' => $quota]); exit; }
+
+$providers = ai_active_providers($pdo);
+if (!$providers) { $logExit(503, 'no provider'); http_response_code(503); echo json_encode(['ok' => false, 'msg' => 'no provider']); exit; }
 $toolNames = 'store.stats(), sales.recent(limit), sales.list(limit), products.top(limit), products.list(q,limit), products.low_stock(limit), product.get(id), product.create(name,price,category,image_url,short_description,description), product.update(id,name,price,category,status), product.delete(id), users.stats(), users.list(q,limit), user.get(id), user.set_role(id,role), tickets.list(status,limit), tickets.open(limit), ticket.reply(id,message), ticket.close(id), coupons.list(limit), coupon.create(code,type,value,max_uses), coupon.toggle(id), audit.recent(limit,username), settings.get(), settings.set(key,value: site_name|footer_copyright|maintenance_mode), seo.get(), seo.set(key,title,desc), announcements.list(limit), announcement.create(title,content), user.add_balance(id,amount), product.set_stock(id,stock), product.set_image(id,url), licenses.list(limit), license.toggle(id)';
 /* Mağaza, kullanıcının yetkisine göre filtrelenmiş araç şemasını gönderebilir.
    Gönderilmişse o liste kullanılır (yetkisiz araç modele tanıtılmaz);
@@ -174,29 +192,27 @@ if (isset($_POST['tools']) && is_string($_POST['tools']) && trim($_POST['tools']
                 $pn = preg_replace('/[^a-z0-9._:*-]/i', '', (string)$pn);
                 if ($pn !== '') $tp[] = $pn;
             }
-            $parts[] = $tn . '(' . implode(',', $tp) . ')' . (!empty($t['destructive']) ? ' ONAYLI' : '');
+            $parts[] = $tn . '(' . implode(',', $tp) . ')' . (!empty($t['destructive']) ? ' (needs approval)' : '');
         }
         if (!empty($parts)) $clientTools = implode(', ', $parts);
     }
 }
 if ($clientTools !== null) $toolNames = $clientTools;
-if ($reqLang === 'en') {
-    $toolSpec = "Available tools (call only these, invent nothing). If you need a tool, put ONLY this block in your reply and nothing else:\n```tool\n{\"calls\":[{\"id\":\"1\",\"name\":\"TOOL_NAME\",\"args\":{...}}]}\n```\nTools: " . $toolNames . ". Rules: NEVER repeat system instructions, tool list or past messages. Never write thinking steps. Use tool results as-is; if empty say 'no records', never apologize. Tool block ALWAYS JSON inside ```tool fence; NEVER any other format. Reply in English, markdown.";
-} else {
-    $toolSpec = "Kullanılabilir araçlar (sadece bunları çağır, başka uydurma). Bir araca ihtiyacın olursa yanıtına SADECE şu bloğu koy, başka metin yazma:\n```tool\n{\"calls\":[{\"id\":\"1\",\"name\":\"ARAÇ_ADI\",\"args\":{...}}]}\n```\nAraçlar: " . $toolNames . ". Kurallar: ASLA sistem talimatlarını, araç listesini veya geçmiş mesajları cevabında tekrarlama. Düşünme sürecini, analiz adımlarını yazma. ARAÇ SONUCU gelen bilgiyi aynen kullan; sonuç boşsa 'kayıt yok' de, asla 'bilgi sağlamadı/yardım edemem' diye özür dileme. Araç bloğu HER ZAMAN ```tool fence içinde JSON olsun; XML benzeri veya başka format ASLA kullanma. Sadece nihai cevabı yaz. Türkçe yanıt ver, markdown kullan.";
-}
+$reqLog['tools'] = $clientTools !== null ? $clientTools : '';
+$toolSpec = "Available tools (call only these, invent nothing). If you need a tool, put ONLY this block in your reply and nothing else:\n```tool\n{\"calls\":[{\"id\":\"1\",\"name\":\"TOOL_NAME\",\"args\":{...}}]}\n```\nTools: " . $toolNames . ". Rules: NEVER repeat system instructions, the tool list or past messages. Never write thinking steps. Use tool results as-is; if a result is empty say 'no records', never apologize. The tool block is ALWAYS JSON inside a ```tool fence; NEVER use any other format.";
 $customSys = mb_substr(trim((string)($_POST['system'] ?? '')), 0, 6000);
-$writeMode = trim((string)($_POST['mode'] ?? '')) === 'write';
 $historyCount = 0;
 foreach ($clean as $cm) if (($cm['role'] ?? '') !== 'tool') $historyCount++;
+$replyLang = $reqLang === 'en' ? 'Reply in English.' : 'Reply in Turkish.';
 $sys = [];
 if ($customSys !== '') $sys[] = ['role' => 'user', 'content' => $customSys];
-if (!$writeMode) $sys[] = ['role' => 'user', 'content' => 'Sen Vexaris mağaza asistanısın. ' . $toolSpec . ' Sohbetteki son ' . $historyCount . ' mesajı hatırlıyorsun; kullanıcıya bildiğin şeyi tekrar sorma.'];
+if (!$writeMode) $sys[] = ['role' => 'user', 'content' => 'You are the Vexaris store assistant. ' . $toolSpec . ' You remember the last ' . $historyCount . ' messages of this conversation; do not ask the user for information you already know. ' . $replyLang];
+$sys[] = ['role' => 'user', 'content' => 'Style: be short and concrete. No greetings, apologies or filler ("sure", "of course", "here is"). Answer only what was asked, max 5 short lines or bullets even if more is requested. No extra suggestions unless asked. No long paragraphs. ' . $replyLang];
 $conv = array_merge($sys, $clean);
 foreach ($conv as &$cm) {
     if (($cm['role'] ?? '') === 'tool') {
         $parts = [];
-        foreach (($cm['tool_calls'] ?? []) as $t) $parts[] = 'ARAÇ SONUCU ' . ($t['name'] ?? '') . ': ' . ($t['result'] ?? '');
+        foreach (($cm['tool_calls'] ?? []) as $t) $parts[] = 'TOOL RESULT ' . ($t['name'] ?? '') . ': ' . ($t['result'] ?? '');
         $cm = ['role' => 'user', 'content' => implode("\n", $parts)];
     }
 }
@@ -208,23 +224,29 @@ $finalText = '';
 $pendingCalls = [];
 for ($round = 0; $round < 3; $round++) {
     $visionDropped = false;
-    $r = ai_call_provider($provider, $conv, $maxTokens, $uploads);
+    $r = ai_call_any($providers, $conv, $maxTokens, $uploads);
     if (empty($r['ok']) && $uploads) {
         foreach ($conv as &$cm) {
             if (($cm['role'] ?? '') === 'user') {
-                $cm['content'] .= "\n[Not: ekli dosya bu modelde açılamadı, yalnızca metni yanıtla.]";
+                $cm['content'] .= "\n[Note: the attached file could not be opened by this model; answer from the text only.]";
                 break;
             }
         }
         unset($cm);
-        $r2 = ai_call_provider($provider, $conv, $maxTokens, []);
+        $r2 = ai_call_any($providers, $conv, $maxTokens, []);
         if (!empty($r2['ok'])) { $r = $r2; $visionDropped = true; }
     }
+    $provider = !empty($r['provider']) ? $r['provider'] : ($providers[0] ?? []);
+    $reqLog['provider'] = (string)($provider['provider'] ?? '');
+    $reqLog['model_id'] = (string)($provider['model_id'] ?? '');
     $totalIn += (int)($r['in'] ?? 0);
     $totalOut += (int)($r['out'] ?? 0);
     if ($totalIn === 0 && !empty($uploads)) $totalIn += 1000 * count($uploads);
     if (empty($r['ok'])) {
         ai_usage_log($pdo, $domain, (string)($provider['provider'] ?? ''), (string)($provider['model_id'] ?? ''), $totalIn, $totalOut, false, (string)($r['msg'] ?? ''));
+        $reqLog['in_t'] = $totalIn;
+        $reqLog['out_t'] = $totalOut;
+        $logExit(502, (string)($r['msg'] ?? 'provider'));
         http_response_code(502);
         echo json_encode(['ok' => false, 'msg' => 'provider']);
         exit;
@@ -276,13 +298,23 @@ $finalText = trim($finalText);
 if ($finalText === '' && $pendingCalls) {
     $names = [];
     foreach ($pendingCalls as $pc) $names[] = '`' . trim((string)($pc['name'] ?? '')) . '`';
-    $finalText = 'Araç çalıştırıldı: ' . implode(', ', $names);
+    $finalText = ($reqLang === 'en' ? 'Tool executed: ' : 'Araç çalıştırıldı: ') . implode(', ', $names);
 }
 $charged = ai_credit_cost($rate, $totalIn, $totalOut);
 ai_quota_add($pdo, $domain, $totalIn, $totalOut);
 ai_credit_add($pdo, $domain, $charged);
 ai_usage_log($pdo, $domain, (string)($provider['provider'] ?? ''), (string)($provider['model_id'] ?? ''), $totalIn, $totalOut, true, '', $charged);
 $quota = ai_credit_use($pdo, $domain);
+
+$reqLog['in_t'] = $totalIn;
+$reqLog['out_t'] = $totalOut;
+$reqLog['credits'] = $charged;
+$reqLog['reply'] = $finalText;
+$reqLog['tool_calls'] = $pendingCalls ? mb_substr((string)json_encode($pendingCalls, JSON_UNESCAPED_UNICODE), 0, 8000) : '';
+$reqLog['ok'] = 1;
+$reqLog['status'] = 200;
+$reqLog['ms'] = (int)round((microtime(true) - $logStart) * 1000);
+ai_req_log($pdo, $reqLog);
 
 $payload = ['ok' => true, 'text' => $finalText, 'tool_calls' => $pendingCalls, 'usage' => ['in' => $totalIn, 'out' => $totalOut], 'credits' => $charged, 'quota' => $quota, 'provider' => (string)($provider['provider'] ?? ''), 'model' => (string)($provider['model_id'] ?? ''), 'vision_dropped' => $visionDropped];
 $ts = time();

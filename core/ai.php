@@ -11,7 +11,7 @@ function ai_tables(): void {
     if (!$pdo) return;
     $pdo->exec("CREATE TABLE IF NOT EXISTS ai_providers (
         id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        provider   ENUM('google','openrouter') NOT NULL DEFAULT 'openrouter',
+        provider   VARCHAR(20) NOT NULL DEFAULT 'openrouter',
         model_id   VARCHAR(120) NOT NULL DEFAULT '',
         api_key    TEXT NOT NULL,
         is_active  TINYINT(1) NOT NULL DEFAULT 1,
@@ -50,6 +50,31 @@ function ai_tables(): void {
         KEY idx_aul_domain (domain),
         KEY idx_aul_created (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS ai_request_log (
+        id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        domain     VARCHAR(253) NOT NULL DEFAULT '',
+        ip         VARCHAR(45) NOT NULL DEFAULT '',
+        plan       VARCHAR(20) NOT NULL DEFAULT '',
+        lang       CHAR(2) NOT NULL DEFAULT '',
+        mode       VARCHAR(12) NOT NULL DEFAULT '',
+        provider   VARCHAR(20) NOT NULL DEFAULT '',
+        model_id   VARCHAR(120) NOT NULL DEFAULT '',
+        prompt     TEXT NULL,
+        messages   MEDIUMTEXT NULL,
+        tools      TEXT NULL,
+        tool_calls TEXT NULL,
+        reply      MEDIUMTEXT NULL,
+        in_t       INT UNSIGNED NOT NULL DEFAULT 0,
+        out_t      INT UNSIGNED NOT NULL DEFAULT 0,
+        credits    INT UNSIGNED NOT NULL DEFAULT 0,
+        ms         INT UNSIGNED NOT NULL DEFAULT 0,
+        ok         TINYINT(1) NOT NULL DEFAULT 0,
+        status     SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+        err        VARCHAR(255) NOT NULL DEFAULT '',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_arl_created (created_at),
+        KEY idx_arl_domain (domain, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
 function ai_master_key(): string {
@@ -86,6 +111,21 @@ function ai_active_provider(?PDO $pdo = null): ?array {
         if ($row['api_key_plain'] === '') return null;
         return $row;
     } catch (Exception $e) { return null; }
+}
+
+function ai_active_providers(?PDO $pdo = null): array {
+    $pdo = $pdo ?: db();
+    if (!$pdo) return [];
+    try {
+        $rows = $pdo->query("SELECT * FROM ai_providers WHERE is_active=1 ORDER BY priority DESC, id ASC")->fetchAll();
+    } catch (Exception $e) { return []; }
+    $out = [];
+    foreach ($rows as $row) {
+        $row['api_key_plain'] = ai_decrypt((string)($row['api_key'] ?? ''));
+        if ($row['api_key_plain'] === '') continue;
+        $out[] = $row;
+    }
+    return $out;
 }
 
 function ai_quota_use(?PDO $pdo, string $domain): array {
@@ -146,6 +186,42 @@ function ai_usage_log(?PDO $pdo, string $domain, string $provider, string $model
             $pdo->prepare("INSERT INTO ai_usage_log (domain, provider, model_id, input_t, output_t, ok, err) VALUES (?,?,?,?,?,?,?)")->execute([$domain, $provider, $model, max(0, $in), max(0, $out), $ok ? 1 : 0, mb_substr($err, 0, 255)]);
         } catch (Exception $e2) {}
     }
+}
+
+function ai_req_log(?PDO $pdo, array $c): void {
+    $pdo = $pdo ?: db();
+    if (!$pdo) return;
+    try {
+        static $pruned = false;
+        if (!$pruned) {
+            $pruned = true;
+            if (random_int(1, 50) === 1) {
+                $pdo->exec("DELETE FROM ai_request_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 60 DAY)");
+            }
+        }
+        $t = function ($v, int $n): string { return mb_substr(trim((string)$v), 0, $n); };
+        $pdo->prepare("INSERT INTO ai_request_log (domain, ip, plan, lang, mode, provider, model_id, prompt, messages, tools, tool_calls, reply, in_t, out_t, credits, ms, ok, status, err) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")->execute([
+            $t($c['domain'] ?? '', 253),
+            $t($c['ip'] ?? '', 45),
+            $t($c['plan'] ?? '', 20),
+            $t($c['lang'] ?? '', 2),
+            $t($c['mode'] ?? '', 12),
+            $t($c['provider'] ?? '', 20),
+            $t($c['model_id'] ?? '', 120),
+            $t($c['prompt'] ?? '', 8000),
+            $t($c['messages'] ?? '', 60000),
+            $t($c['tools'] ?? '', 4000),
+            $t($c['tool_calls'] ?? '', 8000),
+            $t($c['reply'] ?? '', 20000),
+            max(0, (int)($c['in_t'] ?? 0)),
+            max(0, (int)($c['out_t'] ?? 0)),
+            max(0, (int)($c['credits'] ?? 0)),
+            max(0, (int)($c['ms'] ?? 0)),
+            !empty($c['ok']) ? 1 : 0,
+            max(0, (int)($c['status'] ?? 0)),
+            $t($c['err'] ?? '', 255),
+        ]);
+    } catch (Throwable $e) {}
 }
 
 function ai_http_post(string $url, array $headers, string $body, int $timeout = 60): array {
@@ -223,7 +299,8 @@ function ai_call_provider(array $provider, array $messages, int $maxTokens = 102
         $meta = $j['usageMetadata'] ?? [];
         return ['ok' => true, 'text' => $text, 'in' => (int)($meta['promptTokenCount'] ?? 0), 'out' => (int)($meta['candidatesTokenCount'] ?? 0)];
     }
-    $url = 'https://openrouter.ai/api/v1/chat/completions';
+    $isDahl = ($provider['provider'] ?? '') === 'dahl';
+    $url = $isDahl ? 'https://inference.dahl.global/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
     $om = [];
     $ofirst = true;
     foreach ($messages as $m) {
@@ -247,10 +324,21 @@ function ai_call_provider(array $provider, array $messages, int $maxTokens = 102
         if (is_array($om[0]['content'])) $om[0]['content'][0]['text'] .= $txtExtra;
         else $om[0]['content'] .= $txtExtra;
     }
-    $r = ai_http_post($url, ['Content-Type: application/json', 'Authorization: Bearer ' . $key, 'HTTP-Referer: https://vexaris.net', 'X-Title: Vexaris AI'], json_encode(['model' => $model, 'messages' => $om, 'max_tokens' => $maxTokens]));
-    if ($r['code'] < 200 || $r['code'] >= 300) return ['ok' => false, 'msg' => 'openrouter http ' . $r['code']];
+    $r = ai_http_post($url, ['Content-Type: application/json', 'Authorization: Bearer ' . $key, 'HTTP-Referer: https://vexaris.net', 'X-Title: Vexaris AI'], json_encode(['model' => $model, 'messages' => $om, 'max_tokens' => $maxTokens]), $isDahl ? 25 : 60);
+    if ($r['code'] < 200 || $r['code'] >= 300) return ['ok' => false, 'msg' => ($isDahl ? 'dahl' : 'openrouter') . ' http ' . $r['code']];
     $j = json_decode($r['body'], true);
     $text = (string)($j['choices'][0]['message']['content'] ?? '');
     $u = $j['usage'] ?? [];
     return ['ok' => true, 'text' => $text, 'in' => (int)($u['prompt_tokens'] ?? 0), 'out' => (int)($u['completion_tokens'] ?? 0)];
+}
+
+function ai_call_any(array $providers, array $messages, int $maxTokens = 1024, array $files = []): array {
+    $last = ['ok' => false, 'msg' => 'provider yok'];
+    foreach ($providers as $p) {
+        $r = ai_call_provider($p, $messages, $maxTokens, $files);
+        $r['provider'] = $p;
+        if (!empty($r['ok'])) return $r;
+        $last = $r;
+    }
+    return $last;
 }

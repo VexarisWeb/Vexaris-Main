@@ -697,6 +697,11 @@ $cmpTitle = $isFwd ? 'İlet' : ($replyRow ? 'Yanıtla' : 'Yeni Mail');
             $isSpam = (int)($sel['spam'] ?? 0) === 1;
             $hasHtml = !empty($sel['body_html']);
             $bodyClean = $hasHtml ? vx_clean_html((string)$sel['body_html'], 'rich') : '';
+            if ($hasHtml) {
+                $probe = (string)preg_replace('/<(style|script|title)[^>]*>.*?<\/\1>/is', ' ', $bodyClean);
+                $probe = trim((string)preg_replace('/\s+/u', ' ', strip_tags($probe)));
+                if ($probe === '' && stripos($bodyClean, '<img') === false) { $hasHtml = false; $bodyClean = ''; }
+            }
             if ($selBox === 'sent') { $copyText = ib_text((string)($sel['body_html'] ?? '')); }
             else { $copyText = (string)($sel['body_text'] ?? ''); if ($copyText === '') { $copyText = ib_text((string)($sel['body_html'] ?? '')); } }
             $addrCopy = $selBox === 'sent' ? (string)$sel['to_addr'] : (string)$sel['from_addr'];
