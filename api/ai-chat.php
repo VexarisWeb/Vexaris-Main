@@ -330,20 +330,9 @@ ai_req_log($pdo, $reqLog);
 
 $payload = ['ok' => true, 'text' => $finalText, 'tool_calls' => $pendingCalls, 'usage' => ['in' => $totalIn, 'out' => $totalOut], 'credits' => $charged, 'quota' => $quota, 'provider' => (string)($provider['provider'] ?? ''), 'model' => (string)($provider['model_id'] ?? ''), 'vision_dropped' => $visionDropped];
 $ts = time();
-$body = json_encode($payload) . '|' . $ts;
-/* Yanit imzasi: istegi dogrulayan anahtar (magaza sirri) + master + legacy.
-   Boylece hem kiracı bazli sirlar hem eski/yeni anahtarla calisan magazalar
-   ayni yaniti dogrulayabilir. */
-$signKeys = [];
-if ($sigKeyUsed !== '') $signKeys[] = $sigKeyUsed;
-foreach ([_vx_k(), (function_exists('_vx_k_legacy') ? _vx_k_legacy() : '')] as $sk) {
-    if ($sk !== '' && !in_array($sk, $signKeys, true)) $signKeys[] = $sk;
-}
-$out = $payload;
-$out['timestamp'] = $ts;
-$sigFields = ['signature', 'signature2', 'signature3'];
-foreach ($signKeys as $i => $sk) {
-    if (!isset($sigFields[$i])) break;
-    $out[$sigFields[$i]] = hash_hmac('sha256', $body, $sk);
-}
-echo json_encode($out);
+/* Yanit, istegi DOGRULAYAN anahtarla imzalanir: magaza kendi sirriyla imzaladiysa
+   yanit da o sırla doner (kiracı bazli), ortak anahtarla imzalayan magaza icin
+   master/legacy doner. Boylece eski surumler de (tek imza bekler) calisir. */
+$signKey = $sigKeyUsed !== '' ? $sigKeyUsed : _vx_k();
+$sig = hash_hmac('sha256', json_encode($payload) . '|' . $ts, $signKey);
+echo json_encode(array_merge($payload, ['timestamp' => $ts, 'signature' => $sig]));
