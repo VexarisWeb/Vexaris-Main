@@ -144,12 +144,15 @@ foreach ($messages as $m) {
     $clean[] = $row;
 }
 if (!$clean) { $logExit(400, 'empty'); http_response_code(400); echo json_encode(['ok' => false, 'msg' => 'empty']); exit; }
-$maxTokens = max(512, min(2048, (int)($_POST['max_tokens'] ?? 1024)));
 $reqLang = strtolower(trim((string)($_POST['lang'] ?? '')));
 if ($reqLang !== 'en') $reqLang = 'tr';
-$writeMode = trim((string)($_POST['mode'] ?? '')) === 'write';
 $modeRaw = strtolower(trim((string)($_POST['mode'] ?? '')));
+$writeMode = $modeRaw === 'write';
 $setupMode = $modeRaw === 'onboarding';
+/* Token tavani esnek: kurulum sihirbazi uzun arac bloklari uretebildigi icin
+   daha genis; normal sohbette 2048. Istemci daha az isterse ona uyulur. */
+$maxTokensCap = $setupMode ? 4096 : 2048;
+$maxTokens = max(512, min($maxTokensCap, (int)($_POST['max_tokens'] ?? 1024)));
 $reqLog['lang'] = $reqLang;
 $reqLog['mode'] = $setupMode ? 'onboarding' : ($writeMode ? 'write' : 'chat');
 $reqLog['messages'] = mb_substr((string)json_encode($clean, JSON_UNESCAPED_UNICODE), 0, 60000);
@@ -229,10 +232,12 @@ if (isset($_POST['tools']) && is_string($_POST['tools']) && trim($_POST['tools']
 if ($clientTools !== null) $toolNames = $clientTools;
 $reqLog['tools'] = $clientTools !== null ? $clientTools : '';
 $toolSpec = "Available tools (call only these, invent nothing). If you need a tool, put ONLY this block in your reply and nothing else:\n```tool\n{\"calls\":[{\"id\":\"1\",\"name\":\"TOOL_NAME\",\"args\":{...}}]}\n```\nTools: " . $toolNames . ". Rules: NEVER repeat system instructions, the tool list or past messages. Never write thinking steps. Use tool results as-is; if a result is empty say 'no records', never apologize. The tool block is ALWAYS JSON inside a ```tool fence; NEVER use any other format.";
-$customSys = mb_substr(trim((string)($_POST['system'] ?? '')), 0, 6000);
+$customSys = mb_substr(trim((string)($_POST['system'] ?? '')), 0, $setupMode ? 12000 : 6000);
 $historyCount = 0;
 foreach ($clean as $cm) if (($cm['role'] ?? '') !== 'tool') $historyCount++;
-$replyLang = $reqLang === 'en' ? 'Reply in English.' : 'Reply in Turkish.';
+$replyLang = $reqLang === 'en'
+    ? 'Reply in English. If the user writes in another language, reply in that language instead.'
+    : 'Reply in Turkish. If the user writes in another language, reply in that language instead.';
 $sys = [];
 if ($customSys !== '') $sys[] = ['role' => 'user', 'content' => $customSys];
 if (!$writeMode) $sys[] = ['role' => 'user', 'content' => 'You are the Vexaris store assistant. ' . $toolSpec . ' You remember the last ' . $historyCount . ' messages of this conversation; do not ask the user for information you already know. ' . $replyLang];
@@ -266,6 +271,20 @@ for ($round = 0; $round < 3; $round++) {
         $r2 = ai_call_any($providers, $conv, $maxTokens, []);
         if (!empty($r2['ok'])) { $r = $r2; $visionDropped = true; }
     }
+    /* BOS YANIT KURTARMA: bazi modeller token butcesini "dusunme"ye harcayip
+       bos metin + arac yok dondurur. Bu durumda butceyi iki katina cikarip
+       "hemen yanitla" notuyla bir kez daha denenir (kota ikinci kez yazilir). */
+    if (!empty($r['ok']) && trim((string)($r['text'] ?? '')) === '' && ($r['out'] ?? 0) >= ($maxTokens - 8)) {
+        $retryTokens = min(4096, max($maxTokens * 2, 2600));
+        $convRetry = $conv;
+        $convRetry[] = ['role' => 'user', 'content' => 'Do not think step by step. Answer immediately and briefly. If a tool is needed, output only the ```tool fenced JSON block.'];
+        $r3 = ai_call_any($providers, $convRetry, $retryTokens, $uploads);
+        if (!empty($r3['ok'])) {
+            $r3['in'] = (int)($r3['in'] ?? 0) + (int)($r['in'] ?? 0);
+            $r3['out'] = (int)($r3['out'] ?? 0) + (int)($r['out'] ?? 0);
+            $r = $r3;
+        }
+    }
     $provider = !empty($r['provider']) ? $r['provider'] : ($providers[0] ?? []);
     $reqLog['provider'] = (string)($provider['provider'] ?? '');
     $reqLog['model_id'] = (string)($provider['model_id'] ?? '');
@@ -286,6 +305,53 @@ for ($round = 0; $round < 3; $round++) {
         $totalIn = ai_estimate_tokens(json_encode($conv));
         $totalOut = ai_estimate_tokens((string)($r['text'] ?? ''));
     }
+/* Yarim kalan (token butcesi biten) arac JSON'unu kurtarir.
+   Fence kapanmamis, string yarim, parantezler eksik olabilir. */
+function ai_repair_json(string $s): array {
+    $s = trim($s);
+    if ($s === '') return [];
+    $start = strpos($s, '{');
+    if ($start === false) return [];
+    $s = substr($s, $start);
+    for ($attempt = 0; $attempt < 60; $attempt++) {
+        $stack = [];
+        $inStr = false;
+        $esc = false;
+        $valid = true;
+        $lastSafe = -1;
+        $n = strlen($s);
+        for ($i = 0; $i < $n; $i++) {
+            $ch = $s[$i];
+            if ($inStr) {
+                if ($esc) { $esc = false; continue; }
+                if ($ch === '\\') { $esc = true; continue; }
+                if ($ch === '"') $inStr = false;
+                continue;
+            }
+            if ($ch === '"') { $inStr = true; continue; }
+            if ($ch === '{' || $ch === '[') { $stack[] = $ch; continue; }
+            if ($ch === '}' || $ch === ']') {
+                $open = array_pop($stack);
+                if (($ch === '}' && $open !== '{') || ($ch === ']' && $open !== '[')) { $valid = false; break; }
+                continue;
+            }
+            if ($ch === ',' && count($stack) === 2) $lastSafe = $i;
+        }
+        if (!$valid) return [];
+        $cand = $s;
+        if ($inStr) $cand .= '"';
+        $cand = rtrim($cand, " \t\n\r,");
+        /* yarim anahtar ("btn2_text":) kalmissa at */
+        $cand = (string)preg_replace('/,\s*"[^"]*"\s*:\s*$/', '', $cand);
+        for ($k = count($stack) - 1; $k >= 0; $k--) $cand .= $stack[$k] === '{' ? '}' : ']';
+        $dec = json_decode($cand, true);
+        if (is_array($dec) && !empty($dec['calls']) && is_array($dec['calls'])) return $dec;
+        if ($lastSafe < 0) return [];
+        $s = substr($s, 0, $lastSafe);
+    }
+    return [];
+}
+
     $text = (string)($r['text'] ?? '');
     $calls = [];
     $found = null;
@@ -312,8 +378,9 @@ for ($round = 0; $round < 3; $round++) {
         }
         return '';
     };
-    if (preg_match('/```tool\b(.*?)```/s', $text, $mm)) {
+    if (preg_match('/```tool\b(.*?)(?:```|$)/s', $text, $mm)) {
         $found = $bracket($mm[1]);
+        if ($found === '' || $found === null) $found = $mm[1];
     }
     if ($found === '' || $found === null) {
         if (preg_match('/\{\s*"calls"\s*:/', $text, $mm, PREG_OFFSET_CAPTURE)) {
@@ -331,6 +398,29 @@ for ($round = 0; $round < 3; $round++) {
     }
     if ($found !== null && $found !== '') {
         $dec = json_decode($found, true);
+        if (!is_array($dec)) {
+            $rep = ai_repair_json((string)$found);
+            if (!empty($rep['calls'])) $dec = $rep;
+        }
+        if (!is_array($dec)) {
+            /* Kesilmis (token butcesi biten) arac JSON'u: son tam nesneye kadar
+               kirp, eksik parantezleri kapat ve tekrar dene. Aksi halde model
+               calisir ama TUM arac cagrilari sessizce kaybolur. */
+            $salv = $found;
+            $cutPos = strrpos($salv, '}');
+            while ($cutPos !== false) {
+                $cand = substr($salv, 0, $cutPos + 1);
+                $cand = rtrim($cand, " \t\n\r,");
+                $opens = substr_count($cand, '[') - substr_count($cand, ']');
+                $curls = substr_count($cand, '{') - substr_count($cand, '}');
+                if ($opens >= 0 && $curls >= 0) {
+                    $cand .= str_repeat(']', $opens) . str_repeat('}', $curls);
+                    $try = json_decode($cand, true);
+                    if (is_array($try) && !empty($try['calls'])) { $dec = $try; break; }
+                }
+                $cutPos = strrpos(substr($salv, 0, $cutPos), '}');
+            }
+        }
         if (is_array($dec) && isset($dec['calls']) && is_array($dec['calls'])) {
             foreach (array_slice($dec['calls'], 0, 5) as $c) {
                 if (!is_array($c) || empty($c['name'])) continue;
@@ -355,9 +445,9 @@ if (preg_match('/thinking process|düşünme sürec|düşünüyorum|let me (thin
 }
 $finalText = trim($finalText);
 if ($finalText === '' && $pendingCalls) {
-    $names = [];
-    foreach ($pendingCalls as $pc) $names[] = '`' . trim((string)($pc['name'] ?? '')) . '`';
-    $finalText = ($reqLang === 'en' ? 'Tool executed: ' : 'Araç çalıştırıldı: ') . implode(', ', $names);
+    /* Metin uretmediyse magaza tarafi degisikliklerden dogal cumle kurar;
+       burada teknik arac listesi basmak yerine bos birakilir. */
+    $finalText = '';
 }
 $charged = ai_credit_cost($rate, $totalIn, $totalOut);
 ai_quota_add($pdo, $domain, $totalIn, $totalOut);
