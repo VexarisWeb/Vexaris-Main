@@ -174,7 +174,9 @@ if ($wLim <= 0 && !$setupMode) {
     exit;
 }
 if ($setupMode) {
-    $setupLimit = 90;
+    /* Magaza basina omur boyu kurulum cagrisi. Tek tur 1-4 cagri harcayabilir
+       (zorunlu arac turu + eksik niyet tamamlama), 15 tur icin 400 yeterli. */
+    $setupLimit = 400;
     $setupUsed = 0;
     try {
         $sq = $pdo->prepare("SELECT COUNT(*) FROM ai_request_log WHERE domain=? AND mode='onboarding' AND ok=1");
