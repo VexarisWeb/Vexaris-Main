@@ -151,8 +151,8 @@ $writeMode = $modeRaw === 'write';
 $setupMode = $modeRaw === 'onboarding';
 /* Token tavani esnek: kurulum sihirbazi uzun arac bloklari uretebildigi icin
    daha genis; normal sohbette 2048. Istemci daha az isterse ona uyulur. */
-$maxTokensCap = $setupMode ? 4096 : 2048;
-$maxTokens = max(512, min($maxTokensCap, (int)($_POST['max_tokens'] ?? 1024)));
+$maxTokensCap = $setupMode ? 4096 : 3072;
+$maxTokens = max(900, min($maxTokensCap, (int)($_POST['max_tokens'] ?? 1600)));
 $reqLog['lang'] = $reqLang;
 $reqLog['mode'] = $setupMode ? 'onboarding' : ($writeMode ? 'write' : 'chat');
 $reqLog['messages'] = mb_substr((string)json_encode($clean, JSON_UNESCAPED_UNICODE), 0, 60000);
@@ -259,9 +259,14 @@ $uploads = ai_read_uploads();
 $totalIn = 0; $totalOut = 0;
 $finalText = '';
 $pendingCalls = [];
+$reqStart = microtime(true);
+$reqBudget = 165;
+$r = ['ok' => false, 'msg' => 'timeout'];
+$budgetLeft = function () use ($reqStart, $reqBudget) { return max(0, $reqBudget - (microtime(true) - $reqStart)); };
 for ($round = 0; $round < 3; $round++) {
+    if ($budgetLeft() < 12) break;
     $visionDropped = false;
-    $r = ai_call_any($providers, $conv, $maxTokens, $uploads);
+    $r = ai_call_hedged($providers, $conv, $maxTokens, $uploads, (int)$budgetLeft());
     if (empty($r['ok']) && $uploads) {
         foreach ($conv as &$cm) {
             if (($cm['role'] ?? '') === 'user') {
@@ -270,17 +275,17 @@ for ($round = 0; $round < 3; $round++) {
             }
         }
         unset($cm);
-        $r2 = ai_call_any($providers, $conv, $maxTokens, []);
+        $r2 = ai_call_hedged($providers, $conv, $maxTokens, [], (int)$budgetLeft());
         if (!empty($r2['ok'])) { $r = $r2; $visionDropped = true; }
     }
     /* BOS YANIT KURTARMA: bazi modeller token butcesini "dusunme"ye harcayip
        bos metin + arac yok dondurur. Bu durumda butceyi iki katina cikarip
        "hemen yanitla" notuyla bir kez daha denenir (kota ikinci kez yazilir). */
-    if (!empty($r['ok']) && trim((string)($r['text'] ?? '')) === '' && ($r['out'] ?? 0) >= ($maxTokens - 8)) {
+    if (!empty($r['ok']) && trim((string)($r['text'] ?? '')) === '' && ($r['out'] ?? 0) >= ($maxTokens - 8) && $budgetLeft() > 30) {
         $retryTokens = min(4096, max($maxTokens * 2, 2600));
         $convRetry = $conv;
         $convRetry[] = ['role' => 'user', 'content' => 'Do not think step by step. Answer immediately and briefly. If a tool is needed, output only the ```tool fenced JSON block.'];
-        $r3 = ai_call_any($providers, $convRetry, $retryTokens, $uploads);
+        $r3 = ai_call_hedged($providers, $convRetry, $retryTokens, $uploads, (int)$budgetLeft());
         if (!empty($r3['ok'])) {
             $r3['in'] = (int)($r3['in'] ?? 0) + (int)($r['in'] ?? 0);
             $r3['out'] = (int)($r3['out'] ?? 0) + (int)($r['out'] ?? 0);
@@ -297,6 +302,15 @@ for ($round = 0; $round < 3; $round++) {
         ai_usage_log($pdo, $domain, (string)($provider['provider'] ?? ''), (string)($provider['model_id'] ?? ''), $totalIn, $totalOut, false, (string)($r['msg'] ?? ''));
         $reqLog['in_t'] = $totalIn;
         $reqLog['out_t'] = $totalOut;
+        /* 429: "baglanti hatasi" degil, "saglayici yogun" demek. Magaza
+           tarafi bunu anlar ve kullaniciyi dogru bilgilendirir. */
+        if (!empty($r['rate'])) {
+            $logExit(429, 'rate');
+            http_response_code(429);
+            header('Retry-After: 20');
+            echo json_encode(['ok' => false, 'msg' => 'rate', 'retry_after' => 20]);
+            exit;
+        }
         $logExit(502, (string)($r['msg'] ?? 'provider'));
         http_response_code(502);
         echo json_encode(['ok' => false, 'msg' => 'provider']);

@@ -271,11 +271,14 @@ function ai_read_uploads(): array {
     }
     return $out;
 }
-function ai_call_provider(array $provider, array $messages, int $maxTokens = 1024, array $files = []): array {
+/* Istegi KUR (gonder mez). Hedging icin curl_multi ile paralel kullanilir. */
+function ai_req_build(array $provider, array $messages, int $maxTokens, array $files): array {
     $model = (string)($provider['model_id'] ?? '');
     $key = (string)($provider['api_key_plain'] ?? '');
-    if ($model === '' || $key === '') return ['ok' => false, 'msg' => 'provider eksik'];
-    if (($provider['provider'] ?? '') === 'google') {
+    if ($model === '' || $key === '') return ['err' => 'provider eksik'];
+    $kind = (string)($provider['provider'] ?? '');
+
+    if ($kind === 'google') {
         $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent?key=' . urlencode($key);
         $contents = [];
         $first = true;
@@ -291,15 +294,15 @@ function ai_call_provider(array $provider, array $messages, int $maxTokens = 102
             $first = false;
             $contents[] = ['role' => $role, 'parts' => $parts];
         }
-        $r = ai_http_post($url, ['Content-Type: application/json'], json_encode(['contents' => $contents, 'generationConfig' => ['maxOutputTokens' => $maxTokens]]));
-        if ($r['code'] < 200 || $r['code'] >= 300) return ['ok' => false, 'msg' => 'google http ' . $r['code']];
-        $j = json_decode($r['body'], true);
-        $text = '';
-        foreach (($j['candidates'][0]['content']['parts'] ?? []) as $p) $text .= (string)($p['text'] ?? '');
-        $meta = $j['usageMetadata'] ?? [];
-        return ['ok' => true, 'text' => $text, 'in' => (int)($meta['promptTokenCount'] ?? 0), 'out' => (int)($meta['candidatesTokenCount'] ?? 0)];
+        return [
+            'kind' => 'google',
+            'url' => $url,
+            'headers' => ['Content-Type: application/json'],
+            'body' => json_encode(['contents' => $contents, 'generationConfig' => ['maxOutputTokens' => $maxTokens]]),
+        ];
     }
-    $isDahl = ($provider['provider'] ?? '') === 'dahl';
+
+    $isDahl = $kind === 'dahl';
     $url = $isDahl ? 'https://inference.dahl.global/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
     $om = [];
     $ofirst = true;
@@ -326,25 +329,198 @@ function ai_call_provider(array $provider, array $messages, int $maxTokens = 102
     foreach ($files as $fl) {
         if (strncmp((string)($fl['mime'] ?? ''), 'text/', 5) === 0 && !empty($fl['text'])) $txtExtra .= "\n\n[EKLİ DOSYA " . ($fl['name'] ?? 'metin') . "]\n" . mb_substr((string)$fl['text'], 0, 20000);
     }
-    if ($txtExtra !== '' && isset($om[0])) {
-        if (is_array($om[0]['content'])) $om[0]['content'][0]['text'] .= $txtExtra;
-        else $om[0]['content'] .= $txtExtra;
-    }
-    $r = ai_http_post($url, ['Content-Type: application/json', 'Authorization: Bearer ' . $key, 'HTTP-Referer: https://vexaris.net', 'X-Title: Vexaris AI'], json_encode(['model' => $model, 'messages' => $om, 'max_tokens' => $maxTokens]), $isDahl ? 25 : 60);
-    if ($r['code'] < 200 || $r['code'] >= 300) return ['ok' => false, 'msg' => ($isDahl ? 'dahl' : 'openrouter') . ' http ' . $r['code']];
-    $j = json_decode($r['body'], true);
-    $text = (string)($j['choices'][0]['message']['content'] ?? '');
-    $u = $j['usage'] ?? [];
-    return ['ok' => true, 'text' => $text, 'in' => (int)($u['prompt_tokens'] ?? 0), 'out' => (int)($u['completion_tokens'] ?? 0)];
+    if ($txtExtra !== '' && isset($om[0]) && is_array($om[0]['content'])) $om[0]['content'][0]['text'] .= $txtExtra;
+    return [
+        'kind' => $isDahl ? 'dahl' : 'openrouter',
+        'url' => $url,
+        'headers' => ['Content-Type: application/json', 'Authorization: Bearer ' . $key, 'HTTP-Referer: https://vexaris.net', 'X-Title: Vexaris AI'],
+        'body' => json_encode(['model' => $model, 'messages' => $om, 'max_tokens' => $maxTokens]),
+    ];
 }
 
-function ai_call_any(array $providers, array $messages, int $maxTokens = 1024, array $files = []): array {
+/* Yaniti COZ. */
+function ai_req_parse(?array $provider, int $code, string $body): array {
+    $label = (string)($provider['provider'] ?? 'provider');
+    if ($code === 429) return ['ok' => false, 'rate' => true, 'msg' => $label . ' http 429'];
+    if ($code < 200 || $code >= 300) {
+        if ($body === '') return ['ok' => false, 'timeout' => true, 'msg' => $label . ' timeout'];
+        return ['ok' => false, 'msg' => $label . ' http ' . $code];
+    }
+    $j = json_decode($body, true);
+    if (($provider['provider'] ?? '') === 'google') {
+        $text = '';
+        foreach (($j['candidates'][0]['content']['parts'] ?? []) as $pt) $text .= (string)($pt['text'] ?? '');
+        $meta = $j['usageMetadata'] ?? [];
+        return ['ok' => true, 'text' => $text, 'in' => (int)($meta['promptTokenCount'] ?? 0), 'out' => (int)($meta['candidatesTokenCount'] ?? 0)];
+    }
+    $u = $j['usage'] ?? [];
+    return [
+        'ok' => true,
+        'text' => (string)($j['choices'][0]['message']['content'] ?? ''),
+        'in' => (int)($u['prompt_tokens'] ?? 0),
+        'out' => (int)($u['completion_tokens'] ?? 0),
+    ];
+}
+
+function ai_call_provider(array $provider, array $messages, int $maxTokens = 1024, array $files = [], int $timeout = 0): array {
+    $req = ai_req_build($provider, $messages, $maxTokens, $files);
+    if (isset($req['err'])) return ['ok' => false, 'msg' => $req['err']];
+    if ($timeout <= 0) $timeout = 90;
+    $r = ai_http_post($req['url'], $req['headers'], $req['body'], $timeout);
+    return ai_req_parse($provider, (int)($r['code'] ?? 0), (string)($r['body'] ?? ''));
+}
+
+/* HEDGING: birincil saglayici (dahl) yavas/kuyrukta olabiliyor (9-61 s).
+   Bu yuzden ilk istek baslar; $hedgeAfter saniyede yanit gelmezse yedek
+   saglayici PARALEL baslatilir ve HANGISI ONCE donerse o kullanilir.
+   Boylece dahl hizliysa o kazanir, yavassa toplam sure yedek saglayicinin
+   hiziyla sinirli kalir (2 dakika bekleme olmaz). */
+function ai_call_hedged(array $providers, array $messages, int $maxTokens = 1024, array $files = [], int $deadlineSec = 165, float $hedgeAfter = 15.0): array {
+    $providers = array_values(array_filter($providers, function ($p) {
+        return !ai_provider_in_cooldown((string)($p['provider'] ?? ''));
+    }));
+    if (!$providers) {
+        $all = ai_active_providers();
+        $providers = array_values(array_filter($all, function ($p) {
+            return !ai_provider_in_cooldown((string)($p['provider'] ?? ''));
+        }));
+        if (!$providers) {
+            /* Hepsi cooldown'da: son sans olarak cooldown'lari temizle. */
+            foreach ($all as $pp) @unlink(ai_provider_cooldown_file((string)($pp['provider'] ?? '')));
+            $providers = $all;
+        }
+    }
+    $start = microtime(true);
+    $mh = curl_multi_init();
+    $jobs = [];
+    $launched = 0;
+    $last = ['ok' => false, 'msg' => 'provider yok'];
+
+    $launch = function (int $idx) use (&$jobs, &$launched, $providers, $messages, $maxTokens, $files, $mh, $deadlineSec, $start) {
+        if ($idx >= count($providers)) return;
+        $p = $providers[$idx];
+        $req = ai_req_build($p, $messages, $maxTokens, $files);
+        if (isset($req['err'])) { $jobs[$idx] = ['err' => $req['err'], 'ch' => null]; $launched = max($launched, $idx + 1); return; }
+        $remain = max(10, (int)($deadlineSec - (microtime(true) - $start)));
+        $ch = curl_init($req['url']);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => $req['headers'],
+            CURLOPT_POSTFIELDS => $req['body'],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => $remain,
+            CURLOPT_CONNECTTIMEOUT => 10,
+        ]);
+        curl_multi_add_handle($mh, $ch);
+        $jobs[$idx] = ['ch' => $ch, 'p' => $p, 't0' => microtime(true)];
+        $launched = max($launched, $idx + 1);
+    };
+
+    if (!$providers) { curl_multi_close($mh); return $last; }
+    $launch(0);
+    $hedgeFired = false;
+
+    while ($jobs) {
+        $elapsed = microtime(true) - $start;
+        if ($elapsed > $deadlineSec) break;
+        /* Birincil yanit gelmediyse yedek saglayiciyi paralel baslat */
+        if (!$hedgeFired && $launched < count($providers) && $elapsed >= $hedgeAfter && $launched === 1) {
+            $hedgeFired = true;
+            $launch(1);
+        }
+        curl_multi_exec($mh, $running);
+        if ($running > 0) {
+            curl_multi_select($mh, 0.4);
+            curl_multi_exec($mh, $running);
+        }
+        while ($info = curl_multi_info_read($mh)) {
+            $ch = $info['handle'];
+            $idx = null; $job = null;
+            foreach ($jobs as $i => $j) { if (($j['ch'] ?? null) === $ch) { $idx = $i; $job = $j; break; } }
+            if ($idx === null) { curl_multi_remove_handle($mh, $ch); curl_close($ch); continue; }
+            $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $body = (string)curl_multi_getcontent($ch);
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+            unset($jobs[$idx]);
+            $res = ai_req_parse($job['p'] ?? [], $code, $body);
+            $res['provider'] = $job['p'] ?? [];
+            $res['ms'] = (int)round((microtime(true) - ($job['t0'] ?? $start)) * 1000);
+            if (!empty($res['ok'])) {
+                foreach ($jobs as $j2) {
+                    if (!empty($j2['ch'])) { curl_multi_remove_handle($mh, $j2['ch']); curl_close($j2['ch']); }
+                }
+                $jobs = [];
+                curl_multi_close($mh);
+                @unlink(ai_provider_cooldown_file((string)($job['p']['provider'] ?? '')));
+                return $res;
+            }
+            if (!empty($res['rate'])) {
+                $pn = (string)($job['p']['provider'] ?? '');
+                /* 429: ayni saglayiciya hemen tekrar vurmayalim (patlama ->
+                   ikinci saglayici da 429 -> tur tamamen duser). */
+                if ($pn === 'dahl') ai_provider_trip('dahl', 60);
+                else ai_provider_trip($pn, 20);
+            }
+            $last = $res;
+            /* Bir saglayici basarisiz olduysa siradakini hemen baslat */
+            if ($launched < count($providers)) $launch($launched);
+        }
+        if ($jobs && $running === 0) break;
+    }
+    foreach ($jobs as $j2) {
+        if (!empty($j2['ch'])) { curl_multi_remove_handle($mh, $j2['ch']); curl_close($j2['ch']); }
+    }
+    curl_multi_close($mh);
+    return $last;
+}
+
+/* dahl ucretsiz katmanda: "model_concurrency / Paid accounts are admitted first"
+   -> kapasite doluysa 429. Her cagrida 30-50 s pesinde kosmak yerine kisa bir
+   devre kesici konur; sure boyunca dahl atlanip yedek saglayici kullanilir. */
+function ai_provider_cooldown_file(string $prov): string {
+    return rtrim(sys_get_temp_dir(), '/') . '/vx_pcool_' . preg_replace('/[^a-z0-9]/i', '', $prov);
+}
+function ai_provider_in_cooldown(string $prov): bool {
+    $f = ai_provider_cooldown_file($prov);
+    $until = (int)@file_get_contents($f);
+    return $until > time();
+}
+function ai_provider_trip(string $prov, int $sec = 60): void {
+    @file_put_contents(ai_provider_cooldown_file($prov), (string)(time() + $sec));
+}
+
+function ai_call_any(array $providers, array $messages, int $maxTokens = 1024, array $files = [], int $deadlineSec = 165): array {
+    $start = microtime(true);
     $last = ['ok' => false, 'msg' => 'provider yok'];
     foreach ($providers as $p) {
-        $r = ai_call_provider($p, $messages, $maxTokens, $files);
-        $r['provider'] = $p;
-        if (!empty($r['ok'])) return $r;
-        $last = $r;
+        $remaining = $deadlineSec - (microtime(true) - $start);
+        if ($remaining < 10) break;
+        if (ai_provider_in_cooldown((string)($p['provider'] ?? ''))) continue;
+        for ($try = 0; $try < 2; $try++) {
+            $remaining = $deadlineSec - (microtime(true) - $start);
+            if ($remaining < 10) break;
+            $r = ai_call_provider($p, $messages, $maxTokens, $files, (int)min(90, $remaining));
+            $r['provider'] = $p;
+            if (!empty($r['ok'])) { @unlink(ai_provider_cooldown_file((string)($p['provider'] ?? ''))); return $r; }
+            $last = $r;
+            if (!empty($r['rate'])) {
+                $provName = (string)($p['provider'] ?? '');
+                if ($provName === 'dahl') {
+                    /* Kapasite 429'u ~120 ms'de donuyor: beklemek anlamsiz,
+                       devre kes ve yedek saglayiciya gec. */
+                    ai_provider_trip('dahl', 60);
+                    break;
+                }
+                if ($try === 0) {
+                    $remaining = $deadlineSec - (microtime(true) - $start);
+                    if ($remaining < 22) break;
+                    sleep(3);
+                    continue;
+                }
+            }
+            break;
+        }
     }
     return $last;
 }
