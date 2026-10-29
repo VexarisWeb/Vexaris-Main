@@ -581,7 +581,8 @@ function multi_ip_gate(\PDO $pdo, string $ip): array {
 
 function multi_client_vid(): string {
     $v = strtolower(trim((string)($_POST['vid'] ?? ($_COOKIE['vex_vid'] ?? ''))));
-    return (bool)preg_match('/^[0-9a-f]{32}$/', $v) ? $v : '';
+    if (!preg_match('/^[0-9a-f]{32}$/', $v)) return '';
+    return fp_hash('vid', $v);
 }
 
 function multi_linked_device_users(\PDO $pdo, int $uid, string $emailNorm = ''): array {

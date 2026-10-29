@@ -15,5 +15,9 @@ if (toggle && sidebar && overlay) {
     });
 }
 </script>
+<?php if ($panelPage === 'stores'): ?>
+<script src="/assets/vendor/fpjs/fp.min.js?v=5.3.0" defer></script>
+<script src="/assets/js/vx-fp.js?v=<?= @filemtime(__DIR__ . '/../../assets/js/vx-fp.js') ?>" defer></script>
+<?php endif; ?>
 </body>
 </html>

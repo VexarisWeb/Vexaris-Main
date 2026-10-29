@@ -259,11 +259,10 @@ body{font-family:var(--fb);background:var(--ink);color:var(--text);min-height:10
 <?php if (setting_get('password_reset_enabled', '1') === '1'): ?><a href="/forgot-password" class="forgot">Forgot password</a><?php endif; ?>
 </div>
 <?php if (turnstile_enabled()): ?><?php echo turnstile_widget(); echo turnstile_script(); ?><?php endif; ?>
-<input type="hidden" name="fp" id="fpField" value="">
+<input type="hidden" name="vid" id="vidField" value="">
 <button type="submit" class="btn-submit"><i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In</button>
 </form>
 <script>
-try{(function(){var c=document.createElement('canvas');var x=c.getContext('2d');x.textBaseline='top';x.font='14px Arial';x.fillText('Vexaris#fp#2026',2,2);var d='';try{d=c.toDataURL();}catch(e){}var s=[navigator.userAgent||'',screen.width+'x'+screen.height+'x'+screen.colorDepth,navigator.language||'',new Date().getTimezoneOffset(),navigator.hardwareConcurrency||'',navigator.deviceMemory||'',d].join('|');var h1=0xdeadbeef,h2=0x41c6ce57;for(var i=0;i<s.length;i++){var ch=s.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);var f=(h2>>>0).toString(16)+(h1>>>0).toString(16);var el=document.getElementById('fpField');if(el)el.value=f;})();}catch(e){}
 </script>
 <p class="auth-alt">Don't have an account? <a href="/register">Sign Up</a></p>
 <div class="back-home"><a href="/"><i class="fa-solid fa-arrow-left"></i> Home</a></div>
@@ -298,5 +297,8 @@ function cycle(){if(!card||document.hidden)return;card.classList.add('swap');set
 if(card&&ti){var timer=setInterval(cycle,4200);if(dots){var d=dots.children;for(var k=0;k<d.length;k++)(function(n){d[n].addEventListener('click',function(){paint(n);});})(k);}}
 })();
 </script>
+<!--VXFP-->
+<script src="/assets/vendor/fpjs/fp.min.js?v=5.3.0" defer></script>
+<script src="/assets/js/vx-fp.js?v=<?= @filemtime(__DIR__ . '/../assets/js/vx-fp.js') ?>" defer></script>
 </body>
 </html>
