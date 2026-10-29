@@ -777,6 +777,7 @@ function run_migrations(): void {
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_secret','')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_enabled','1')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_rate_hours','12')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_pow_bits','14')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_clef_enabled','1')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_clef_model','clef')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_spam_threshold','0.7')");

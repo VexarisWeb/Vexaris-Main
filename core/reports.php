@@ -146,3 +146,57 @@ function report_scan_pending(\PDO $pdo, int $limit = 5): int {
     }
     return $n;
 }
+
+function report_pow_bits(\PDO $pdo): int {
+    $b = (int)report_setting($pdo, 'report_pow_bits', '14');
+    if ($b < 10) $b = 10;
+    if ($b > 20) $b = 20;
+    return $b;
+}
+
+function report_pow_key(): string {
+    if (function_exists('_vx_k')) {
+        $k = trim((string)_vx_k());
+        if ($k !== '') return $k;
+    }
+    return hash('sha256', 'vexaris-report-pow|' . DB_NAME);
+}
+
+function report_pow_issue(\PDO $pdo): array {
+    $bits = report_pow_bits($pdo);
+    $salt = bin2hex(random_bytes(16));
+    $ts = time();
+    return [
+        'bits' => $bits,
+        'salt' => $salt,
+        'ts'   => $ts,
+        'sig'  => hash_hmac('sha256', 'rptpow|' . $salt . '|' . $ts . '|' . $bits, report_pow_key()),
+    ];
+}
+
+function report_pow_verify(array $in): bool {
+    $salt  = strtolower(trim((string)($in['pow_salt'] ?? '')));
+    $ts    = (int)($in['pow_ts'] ?? 0);
+    $bits  = (int)($in['pow_bits'] ?? 0);
+    $sig   = trim((string)($in['pow_sig'] ?? ''));
+    $nonce = trim((string)($in['pow_nonce'] ?? ''));
+    if (!preg_match('/^[a-f0-9]{32}$/', $salt)) return false;
+    if (!preg_match('/^[0-9]{1,18}$/', $nonce)) return false;
+    if ($ts <= 0 || abs(time() - $ts) > 900) return false;
+    if ($bits < 10 || $bits > 20) return false;
+    $expect = hash_hmac('sha256', 'rptpow|' . $salt . '|' . $ts . '|' . $bits, report_pow_key());
+    if (!hash_equals($expect, $sig)) return false;
+    $raw = hash('sha256', $salt . ':' . $nonce, true);
+    $rem = $bits;
+    for ($i = 0; $rem > 0; $i++) {
+        $byte = ord($raw[$i]);
+        if ($rem >= 8) {
+            if ($byte !== 0) return false;
+            $rem -= 8;
+        } else {
+            if (($byte >> (8 - $rem)) !== 0) return false;
+            $rem = 0;
+        }
+    }
+    return true;
+}

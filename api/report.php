@@ -1,13 +1,13 @@
 <?php
 require_once __DIR__ . '/../core/db.php';
 require_once __DIR__ . '/../config/autoload.php';
-require_once __DIR__ . '/../core/turnstile.php';
 require_once __DIR__ . '/../core/reports.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Expose-Headers: Retry-After');
 header('Access-Control-Max-Age: 86400');
 header('X-Content-Type-Options: nosniff');
 
@@ -45,11 +45,16 @@ function rpt_text(string $raw, int $max): string {
 $pdo = db();
 if (!$pdo) rpt_json(503, ['ok' => false, 'msg' => 'unavailable']);
 
+$ip = function_exists('client_ip') ? client_ip() : (string)($_SERVER['REMOTE_ADDR'] ?? '');
 $act = strtolower(trim((string)($_GET['action'] ?? '')));
 
 if ($act === 'config') {
-    header('Cache-Control: public, max-age=300');
-    $enabled = report_setting($pdo, 'report_enabled', '1') === '1' && turnstile_enabled();
+    header('Cache-Control: no-store, max-age=0');
+    if (!api_rate_limit($pdo, 'report_cfg', $ip, 120, 60)) {
+        header('Retry-After: 60');
+        rpt_json(429, ['ok' => false, 'msg' => 'rate_limited', 'retry_after' => 60]);
+    }
+    $enabled = report_setting($pdo, 'report_enabled', '1') === '1';
     $hours = max(1, min(168, (int)report_setting($pdo, 'report_rate_hours', '12')));
     $reasons = [];
     foreach (report_reasons() as $id => $labels) {
@@ -58,7 +63,7 @@ if ($act === 'config') {
     rpt_json(200, [
         'ok' => true,
         'enabled' => $enabled,
-        'site_key' => $enabled ? turnstile_site_key() : '',
+        'pow' => $enabled ? report_pow_issue($pdo) : null,
         'endpoint' => 'https://vexaris.net/api/report.php',
         'window' => $hours * 3600,
         'hours' => $hours,
@@ -72,13 +77,20 @@ if (report_setting($pdo, 'report_enabled', '1') !== '1') {
     rpt_json(403, ['ok' => false, 'msg' => 'reports_disabled']);
 }
 
-$ip = function_exists('client_ip') ? client_ip() : (string)($_SERVER['REMOTE_ADDR'] ?? '');
+if (!api_rate_limit($pdo, 'report_post', $ip, 20, 3600)) {
+    header('Retry-After: 600');
+    rpt_json(429, ['ok' => false, 'msg' => 'rate_limited', 'retry_after' => 600]);
+}
+
 $originRaw = trim((string)($_SERVER['HTTP_ORIGIN'] ?? ''));
-if ($originRaw === '') $originRaw = trim((string)($_SERVER['HTTP_REFERER'] ?? ''));
 $originHost = rpt_host($originRaw);
 
 if ($originHost === 'demo.vexaris.net' || $originHost === 'demo.vexaris.com.tr') {
     rpt_json(403, ['ok' => false, 'msg' => 'demo_readonly']);
+}
+
+if ($originHost === '' || strpos($originHost, '.') === false) {
+    rpt_json(403, ['ok' => false, 'msg' => 'origin']);
 }
 
 $body = (string)file_get_contents('php://input');
@@ -115,6 +127,13 @@ if ($domain === '' || strpos($domain, '.') === false) {
     rpt_json(422, ['ok' => false, 'msg' => 'domain']);
 }
 
+$domainBare = (string)preg_replace('/^www\./', '', $domain);
+$domainWww  = 'www.' . $domainBare;
+$originBare = (string)preg_replace('/^www\./', '', $originHost);
+if ($originBare !== $domainBare) {
+    rpt_json(403, ['ok' => false, 'msg' => 'origin']);
+}
+
 if (!function_exists('_vx_verify_hmac') || !_vx_verify_hmac($domain . '|' . $ts . '|' . $nonce, $sig)) {
     rpt_json(403, ['ok' => false, 'msg' => 'bad_signature']);
 }
@@ -128,8 +147,6 @@ try {
     rpt_json(500, ['ok' => false, 'msg' => 'server']);
 }
 
-$domainBare = (string)preg_replace('/^www\./', '', $domain);
-$domainWww  = 'www.' . $domainBare;
 $licensed = false;
 try {
     $st = $pdo->prepare("SELECT allowed_domains FROM licenses WHERE status='active' AND (suspended_until IS NULL OR suspended_until <= NOW()) AND allowed_domains IS NOT NULL");
@@ -149,6 +166,10 @@ if (!$licensed) {
     rpt_json(403, ['ok' => false, 'msg' => 'not_licensed']);
 }
 
+if (!report_pow_verify($in)) {
+    rpt_json(403, ['ok' => false, 'msg' => 'pow']);
+}
+
 $reason = strtolower(trim((string)($in['reason'] ?? '')));
 if (!report_reason_valid($reason)) rpt_json(422, ['ok' => false, 'msg' => 'reason']);
 
@@ -161,14 +182,6 @@ $lang = strtolower(trim((string)($in['lang'] ?? 'en'))) === 'tr' ? 'tr' : 'en';
 $storeName = rpt_text((string)($in['site_name'] ?? ''), 120);
 $storeCat = strtolower(rpt_text((string)($in['store_category'] ?? ''), 30));
 $storeCat = (string)preg_replace('/[^a-z]/', '', $storeCat);
-
-if (!turnstile_enabled()) {
-    rpt_json(503, ['ok' => false, 'msg' => 'protection_unavailable']);
-}
-$token = trim((string)($in['cf_token'] ?? ''));
-if ($token === '' || !turnstile_verify($token, $ip !== '' ? $ip : null)) {
-    rpt_json(403, ['ok' => false, 'msg' => 'turnstile']);
-}
 
 $hours = max(1, min(168, (int)report_setting($pdo, 'report_rate_hours', '12')));
 try {

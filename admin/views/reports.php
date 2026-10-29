@@ -31,6 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     } elseif ($act === 'save_settings') {
         report_setting_set($pdo, 'report_enabled', !empty($_POST['report_enabled']) ? '1' : '0');
         report_setting_set($pdo, 'report_rate_hours', (string)max(1, min(168, (int)($_POST['report_rate_hours'] ?? 12))));
+        report_setting_set($pdo, 'report_pow_bits', (string)max(10, min(20, (int)($_POST['report_pow_bits'] ?? 14))));
         report_setting_set($pdo, 'report_clef_enabled', !empty($_POST['report_clef_enabled']) ? '1' : '0');
         $model = trim(mb_substr((string)($_POST['report_clef_model'] ?? 'clef'), 0, 40));
         report_setting_set($pdo, 'report_clef_model', $model !== '' ? $model : 'clef');
@@ -227,6 +228,11 @@ $statusBadge = function (string $st): string {
             <div>
                 <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem">IP başına bekleme (saat)</label>
                 <input type="number" min="1" max="168" name="report_rate_hours" value="<?= (int)$cfgHours ?>"
+                       style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:.5rem .7rem;font-size:.85rem">
+            </div>
+            <div>
+                <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem">Otomasyon kalkanı zorluğu (bit)</label>
+                <input type="number" min="10" max="20" name="report_pow_bits" value="<?= (int)report_pow_bits($pdo) ?>"
                        style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:.5rem .7rem;font-size:.85rem">
             </div>
             <div>
