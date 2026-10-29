@@ -59,6 +59,7 @@ if ($act === 'save_multi') {
     if ($ipm < 1) $ipm = 1;
     if ($ipm > 50) $ipm = 50;
     setting_set('multi_ip_max', (string)$ipm);
+    setting_set('multi_ban_ip_change', ($_POST['ip_change_ban'] ?? '0') === '1' ? '1':'0');
     $byp = [];
     foreach (preg_split('/[\s,;]+/', strtolower((string)($_POST['bypass_emails'] ?? ''))) as $bE) {
         $bE = trim($bE);

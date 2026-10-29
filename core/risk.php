@@ -58,7 +58,8 @@ function risk_decide(\PDO $pdo, int $uid, string $action = 'register'): array {
             if ($n < 2) continue;
             $res['groups'][] = $g['gkey'];
             $sameIp = count($ips) === 1;
-            if (!$sameIp) {
+            $ipChangeBan = multi_setting('multi_ban_ip_change', '1') === '1';
+            if (!$sameIp && $ipChangeBan) {
                 $res['ban_ids'] = array_merge($res['ban_ids'], array_map(fn($m) => (int)$m['id'], $active));
                 $res['reasons'][] = 'ip_change';
                 $res['decision'] = 'ban';

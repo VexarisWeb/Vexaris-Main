@@ -31,6 +31,7 @@ $muEnabled = setting_get('multi_enabled','1')==='1';
 $muExtra = setting_get('multi_extra_domains','');
 $muAutoban = setting_get('multi_autoban','1')==='1';
 $muMode = setting_get('multi_mode','notify');
+$muIpChange = setting_get('multi_ban_ip_change','1')==='1';
 $muThr = (int)setting_get('multi_ban_threshold','3');
 $muIpMax = (int)setting_get('multi_ip_max','3');
 $muBypass = setting_get('multi_bypass_emails','');
@@ -103,6 +104,10 @@ $secPh = 'Kayıtlı — değiştirmek için yazın, boş bırakılırsa korunur'
                 <input type="number" id="muIpMax" min="1" max="50" value="<?= $muIpMax ?>" style="width:100%;margin-top:.25rem;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.4rem .5rem;font-size:.78rem">
             </label>
         </div>
+        <label style="font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:.45rem;margin-top:.7rem">
+            <input type="checkbox" id="muIpChange" <?= $muIpChange?'checked':'' ?> style="accent-color:var(--cyan)">
+            IP değişiminde de banla <span style="opacity:.6">(aynı cihaz, farklı ağ → Yüksek Şüpheli Hareket)</span>
+        </label>
 
         <div style="margin-top:1.1rem;padding:.9rem 1rem;background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.25);border-radius:12px">
             <div style="font-weight:800;color:#4ade80;font-size:.85rem;margin-bottom:.3rem"><i class="fas fa-user-check"></i> Bypass — otomatik yaptırım uygulanmayacak hesaplar</div>
@@ -246,6 +251,7 @@ $secPh = 'Kayıtlı — değiştirmek için yazın, boş bırakılırsa korunur'
             fd.append('mode',document.getElementById('muMode').value);
             fd.append('threshold',document.getElementById('muThr').value);
             fd.append('ip_max',document.getElementById('muIpMax').value);
+            fd.append('ip_change_ban',document.getElementById('muIpChange').checked?'1':'0');
             fd.append('bypass_emails',document.getElementById('muBypass').value);
             fd.append('extra_domains',document.getElementById('muExtra').value);
             const r=await fetch('/api/settings',{method:'POST',headers:{'X-CSRF-Token':VX_CSRF},body:fd}); const d=await r.json(); const m=document.getElementById('muMsg'); m.style.display='inline'; m.style.color=d.ok?'#4ade80':'#f87171'; m.textContent=d.msg||(d.ok?'Kaydedildi':'Hata'); setTimeout(()=>m.style.display='none',3000);
