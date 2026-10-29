@@ -772,12 +772,20 @@ function run_migrations(): void {
             KEY idx_sr_checked (spam_checked, created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        $pdo->exec("CREATE TABLE IF NOT EXISTS report_pow_used (
+            token      CHAR(64) NOT NULL PRIMARY KEY,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_rpu_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_enabled','0')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_site_key','')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_secret','')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_enabled','1')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_rate_hours','12')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_pow_bits','14')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_min_seconds','2')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_domain_daily','8')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_clef_enabled','1')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_clef_model','clef')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_spam_threshold','0.7')");

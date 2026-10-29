@@ -6,7 +6,7 @@ require_once __DIR__ . '/../core/reports.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token, X-Requested-With');
 header('Access-Control-Expose-Headers: Retry-After');
 header('Access-Control-Max-Age: 86400');
 header('X-Content-Type-Options: nosniff');
@@ -98,8 +98,13 @@ if (strlen($body) > 8192) rpt_json(413, ['ok' => false, 'msg' => 'too_large']);
 $in = json_decode($body, true);
 if (!is_array($in)) $in = $_POST;
 
-if (!empty($in['website'])) {
+if (!empty($in['website']) || !empty($in['vx_company_url']) || !empty($in['company'])) {
     rpt_json(200, ['ok' => true, 'id' => 0]);
+}
+
+$uaRaw = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
+if ($uaRaw === '' || preg_match('~(curl|wget|python-requests|python-urllib|aiohttp|go-http-client|okhttp|java/|httpclient|libwww|scrapy|node-fetch|axios/|headlesschrome|phantomjs|puppeteer|playwright|selenium|masscan|nikto|sqlmap|nuclei)~i', $uaRaw)) {
+    rpt_json(403, ['ok' => false, 'msg' => 'agent']);
 }
 
 /* ── Yalnizca lisansli Vexaris magazalari: imza + lisans ───────────────
@@ -168,6 +173,39 @@ if (!$licensed) {
 
 if (!report_pow_verify($in)) {
     rpt_json(403, ['ok' => false, 'msg' => 'pow']);
+}
+
+try {
+    $pTok = hash('sha256', 'rptpow|' . strtolower((string)($in['pow_salt'] ?? '')) . '|' . (int)($in['pow_ts'] ?? 0) . '|' . (string)($in['pow_nonce'] ?? ''));
+    $pdo->prepare("INSERT IGNORE INTO report_pow_used (token) VALUES (?)")->execute([$pTok]);
+    if ((int)$pdo->query("SELECT ROW_COUNT()")->fetchColumn() === 0) {
+        rpt_json(403, ['ok' => false, 'msg' => 'pow']);
+    }
+    if (random_int(1, 40) === 1) {
+        $pdo->exec("DELETE FROM report_pow_used WHERE created_at < DATE_SUB(NOW(), INTERVAL 2 DAY)");
+    }
+} catch (\Throwable $e) {
+}
+
+$elapsed = (int)($in['elapsed'] ?? 0);
+$acts    = (int)($in['acts'] ?? 0);
+$minSec  = max(1, min(30, (int)report_setting($pdo, 'report_min_seconds', '2')));
+if ($elapsed > 86400000) {
+    rpt_json(403, ['ok' => false, 'msg' => 'timing']);
+}
+if ($elapsed < ($minSec * 1000) && $acts < 2) {
+    rpt_json(403, ['ok' => false, 'msg' => 'timing']);
+}
+
+$domDaily = max(1, min(100, (int)report_setting($pdo, 'report_domain_daily', '8')));
+try {
+    $st = $pdo->prepare("SELECT COUNT(*) FROM store_reports WHERE domain=? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+    $st->execute([$domain]);
+    if ((int)$st->fetchColumn() >= $domDaily) {
+        header('Retry-After: 3600');
+        rpt_json(429, ['ok' => false, 'msg' => 'flood', 'retry_after' => 3600]);
+    }
+} catch (\Throwable $e) {
 }
 
 $reason = strtolower(trim((string)($in['reason'] ?? '')));

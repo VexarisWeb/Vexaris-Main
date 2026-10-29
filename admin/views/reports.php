@@ -32,6 +32,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         report_setting_set($pdo, 'report_enabled', !empty($_POST['report_enabled']) ? '1' : '0');
         report_setting_set($pdo, 'report_rate_hours', (string)max(1, min(168, (int)($_POST['report_rate_hours'] ?? 12))));
         report_setting_set($pdo, 'report_pow_bits', (string)max(10, min(20, (int)($_POST['report_pow_bits'] ?? 14))));
+        report_setting_set($pdo, 'report_min_seconds', (string)max(1, min(30, (int)($_POST['report_min_seconds'] ?? 2))));
+        report_setting_set($pdo, 'report_domain_daily', (string)max(1, min(100, (int)($_POST['report_domain_daily'] ?? 8))));
         report_setting_set($pdo, 'report_clef_enabled', !empty($_POST['report_clef_enabled']) ? '1' : '0');
         $model = trim(mb_substr((string)($_POST['report_clef_model'] ?? 'clef'), 0, 40));
         report_setting_set($pdo, 'report_clef_model', $model !== '' ? $model : 'clef');
@@ -95,6 +97,8 @@ $cfgHours = (int)report_setting($pdo, 'report_rate_hours', '12');
 $cfgClef = report_setting($pdo, 'report_clef_enabled', '1') === '1';
 $cfgModel = report_setting($pdo, 'report_clef_model', 'clef');
 $cfgThr = (float)report_setting($pdo, 'report_spam_threshold', '0.7');
+$cfgMinSec = (int)report_setting($pdo, 'report_min_seconds', '2');
+$cfgDomDaily = (int)report_setting($pdo, 'report_domain_daily', '8');
 $cfgPrompt = report_setting($pdo, 'report_clef_prompt', '');
 $pages = max(1, (int)ceil($total / $per));
 
@@ -213,6 +217,11 @@ $statusBadge = function (string $st): string {
 
 <div class="panel" style="margin-top:1.2rem">
     <h3 style="font-size:.95rem;font-weight:800;margin-bottom:1rem"><i class="fas fa-sliders" style="color:var(--cyan);margin-right:8px"></i>Rapor Ayarları</h3>
+    <p style="font-size:.8rem;color:var(--muted);line-height:1.6;margin:-.4rem 0 1rem">
+        Turnstile rapor akışından kaldırıldı. Otomasyon koruması katmanlıdır: Proof-of-Work meydan okuması (bit),
+        en kısa doldurma süresi + etkileşim sinyali, gizli tuzak alan, origin + mağaza imzası, tek kullanımlık nonce,
+        IP başına saatlik/günlük limit ve mağaza başına günlük tavan. Spam metinler CLEF ile işaretlenir.
+    </p>
     <form method="post">
         <?= csrf_field() ?>
         <input type="hidden" name="act" value="save_settings">
@@ -233,6 +242,16 @@ $statusBadge = function (string $st): string {
             <div>
                 <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem">Otomasyon kalkanı zorluğu (bit)</label>
                 <input type="number" min="10" max="20" name="report_pow_bits" value="<?= (int)report_pow_bits($pdo) ?>"
+                       style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:.5rem .7rem;font-size:.85rem">
+            </div>
+            <div>
+                <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem">En kısa doldurma süresi (sn)</label>
+                <input type="number" min="1" max="30" name="report_min_seconds" value="<?= (int)$cfgMinSec ?>"
+                       style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:.5rem .7rem;font-size:.85rem">
+            </div>
+            <div>
+                <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem">Mağaza başına günlük rapor tavanı</label>
+                <input type="number" min="1" max="100" name="report_domain_daily" value="<?= (int)$cfgDomDaily ?>"
                        style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:.5rem .7rem;font-size:.85rem">
             </div>
             <div>
