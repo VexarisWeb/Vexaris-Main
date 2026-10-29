@@ -21,7 +21,7 @@ function mail_tpl_reset(string $code): array {
         . '<p style="margin:0 0 18px 0;color:#9aa3ac;font-size:14px;line-height:1.7;">You requested a password reset. Enter the <strong style="color:#e9e7e2;">6-digit code</strong> below on the verification screen. Codes expire after <strong style="color:#e9e7e2;">15 minutes</strong>.</p>'
         . '<table border="0" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 18px auto;"><tr>' . $cells . '</tr></table>'
         . '<p style="margin:0;color:#9aa3ac;font-size:13px;line-height:1.7;">If you did not make this request, ignore this email; your password will not change.</p>';
-    return ['Your Password Reset Code — Vexaris', $body];
+    return ['Your Password Reset Code | Vexaris', $body];
 }
 
 // ── 2) Hesap Aktivasyonu — butonlu ───────────────────────────
@@ -33,5 +33,5 @@ function mail_tpl_activation(string $activationUrl): array {
         . '</td></tr></table>'
         . '<p style="margin:0;color:#9aa3ac;font-size:13px;line-height:1.7;">If the button does not work, paste this link into your browser:<br><span style="color:#7fb3d9;word-break:break-all;">{activation_url}</span></p>';
     // Not: çağıran taraf $vars içine 'activation_url' anahtarını eklemelidir.
-    return ['Activate Your Account — Vexaris', $body, ['activation_url' => $activationUrl]];
+    return ['Activate Your Account | Vexaris', $body, ['activation_url' => $activationUrl]];
 }

@@ -398,13 +398,13 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
     </div>
     <?php if ($updAvail): ?>
     <div style="background:rgba(250,204,21,.07);border:1px solid rgba(250,204,21,.35);border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <div style="flex:1;min-width:200px;font-size:13px;color:#facc15;"><i class="fas fa-cloud-arrow-down"></i> Update available — <strong>v<?= htmlspecialchars($latestVer) ?></strong> (yours: v<?= htmlspecialchars((string)($store['app_version'] ?? '?')) ?>). About 1 minute downtime.</div>
+        <div style="flex:1;min-width:200px;font-size:13px;color:#facc15;"><i class="fas fa-cloud-arrow-down"></i> Update available: <strong>v<?= htmlspecialchars($latestVer) ?></strong> (yours: v<?= htmlspecialchars((string)($store['app_version'] ?? '?')) ?>). About 1 minute downtime.</div>
         <button class="btn-panel btn-cyan" style="font-size:13px;" id="nxUpdBtn" onclick="nxStartUpdate(<?= (int)$store['id'] ?>)"><i class="fas fa-rotate"></i> Update Now</button>
     </div>
     <?php endif; ?>
     <div style="background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.08));border-radius:14px;padding:14px 16px;margin-bottom:1.1rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <?php if ($storePassOauth): ?>
-        <div style="flex:1 1 100%;font-size:13px;color:#9aa3ac;"><i class="fas fa-key" style="color:#ff7a1a;"></i> Store admin — username <strong style="color:var(--text,#e8eaf6);">admin</strong>. You signed in with a social account, so this store has its own password below.</div>
+        <div style="flex:1 1 100%;font-size:13px;color:#9aa3ac;"><i class="fas fa-key" style="color:#ff7a1a;"></i> Store admin: username <strong style="color:var(--text,#e8eaf6);">admin</strong>. You signed in with a social account, so this store has its own password below.</div>
         <div class="nx-passbox" id="nxPassBox" style="flex:1 1 240px;">
             <div class="nx-passrow">
                 <div class="nx-passval" id="nxPassVal" data-shown="0">
@@ -417,7 +417,7 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
         </div>
         <button class="btn-panel" id="nxPassGen" style="font-size:12.5px;flex:none;"><i class="fas fa-rotate"></i> Generate new</button>
         <?php else: ?>
-        <div style="flex:1;min-width:200px;font-size:13px;color:#9aa3ac;"><i class="fas fa-key" style="color:#ff7a1a;"></i> Store admin — username <strong style="color:var(--text,#e8eaf6);">admin</strong>, password is your Vexaris password (also emailed at setup).</div>
+        <div style="flex:1;min-width:200px;font-size:13px;color:#9aa3ac;"><i class="fas fa-key" style="color:#ff7a1a;"></i> Store admin: username <strong style="color:var(--text,#e8eaf6);">admin</strong>, password is your Vexaris password (also emailed at setup).</div>
         <?php endif; ?>
         <a class="btn-panel btn-cyan" style="font-size:13px;" href="https://<?= htmlspecialchars($store['domain']) ?>/login" target="_blank" rel="noopener"><i class="fas fa-right-to-bracket"></i> Store Login</a>
     </div>
@@ -482,7 +482,7 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
         <?php elseif ($cstat === 'pending'): ?>
         <span class="nx-pulse"><i class="fas fa-lock" style="color:#facc15;"></i> SSL Issuing…</span>
         <?php elseif ($cstat === 'failed'): ?>
-        <span><i class="fas fa-triangle-exclamation" style="color:#f87171;"></i> SSL Failed — check DNS records and save again</span>
+        <span><i class="fas fa-triangle-exclamation" style="color:#f87171;"></i> SSL Failed: check DNS records and save again</span>
         <?php elseif ($cstat === 'revoked'): ?>
         <span><i class="fas fa-lock" style="color:#64748b;"></i> SSL Revoked</span>
         <?php endif; ?>
@@ -739,7 +739,7 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
         <div id="nxDomCur" style="font-size:13px;margin-bottom:14px;"></div>
         <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Domain name</label>
         <input id="nxDomInput" type="text" maxlength="190" placeholder="shop.example.com" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:#0f1422;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:#e8eaf6;font-size:14px;outline:none;margin-bottom:14px;">
-        <div style="font-size:12px;font-weight:800;color:#9aa3ac;margin-bottom:8px;">DNS records — add ONE of these at your registrar:</div>
+        <div style="font-size:12px;font-weight:800;color:#9aa3ac;margin-bottom:8px;">DNS records: add ONE of these at your registrar:</div>
         <div style="background:#0f1422;border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px;overflow:hidden;">
             <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:12.5px;">
                 <span style="font-weight:900;color:#2bd4ff;width:52px;flex:none;">A</span>
@@ -1020,10 +1020,10 @@ if(domBtn){domBtn.addEventListener('click',function(){
   document.getElementById('nxDomInput').value=cur;
   document.getElementById('nxDomCRec').textContent=domBtn.getAttribute('data-slug')||'';
   var badge=st==='active' ? '<span style="color:#4ade80;font-weight:800;">● LIVE</span>'
-    : (st==='pending' ? '<span style="color:#facc15;font-weight:800;">● DNS check pending — save again after records propagate</span>'
-    : (st==='failed' ? '<span style="color:#f87171;font-weight:800;">● FAILED — check DNS records and save again</span>'
+    : (st==='pending' ? '<span style="color:#facc15;font-weight:800;">● DNS check pending: save again after records propagate</span>'
+    : (st==='failed' ? '<span style="color:#f87171;font-weight:800;">● FAILED: check DNS records and save again</span>'
     : (st==='revoked' ? '<span style="color:#9aa3ac;font-weight:800;">● REVOKED</span>' : '<span style="color:#64748b;">No custom domain yet</span>')));
-  document.getElementById('nxDomCur').innerHTML=(cur?('Current: <strong>'+cur.replace(/</g,'&lt;')+'</strong> — '):'')+badge;
+  document.getElementById('nxDomCur').innerHTML=(cur?('Current: <strong>'+cur.replace(/</g,'&lt;')+'</strong> | '):'')+badge;
   document.getElementById('nxDomMsg').textContent='';
   nxShowDom('nxDomModal');
 });}
@@ -1040,7 +1040,7 @@ function nxDomPost(domain,btn,label){
   if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-circle-notch nx-spin"></i> '+(label||'Saving…');}
   var fd=new FormData();fd.append('action','custom-domain');fd.append('store_id',domBtn.getAttribute('data-sid'));fd.append('domain',domain);
   fetch('/dashboard/stores',{method:'POST',headers:{'X-CSRF-Token':csrf()},body:fd}).then(function(r){return r.json()}).then(function(d){
-    if(d&&d.ok&&d.job_id){m.textContent='Queued — issuing SSL, live status shortly…';m.style.color='#facc15';nxDomPoll(d.job_id,m,btn,label);}
+    if(d&&d.ok&&d.job_id){m.textContent='Queued: issuing SSL, live status shortly…';m.style.color='#facc15';nxDomPoll(d.job_id,m,btn,label);}
     else{m.textContent=(d&&d.msg)||'Failed';m.style.color='#f87171';if(btn){btn.disabled=false;btn.innerHTML=label||'Save Domain';}}
   }).catch(function(){m.textContent='Failed';m.style.color='#f87171';if(btn){btn.disabled=false;}});
 }
@@ -1053,8 +1053,8 @@ function nxDomPoll(job,m,btn,label){
       if(!d||!d.ok)return;
       if(d.status==='done'){clearInterval(t);m.textContent='Done! Reloading…';m.style.color='#4ade80';setTimeout(function(){location.reload();},1500);}
       else if(d.status==='failed'){clearInterval(t);m.textContent='Failed: '+(d.message||'error');m.style.color='#f87171';if(btn){btn.disabled=false;btn.innerHTML=label||'Save Domain';}}
-      else if(nxDomTries>60){clearInterval(t);m.textContent='Still working — reload this page in a minute.';m.style.color='#facc15';}
-      else{m.textContent='Working… ('+d.status+') — issuing SSL, please wait.';m.style.color='#facc15';}
+      else if(nxDomTries>60){clearInterval(t);m.textContent='Still working, reload this page in a minute.';m.style.color='#facc15';}
+      else{m.textContent='Working… ('+d.status+'): issuing SSL, please wait.';m.style.color='#facc15';}
     }).catch(function(){});
   },5000);
 }
@@ -1090,7 +1090,7 @@ if(dr){dr.addEventListener('click',function(){if(!confirm('Remove the custom dom
       .then(function(r){return r.json()})
       .then(function(d){
         if(d&&d.ok&&d.password){plain=d.password;val.setAttribute('data-shown','1');render();tip.textContent='Tap to hide';tip.classList.add('ok');}
-        else{tip.textContent='No store password yet — tap Generate new';tip.classList.remove('ok');}
+        else{tip.textContent='No store password yet: tap Generate new';tip.classList.remove('ok');}
       }).catch(function(){tip.textContent='Could not load the password, try again';});
   }
   function copy(){
@@ -1119,7 +1119,7 @@ if(dr){dr.addEventListener('click',function(){if(!confirm('Remove the custom dom
       .then(function(r){return r.json()})
       .then(function(d){
         gen.disabled=false;gen.innerHTML=old;
-        if(d&&d.ok&&d.password){plain=d.password;val.setAttribute('data-shown','1');render();tip.textContent='New password active — it may take a few seconds to apply to the store';tip.classList.add('ok');toast('New store password generated');}
+        if(d&&d.ok&&d.password){plain=d.password;val.setAttribute('data-shown','1');render();tip.textContent='New password active: it may take a few seconds to apply to the store';tip.classList.add('ok');toast('New store password generated');}
         else{tip.textContent=(d&&d.msg)||'Failed to generate password';tip.classList.remove('ok');}
       }).catch(function(){gen.disabled=false;gen.innerHTML=old;tip.textContent='Failed to generate password';});
   });}

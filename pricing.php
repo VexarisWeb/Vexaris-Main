@@ -12,7 +12,7 @@ $cu = current_user();
 $GLOBALS['seoKey'] = 'pricing';
 $GLOBALS['seoFallback'] = [
   'title' => 'Pricing - Vexaris',
-  'description' => 'Vexaris pricing: Free, Starter ($6.99), Professional ($14.99) and Enterprise ($39.99) plans compared in detail — products, revenue, traffic, themes, API and support.',
+  'description' => 'Vexaris pricing: Free, Starter ($6.99), Professional ($14.99) and Enterprise ($39.99) plans compared in detail: products, revenue, traffic, themes, API and support.',
 ];
 
 $BASE = 'index.php';
@@ -106,7 +106,7 @@ foreach ($PLANS as $pl) {
         <div class="reveal text-center max-w-2xl mx-auto mt-6">
           <div class="font-mono2 text-[12px] uppercase tracking-[0.2em] text-[#4f8fc0]">Pricing</div>
           <h1 class="mt-3 font-display font-extrabold tracking-tight text-4xl sm:text-5xl lg:text-[3.4rem] leading-[1.05]">One platform,<br />four plans.</h1>
-          <p class="mt-4 text-[15px] leading-relaxed text-[#9aa3ac]">Every limit, feature and support tier — side by side. Start free, upgrade when you grow.</p>
+          <p class="mt-4 text-[15px] leading-relaxed text-[#9aa3ac]">Every limit, feature and support tier, side by side. Start free, upgrade when you grow.</p>
           <div class="mt-7 inline-flex items-center gap-1 rounded-full border border-[#262c33] bg-[#12151a] p-1 text-[13px] font-semibold" role="group" aria-label="Billing period">
             <button type="button" data-bill="m" class="bill-btn rounded-full px-5 py-2 transition-all duration-300" aria-pressed="true">Monthly</button>
             <button type="button" data-bill="y" class="bill-btn rounded-full px-5 py-2 transition-all duration-300" aria-pressed="false">Yearly <span class="ml-1 rounded-full bg-[#e0a458]/15 px-2 py-0.5 text-[11px] font-bold text-[#e0a458]">−20%</span></button>
@@ -206,8 +206,8 @@ foreach ($PLANS as $pl) {
           Comparing platforms before you commit?
           <a class="underline hover:text-[#e6ebef] transition-colors" href="/gumroad/alternative-2026">Gumroad</a> ·
           <a class="underline hover:text-[#e6ebef] transition-colors" href="/sellfy/alternatives-2026">Sellfy</a> ·
-          <a class="underline hover:text-[#e6ebef] transition-colors" href="/etsy/alternative">Etsy</a>
-          — each fee breakdown is costed line by line.
+          <a class="underline hover:text-[#e6ebef] transition-colors" href="/etsy/alternative">Etsy</a>:
+          each fee breakdown is costed line by line.
         </p>
       </div>
     </section>

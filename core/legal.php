@@ -111,7 +111,7 @@ function legal_defaults(): array {
     <p>Vexaris; It does not guarantee that the Site will operate uninterrupted, error-free, secure and complete. Access to the Site may be temporarily blocked or interrupted due to technical difficulties, maintenance work, internet connection problems, natural disasters and force majeure events.</p>
     <p>Vexaris cannot be held responsible for any direct, indirect, incidental, special or punitive damages (loss of data, loss of profits, business interruption, etc.) arising from the use of the Site.</p>
     <p>Vexaris is not responsible for third-party services, products, content accessed through the site and the performance of these services. The user carries out his/her relations with third party services under his/her own responsibility.</p>
-    <p><strong>Independence of payment institutions:</strong> Payment institutions and integrations connected to the Site or to User stores (including Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, Paywant, Whop, Paddle, Lemon Squeezy and DodoPayments) are independent third parties. Vexaris has no partnership, agency, representation or joint-venture relationship with any of them. The payment relationship — including onboarding, limits, holds, chargebacks, payouts and account suspensions — exists solely between the User (seller) and the relevant institution under that institution&#039;s own terms. Vexaris cannot intervene in, accelerate or reverse decisions taken by payment institutions, and bears no liability for funds held or released by them.</p>
+    <p><strong>Independence of payment institutions:</strong> Payment institutions and integrations connected to the Site or to User stores (including Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, Paywant, Whop, Paddle, Lemon Squeezy and DodoPayments) are independent third parties. Vexaris has no partnership, agency, representation or joint-venture relationship with any of them. The payment relationship, including onboarding, limits, holds, chargebacks, payouts and account suspensions, exists solely between the User (seller) and the relevant institution under that institution&#039;s own terms. Vexaris cannot intervene in, accelerate or reverse decisions taken by payment institutions, and bears no liability for funds held or released by them.</p>
 </div>
 
 <div class="legal__sect" id="k9">
@@ -187,7 +187,7 @@ function legal_defaults(): array {
     <h2>20. Plans, Subscriptions and Billing</h2>
     <p>Vexaris offers Free, Starter, Professional and Enterprise plans. Plan features, traffic quotas, theme sets and custom-domain rights are published on the pricing page, which forms an integral part of these Terms.</p>
     <p>Paid plans are billed in advance on a monthly or yearly cycle through the payment provider (Whop). The subscription renews automatically at the end of each cycle until cancelled. The User may cancel at any time from the panel; the service remains active until the end of the paid period. Cancellation does not create a right to a partial (pro-rata) refund.</p>
-    <p>Upgrades take effect immediately with the new limits; downgrades take effect at the end of the current cycle, or immediately where technically required — in which case plan-bound features (such as custom domains) may be disconnected without compensation.</p>
+    <p>Upgrades take effect immediately with the new limits; downgrades take effect at the end of the current cycle, or immediately where technically required, in which case plan-bound features (such as custom domains) may be disconnected without compensation.</p>
     <p>One-time product purchases (scripts, licenses) are delivered instantly to the Buyer&#039;s panel. Refunds for delivered digital goods follow the withdrawal exception in the Distance Selling Agreement; refunds for undelivered or defective goods are issued to the original payment channel within 14 days.</p>
 </div>
 
@@ -200,7 +200,7 @@ function legal_defaults(): array {
         <li>Gambling, betting, casino, lottery, prediction markets and any games of chance involving money or prizes,</li>
         <li>Narcotics, psychotropic substances, controlled drugs and any paraphernalia facilitating their use,</li>
         <li>Weapons, ammunition, explosives and instructions facilitating their production,</li>
-        <li>Physical goods requiring shipment — Vexaris is a digital-goods platform; no physical products may be listed,</li>
+        <li>Physical goods requiring shipment: Vexaris is a digital-goods platform; no physical products may be listed,</li>
         <li>Counterfeit goods, pirated software, stolen accounts, credentials or personal data,</li>
         <li>Adult/pornographic content and escort services,</li>
         <li>Financial fraud instruments, money-laundering schemes, unlicensed investment or crypto-doubling offers,</li>
@@ -213,7 +213,7 @@ function legal_defaults(): array {
 <div class="legal__sect" id="k22">
     <h2>22. Age Requirement and Account Singularity</h2>
     <p>The Site may only be used by persons who have reached the age of 18 or who have full legal capacity under applicable law. Accounts opened by persons below this threshold are closed without notice.</p>
-    <p>One natural person may hold one account (one-account-per-person policy). Opening multiple accounts from the same person or device — including through similar e-mail addresses — is detected automatically and leads to suspension of duplicate accounts. Shared networks (dormitories, offices) are evaluated with care: only device-level matches trigger automatic action.</p>
+    <p>One natural person may hold one account (one-account-per-person policy). Opening multiple accounts from the same person or device, including through similar e-mail addresses, is detected automatically and leads to suspension of duplicate accounts. Shared networks (dormitories, offices) are evaluated with care: only device-level matches trigger automatic action.</p>
 </div>
 
 <p class="legal__updated">These Terms of Use may be changed unilaterally by Vexaris. The current version is always published on the Site.</p>
@@ -566,7 +566,7 @@ HTML;
     <h2>8. Subscriptions and Recurring Payments</h2>
     <p>Plans billed on a monthly or yearly cycle (Starter, Professional, Enterprise) are subscriptions within the meaning of the Distance Contracts Regulation. Before you confirm, the total recurring amount, the billing cycle and the renewal behaviour are shown explicitly and require your separate approval.</p>
     <p>The subscription renews automatically at the end of each cycle and the recurring amount is charged through the payment provider. You may cancel at any time from your panel; cancellation stops future renewals and the service remains active until the end of the already-paid period. No partial refund is issued for the remaining days of a cancelled cycle.</p>
-    <p>Because SaaS access is an instantly performed electronic service, the 14-day withdrawal right ends once the paid period starts, provided you gave express consent with the acknowledgment that you lose this right — which is collected at checkout. Price changes apply only to future renewals and are announced in advance.</p>
+    <p>Because SaaS access is an instantly performed electronic service, the 14-day withdrawal right ends once the paid period starts, provided you gave express consent with the acknowledgment that you lose this right, which is collected at checkout. Price changes apply only to future renewals and are announced in advance.</p>
 </div>
 
 <p class="legal__updated">This Distance Selling Agreement comes into force upon order confirmation. The current version is always published on the Site.</p>

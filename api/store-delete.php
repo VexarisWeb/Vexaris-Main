@@ -68,7 +68,7 @@ if ($act === 'send') {
             . '<p style="margin:0 0 18px 0;color:#9aa3ac;font-size:14px;line-height:1.7;">You asked to permanently delete your store <strong style="color:#e9e7e2;">' . htmlspecialchars((string)$store['slug'], ENT_QUOTES) . '.vexaris.app</strong>. Enter the <strong style="color:#e9e7e2;">6-digit code</strong> below to confirm. The code expires in <strong style="color:#e9e7e2;">10 minutes</strong>.</p>'
             . '<table border="0" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 18px auto;"><tr>' . $cells . '</tr></table>'
             . '<p style="margin:0;color:#9aa3ac;font-size:13px;line-height:1.7;">Deletion is permanent: products, orders and uploaded files are removed. If you did not request this, ignore this email and change your password.</p>';
-        $ok = mail_send($pdo, $uemail, 'Your store deletion code — Vexaris', $body, ['user_name' => $uname], $noreply);
+        $ok = mail_send($pdo, $uemail, 'Your store deletion code | Vexaris', $body, ['user_name' => $uname], $noreply);
         if (!$ok) {
             echo json_encode(['ok' => false, 'msg' => 'Could not send the code. Please try again later.']); exit;
         }

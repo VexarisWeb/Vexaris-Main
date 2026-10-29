@@ -78,7 +78,7 @@ $subLive = $mySub && ($mySub['status'] ?? '') === 'active' && (int)($mySub['curr
             </div>
             <div>
                 <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Domains</div>
-                <div style="font-size:.85rem;color:#e9e7e2"><?= $licDomains ? htmlspecialchars(implode(', ', $licDomains)) : '<span style="color:var(--muted)">No domain yet — contact support to add your store domain.</span>' ?></div>
+                <div style="font-size:.85rem;color:#e9e7e2"><?= $licDomains ? htmlspecialchars(implode(', ', $licDomains)) : '<span style="color:var(--muted)">No domain yet: contact support to add your store domain.</span>' ?></div>
             </div>
             <?php endif; ?>
         </div>
@@ -202,9 +202,9 @@ $subLive = $mySub && ($mySub['status'] ?? '') === 'active' && (int)($mySub['curr
             <div style="flex:1;min-width:0">
                 <div style="font-weight:700;color:#fff;font-size:.88rem"><?= htmlspecialchars($cfg['label']) ?></div>
                 <?php if ($linked): ?>
-                <div style="font-size:.76rem;color:#4ade80;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><i class="fas fa-check-circle"></i> Connected<?= !empty($linked['email']) ? ' — ' . htmlspecialchars($linked['email']) : '' ?></div>
+                <div style="font-size:.76rem;color:#4ade80;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><i class="fas fa-check-circle"></i> Connected<?= !empty($linked['email']) ? ': ' . htmlspecialchars($linked['email']) : '' ?></div>
                 <?php else: ?>
-                <div style="font-size:.76rem;color:var(--muted)">Not connected — connect for one-click sign-in</div>
+                <div style="font-size:.76rem;color:var(--muted)">Not connected: connect for one-click sign-in</div>
                 <?php endif; ?>
             </div>
             <?php if ($linked): ?>

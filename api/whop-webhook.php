@@ -385,7 +385,7 @@ try {
         if ($uid > 0 && $pid > 0) {
             $pdo->prepare("INSERT IGNORE INTO user_products (user_id, product_id) VALUES (?,?)")
                 ->execute([$uid, $pid]);
-            notify_user($uid, 'approved', 'Payment successful — ' . $order['product_name'],
+            notify_user($uid, 'approved', 'Payment successful: ' . $order['product_name'],
                 'Your payment for "' . $order['product_name'] . '" (' . $order['amount'] . ' ' . strtoupper($order['currency'] !== '' ? $order['currency'] : 'USD') . ') is confirmed. Download it from My Products.');
         }
         $subPlan = strtolower((string)($meta['plan'] ?? ''));
@@ -409,7 +409,7 @@ try {
                 $pdo->prepare("INSERT INTO user_subscriptions (user_id, plan, cycle, status, current_period_end, whop_membership_id) VALUES (?,?,?,?,?,?)
                     ON DUPLICATE KEY UPDATE plan=VALUES(plan), cycle=VALUES(cycle), status='active', current_period_end=VALUES(current_period_end), whop_membership_id=VALUES(whop_membership_id)")
                     ->execute([$uid, $subPlan, $subCycle, 'active', $end, mb_substr($memId, 0, 64)]);
-                notify_user($uid, 'approved', 'Plan active — Vexaris ' . whop_plan_offers()[$subPlan]['label'],
+                notify_user($uid, 'approved', 'Plan active: Vexaris ' . whop_plan_offers()[$subPlan]['label'],
                     'Your ' . ($subCycle === 'yearly' ? 'yearly' : 'monthly') . ' plan is active until ' . date('d.m.Y', $end) . '. Manage it anytime from your panel.');
                 try {
                     $uq = $pdo->prepare("SELECT username FROM users WHERE id=? LIMIT 1");
@@ -431,7 +431,7 @@ try {
                         $pdo->prepare("INSERT INTO licenses (customer_name, license_key, allowed_domains, status, features, suspended_until, user_id) VALUES (?,?,?,'active',?,NULL,?)")
                             ->execute([$uname, $licKey, json_encode([]), json_encode($feat), $uid]);
                     }
-                    notify_user($uid, 'approved', 'License ready — ' . whop_plan_offers()[$subPlan]['label'] . ' plan assigned',
+                    notify_user($uid, 'approved', 'License ready: ' . whop_plan_offers()[$subPlan]['label'] . ' plan assigned',
                         'Your license key: ' . $licKey . '. Add your store domain from Licenses (or contact support) so your site picks up the ' . whop_plan_offers()[$subPlan]['label'] . ' limits automatically.');
                 } catch (Throwable $e) {
                     error_log('Whop license grant: ' . $e->getMessage());

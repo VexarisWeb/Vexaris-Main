@@ -239,7 +239,7 @@ try {
                 $owner = (string)$st->fetchColumn();
                 if ($owner !== '' && filter_var($owner, FILTER_VALIDATE_EMAIL)) {
                     $score = max(0, (int)($_POST['score'] ?? 0));
-                    hosting_mail($pdo, $owner, 'Your store has been suspended — Vexaris',
+                    hosting_mail($pdo, $owner, 'Your store has been suspended | Vexaris',
                         '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#0d1b3e;border-radius:16px;overflow:hidden;">'
                         . '<div style="padding:28px;text-align:center;background:linear-gradient(135deg,#8a1a1a,#3a0d0d);color:#fff;"><h1 style="margin:0;font-size:22px;">Store suspended</h1></div>'
                         . '<div style="padding:26px;color:#e8eaf6;font-size:14px;line-height:1.7;">'
@@ -375,7 +375,7 @@ try {
                     }
                 }
                 if ($jobOwner !== '' && filter_var($jobOwner, FILTER_VALIDATE_EMAIL)) {
-                    hosting_mail($pdo, $jobOwner, 'Your store has been deleted — Vexaris', hosting_deleted_html($jobSlug));
+                    hosting_mail($pdo, $jobOwner, 'Your store has been deleted | Vexaris', hosting_deleted_html($jobSlug));
                 }
                 $pdo->commit();
             } catch (Throwable $e2) {
@@ -436,7 +436,7 @@ try {
                 $apass = mb_substr(trim((string)($_POST['admin_pass'] ?? '')), 0, 80);
                 if ($amode === 'generated' && (strlen($apass) < 8 || $apass === 'VEXARIS-PASS')) $apass = '';
                 try {
-                    hosting_mail($pdo, $jobOwner, 'Your store is ready — Vexaris', hosting_created_html($jobSlug, $jobPlan, $amode, $apass));
+                    hosting_mail($pdo, $jobOwner, 'Your store is ready | Vexaris', hosting_created_html($jobSlug, $jobPlan, $amode, $apass));
                 } catch (Throwable $e2) {}
             }
         }
@@ -664,7 +664,7 @@ function hosting_created_html(string $slug, string $plan, string $mode = 'hash',
     $login = $url . '/login';
     $cred = $mode === 'generated' && $pass !== ''
         ? '<p style="margin:0 0 6px;">Store admin login:</p><p style="margin:0 0 18px;background:#131f45;border-radius:10px;padding:12px 14px;">Username: <strong>admin</strong><br>Password: <strong>' . htmlspecialchars($pass) . '</strong></p>'
-        : '<p style="margin:0 0 18px;">Store admin login — username <strong>admin</strong>, password is your Vexaris password.</p>';
+        : '<p style="margin:0 0 18px;">Store admin login: username <strong>admin</strong>, password is your Vexaris password.</p>';
     return '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#0d1b3e;border-radius:16px;overflow:hidden;">'
         . '<div style="padding:28px;text-align:center;background:linear-gradient(135deg,#ff7a1a,#ff3c11);color:#fff;"><h1 style="margin:0;font-size:22px;">Your store is ready!</h1></div>'
         . '<div style="padding:26px;color:#e8eaf6;font-size:14px;line-height:1.7;">'

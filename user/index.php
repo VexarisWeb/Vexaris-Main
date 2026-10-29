@@ -93,7 +93,7 @@ if ($latestVersions):
             <div style="width:42px;height:42px;background:var(--gradient);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff"><i class="fas fa-rocket"></i></div>
             <div>
                 <div style="font-weight:800;color:#fff">Update available!</div>
-                <div style="font-size:.82rem;color:rgba(255,255,255,.6)">Latest version: <strong style="color:var(--cyan)">v<?= htmlspecialchars($latestVersions[array_key_first($latestVersions)]['version']) ?></strong> — <?= htmlspecialchars($latestVersions[array_key_first($latestVersions)]['description'] ?: 'New version released') ?></div>
+                <div style="font-size:.82rem;color:rgba(255,255,255,.6)">Latest version: <strong style="color:var(--cyan)">v<?= htmlspecialchars($latestVersions[array_key_first($latestVersions)]['version']) ?></strong>: <?= htmlspecialchars($latestVersions[array_key_first($latestVersions)]['description'] ?: 'New version released') ?></div>
             </div>
         </div>
         <a href="/dashboard/products" class="btn-panel btn-cyan"><i class="fas fa-download"></i> Download / View</a>

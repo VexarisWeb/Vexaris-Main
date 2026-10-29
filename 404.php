@@ -48,7 +48,7 @@ p code{font-family:var(--fm);font-size:.8em;color:var(--text);background:rgba(25
 <div class="ghost"><i class="fa-solid fa-ghost"></i></div>
 <div class="eyebrow">404 • Page not found</div>
 <h1>Looks like you are lost.</h1>
-<p>The page you are looking for has moved elsewhere — or never existed. Don't worry, let's get you back to safety.</p>
+<p>The page you are looking for has moved elsewhere, or never existed. Don't worry, let's get you back to safety.</p>
 <div class="btns">
 <a href="/" class="btn-p"><i class="fa-solid fa-house"></i> Home</a>
 <button class="btn-g" onclick="history.back()"><i class="fa-solid fa-arrow-left"></i> Go Back</button>

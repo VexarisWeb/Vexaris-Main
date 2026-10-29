@@ -135,7 +135,7 @@ if ($action === 'multi_group') {
             }
             risk_event_log($pdo, $mid, $gkey, 'manual_ban', 'banned', 'admin_manual', '', '', client_ip());
             try {
-                notify_user($mid, 'rejected', 'Account suspended — multiple accounts',
+                notify_user($mid, 'rejected', 'Account suspended: multiple accounts',
                     'Your account was suspended for violating the one-account-per-person policy. If you believe this is a mistake, contact info@vexaris.net to appeal.');
             } catch (Throwable $e2) {}
             $banned++;

@@ -12,7 +12,7 @@ log_pageview('sifremi-unuttum');
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Forgot Password — Vexaris</title>
+<title>Forgot Password | Vexaris</title>
 <link rel="alternate" hreflang="en" href="https://vexaris.net/forgot-password">
 <link rel="alternate" hreflang="x-default" href="https://vexaris.net/forgot-password">
 <link rel="icon" type="image/png" href="/assets/images/vexaris-logo.png">

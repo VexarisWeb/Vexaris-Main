@@ -100,7 +100,7 @@ async function checkLicense(){
         if(d.ok){
             resEl.innerHTML='<div class="lics-ok-sim"><i class="fas fa-circle-check"></i><div><strong style="color:#4ade80">Genuine Vexaris</strong><p style="color:#bbf7d0;font-size:.88rem;margin-top:4px">'+licEsc(d.message)+'</p></div></div>';
         } else {
-            resEl.innerHTML='<div class="lics-err-sim"><div class="warn-head"><i class="fas fa-triangle-exclamation"></i> No License Found — Warning!</div><p>'+licEsc(d.message)+'</p><p style="margin-top:.6rem;font-weight:700;color:#fff"><i class="fas fa-credit-card"></i> This site may steal your credit card details!</p><ul><li>No genuine license record — do not pay.</li><li>Ask the seller for license proof and an invoice.</li><li>Report suspicious cases to info@vexaris.net.</li></ul></div>';
+            resEl.innerHTML='<div class="lics-err-sim"><div class="warn-head"><i class="fas fa-triangle-exclamation"></i> Warning: No License Found!</div><p>'+licEsc(d.message)+'</p><p style="margin-top:.6rem;font-weight:700;color:#fff"><i class="fas fa-credit-card"></i> This site may steal your credit card details!</p><ul><li>No genuine license record, do not pay.</li><li>Ask the seller for license proof and an invoice.</li><li>Report suspicious cases to info@vexaris.net.</li></ul></div>';
         }
         resEl.style.display='block';
     }catch(e){

@@ -101,7 +101,7 @@ $FAQS = [
   ['q'=>'How are sold products delivered?','a'=>'The moment the approval webhook arrives from the payment provider, the system pulls a line from stock, signs the license key, and adds the file to the customer\'s “My Purchases” area. Customers download from the panel or copy the key in one click.'],
   ['q'=>'How is product stock managed?','a'=>'Two modes: unlimited stock (the file is delivered the same every order) and single stock (one e-pin / license key per line). In single mode each sale consumes a line; when stock runs out the product automatically closes and a panel warning appears.'],
   ['q'=>'What is the refund policy?','a'=>'Since digital delivery happens instantly, the seller sets refund terms; Vexaris offers tools to initiate refunds, load balances, or refund via the payment provider. You can publish your own refund policy in the legal page editor.'],
-  ['q'=>'What can I do in the admin panel?','a'=>'Product and stock management, purchases, coupons, announcements, blog, references, FAQ, support tickets, user and role permissions, theme selection, payment / social login / live support integrations, mail templates, SEO settings, license and version tracking — all in one panel, tab by tab.'],
+  ['q'=>'What can I do in the admin panel?','a'=>'Product and stock management, purchases, coupons, announcements, blog, references, FAQ, support tickets, user and role permissions, theme selection, payment / social login / live support integrations, mail templates, SEO settings, license and version tracking, all in one panel, tab by tab.'],
 ];
 function vex_logo_item($l){
   $name = htmlspecialchars($l['name']);
@@ -155,7 +155,7 @@ function vex_logo_item($l){
           </h1>
           <p class="mt-6 mx-auto max-w-2xl text-[15.5px] leading-relaxed text-[#9aa3ac]">
             The all-in-one store for e-pins, game accounts, e-books, license keys and software. The moment
-            a payment is approved, files and keys land in the customer's account automatically — no manual sending.
+            a payment is approved, files and keys land in the customer's account automatically, with no manual sending.
           </p>
           <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
             <a href="<?= $loggedIn ? '/dashboard' : '/register' ?>" class="btn-primary px-6 py-3 text-sm inline-flex items-center gap-2">Start for free
@@ -171,7 +171,7 @@ function vex_logo_item($l){
           <a href="https://demo.vexaris.net/demo" target="_blank" rel="noopener" aria-label="Open the live Vexaris demo" class="group relative block rounded-2xl border border-[#262c33] bg-[#12151a] overflow-hidden shadow-[0_40px_80px_-40px_rgba(0,0,0,.9)]">
             <picture>
               <source srcset="./assets/images/demo-epin.png.webp" type="image/webp">
-              <img src="./assets/images/demo-epin.png" alt="Vexaris demo storefront — E-PIN store homepage" width="1200" height="620" fetchpriority="high" decoding="async" style="width:100%;height:auto;display:block" class="w-full h-auto max-w-full block select-none" draggable="false" />
+              <img src="./assets/images/demo-epin.png" alt="Vexaris demo storefront: E-PIN store homepage" width="1200" height="620" fetchpriority="high" decoding="async" style="width:100%;height:auto;display:block" class="w-full h-auto max-w-full block select-none" draggable="false" />
             </picture>
             <span class="absolute left-1/2 bottom-3.5 -translate-x-1/2 whitespace-nowrap rounded-full border border-[#2f3945] bg-[#0b0d10]/90 px-4 py-2 text-[12.5px] font-bold text-white backdrop-blur-sm transition-colors group-hover:border-[#4f8fc0]">Open the live demo →</span>
           </a>
@@ -357,7 +357,7 @@ function vex_logo_item($l){
           <?php
           $TRUST = [
             ['tag','0% commission','No per-sale cut. Keep your margin on every order.'],
-            ['bolt','Automatic delivery','Payment approved — file and license key delivered instantly.'],
+            ['bolt','Automatic delivery','Payment approved: file and license key delivered instantly.'],
             ['wallet',count($PAYMENTS) . ' payment integrations','Local and global gateways from a single panel.'],
             ['shield','Cloudflare Turnstile','Bot-protected checkout and role-based admin access.'],
             ['spark','Free plan','Start selling without a card, upgrade when you grow.'],
@@ -388,7 +388,7 @@ function vex_logo_item($l){
         <div class="reveal flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-12 md:mb-16">
           <h2 class="font-display font-bold tracking-tight text-3xl sm:text-4xl lg:text-[2.9rem] leading-[1.05] max-w-2xl">Blog &amp; announcements</h2>
           <div class="md:text-right md:pb-1 md:max-w-sm">
-            <p class="text-[15px] leading-relaxed text-[#9aa3ac]">Platform news and announcements — live here the moment they are published from the panel.</p>
+            <p class="text-[15px] leading-relaxed text-[#9aa3ac]">Platform news and announcements are live here the moment they are published from the panel.</p>
             <a href="/blog" class="mt-3 inline-flex items-center gap-2 text-[12.5px] font-bold text-[#c8ccd1] hover:text-[#4f8fc0] transition-colors">All articles <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
           </div>
         </div>

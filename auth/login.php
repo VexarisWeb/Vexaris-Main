@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $overCap = !multi_is_exempt($pdo, (int)$user['id']) && multi_ip_over_cap($pdo, $rlIp, (int)$user['id']);
                     } catch (Throwable $eCap) {}
                     if ($overCap) {
-                        $error = 'Rate limit exceeded — too many accounts from this network. Contact info@vexaris.net if you believe this is a mistake.';
+                        $error = 'Rate limit exceeded: too many accounts from this network. Contact info@vexaris.net if you believe this is a mistake.';
                     } else {
                     // Bağlantılı grupta bu hesap multi ise anında ban (oturum açılmadan).
                     try {
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!$error && isset($_GET['err'])) {
-    $errMap = ['social' => 'Social sign-in failed. Please try again.', 'disabled' => 'This sign-in method is currently disabled.', 'activation' => 'Activation link is invalid or expired.', 'domain' => 'This email provider is not accepted. Please use a trusted provider (Gmail, Yahoo, Outlook, iCloud, Proton or similar).', 'iplimit' => 'Rate limit exceeded — too many accounts from this network. Contact info@vexaris.net if you believe this is a mistake.'];
+    $errMap = ['social' => 'Social sign-in failed. Please try again.', 'disabled' => 'This sign-in method is currently disabled.', 'activation' => 'Activation link is invalid or expired.', 'domain' => 'This email provider is not accepted. Please use a trusted provider (Gmail, Yahoo, Outlook, iCloud, Proton or similar).', 'iplimit' => 'Rate limit exceeded: too many accounts from this network. Contact info@vexaris.net if you believe this is a mistake.'];
     if (isset($errMap[$_GET['err']])) $error = $errMap[$_GET['err']];
 }
 
@@ -131,10 +131,10 @@ log_pageview('giris');
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign In — Vexaris</title>
+<title>Sign In | Vexaris</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="canonical" href="https://vexaris.net/login">
-<meta property="og:title" content="Login — Vexaris">
+<meta property="og:title" content="Login | Vexaris">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://vexaris.net/login">
 <link rel="icon" type="image/png" href="/assets/images/vexaris-logo.png">

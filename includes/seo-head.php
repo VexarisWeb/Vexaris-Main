@@ -6,7 +6,7 @@ if ($seoKey !== '') {
     $pdoSeo = db();
     if ($pdoSeo) {
         $fallback = $GLOBALS['seoFallback'] ?? [
-            'title' => 'Vexaris — Digital Product Sales Platform',
+            'title' => 'Vexaris: Digital Product Sales Platform',
             'description' => 'Vexaris is a digital product sales platform that lets you sell e-pins, e-books, license keys and software packages from a single panel.',
         ];
         if ($seoKey === 'blog-post' && $seoPost) {

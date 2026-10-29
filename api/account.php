@@ -59,7 +59,7 @@ if ($act === 'request_email_change') {
     $token = bin2hex(random_bytes(16));
     // Not: geçmiş satırlar kademeli sayaç için korunur (verify başarılı olunca temizlenir)
     $pdo->prepare("INSERT INTO email_change_tokens (user_id,new_email,token,expires_at) VALUES (?,?,?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))")->execute([$uid,$new,$token]);
-    $ok = mail_send($pdo, $new, 'Email Verification — Vexaris', '<p>Your verification code: <strong style="font-size:18px;letter-spacing:2px">'.$token.'</strong></p><p>Please confirm it in your account settings within 30 minutes.</p>');
+    $ok = mail_send($pdo, $new, 'Email Verification | Vexaris', '<p>Your verification code: <strong style="font-size:18px;letter-spacing:2px">'.$token.'</strong></p><p>Please confirm it in your account settings within 30 minutes.</p>');
     if (!$ok) { echo json_encode(['ok'=>false,'msg'=>'Could not send the email. Please try again later.']); exit; }
     echo json_encode(['ok'=>true,'msg'=>'Verification code sent. Please check your inbox.','popup'=>true]);
     exit;
@@ -123,7 +123,7 @@ if ($act === 'change_password') {
             $urow->execute([$uid]);
             $u = $urow->fetch() ?: [];
             $noreply = ['email' => setting_get('mail_noreply_email', 'noreply@vexaris.net'), 'name' => 'Vexaris'];
-            mail_send($pdo, (string)($u['email'] ?? ''), 'Your Vexaris password was set — Vexaris', '<p style="margin:0 0 14px 0;color:#e9e7e2;font-size:15px;">Hello {user_name},</p><p style="margin:0;color:#9aa3ac;font-size:14px;line-height:1.7;">A password has been set on your Vexaris account. From now on you can sign in with either your social account or this password. If this was not you, reset your password immediately.</p>', ['user_name' => (string)($u['username'] ?? '')], $noreply);
+            mail_send($pdo, (string)($u['email'] ?? ''), 'Your Vexaris password was set | Vexaris', '<p style="margin:0 0 14px 0;color:#e9e7e2;font-size:15px;">Hello {user_name},</p><p style="margin:0;color:#9aa3ac;font-size:14px;line-height:1.7;">A password has been set on your Vexaris account. From now on you can sign in with either your social account or this password. If this was not you, reset your password immediately.</p>', ['user_name' => (string)($u['username'] ?? '')], $noreply);
         } catch (Throwable $e3) {}
     }
     echo json_encode(['ok'=>true,'msg'=>$hadPassword ? 'Password updated. Sessions on other devices have been signed out.' : 'Password set. You can now sign in with it.']);

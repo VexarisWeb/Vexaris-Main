@@ -10,7 +10,7 @@ $tsKey = turnstile_enabled() ? turnstile_site_key() : '';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WHOIS Sorgulama — Vexaris</title>
+<title>WHOIS Sorgulama | Vexaris</title>
 <meta name="description" content="Domain ve IP WHOIS/RDAP sorgulama aracı. Kayıt tarihi, bitiş tarihi, statü ve abuse bilgilerini anında öğrenin.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" href="/assets/images/vexaris-logo.png">
@@ -101,7 +101,7 @@ pre.raw{background:#0d1117;color:#c9d1d9;border-radius:10px;padding:16px;font-si
 
 <section class="hero"><div class="hero-in">
 <h1><i class="fas fa-magnifying-glass-chart"></i> Domain &amp; IP Sorgulama</h1>
-<p>RDAP üzerinden güncel kayıt verisi — statü, tarihler, abuse bilgileri ve ham JSON.</p>
+<p>RDAP üzerinden güncel kayıt verisi: statü, tarihler, abuse bilgileri ve ham JSON.</p>
 </div></section>
 
 <div class="searchwrap"><div class="searchcard">

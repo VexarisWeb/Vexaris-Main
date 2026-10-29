@@ -142,10 +142,10 @@ log_pageview('kayit');
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign Up — Vexaris</title>
+<title>Sign Up | Vexaris</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="canonical" href="https://vexaris.net/register">
-<meta property="og:title" content="Register — Vexaris">
+<meta property="og:title" content="Register | Vexaris">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://vexaris.net/register">
 <link rel="icon" type="image/png" href="/assets/images/vexaris-logo.png">

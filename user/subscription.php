@@ -54,7 +54,7 @@ $pc = $planColors[$planSlug] ?? '#9aa3ac';
             <?php if (!empty($plan['live'])): ?>
             <div style="font-size:.82rem;color:var(--muted);margin-top:.8rem"><i class="fas fa-rotate"></i> <?= $plan['cycle'] === 'yearly' ? 'Yearly' : 'Monthly' ?> billing · renews <?= date('d.m.Y', (int)$plan['until']) ?></div>
             <?php elseif ($planSlug !== 'free'): ?>
-            <div style="font-size:.82rem;color:#f87171;margin-top:.8rem"><i class="fas fa-circle-exclamation"></i> Subscription ended — your site runs on Free limits.</div>
+            <div style="font-size:.82rem;color:#f87171;margin-top:.8rem"><i class="fas fa-circle-exclamation"></i> Subscription ended: your site runs on Free limits.</div>
             <?php else: ?>
             <div style="font-size:.82rem;color:var(--muted);margin-top:.8rem"><i class="fas fa-circle-info"></i> Upgrade to unlock more products, revenue and features.</div>
             <?php endif; ?>
