@@ -47,7 +47,25 @@ if ($act === 'test_whop') {
 }
 if ($act === 'save_multi') {
     setting_set('multi_enabled', ($_POST['enabled'] ?? '0') === '1' ? '1':'0');
-    setting_set('multi_autoban', ($_POST['autoban'] ?? '0') === '1' ? '1':'0');
+    if (isset($_POST['autoban'])) setting_set('multi_autoban', ($_POST['autoban'] ?? '0') === '1' ? '1':'0');
+    $mode = strtolower(trim((string)($_POST['mode'] ?? 'notify')));
+    if (!in_array($mode, ['off', 'shadow', 'notify', 'graduated'], true)) $mode = 'notify';
+    setting_set('multi_mode', $mode);
+    $thr = (int)($_POST['threshold'] ?? 3);
+    if ($thr < 2) $thr = 2;
+    if ($thr > 20) $thr = 20;
+    setting_set('multi_ban_threshold', (string)$thr);
+    $ipm = (int)($_POST['ip_max'] ?? 3);
+    if ($ipm < 1) $ipm = 1;
+    if ($ipm > 50) $ipm = 50;
+    setting_set('multi_ip_max', (string)$ipm);
+    $byp = [];
+    foreach (preg_split('/[\s,;]+/', strtolower((string)($_POST['bypass_emails'] ?? ''))) as $bE) {
+        $bE = trim($bE);
+        if ($bE !== '' && strlen($bE) < 160 && filter_var($bE, FILTER_VALIDATE_EMAIL)) $byp[] = $bE;
+    }
+    $byp = array_values(array_unique(array_slice($byp, 0, 200)));
+    setting_set('multi_bypass_emails', implode("\n", $byp));
     $extra = strtolower((string)($_POST['extra_domains'] ?? ''));
     $lines = [];
     foreach (preg_split('/[\s,;]+/', $extra) as $d) {
@@ -55,7 +73,8 @@ if ($act === 'save_multi') {
         if ($d !== '' && strpos($d, '.') !== false && strlen($d) < 80) $lines[] = $d;
     }
     setting_set('multi_extra_domains', implode("\n", array_values(array_unique($lines))));
-    echo json_encode(['ok'=>true,'msg'=>'Multi-hesap koruması kaydedildi']);
+    if (function_exists('audit_log')) audit_log($pdo, (int)(current_user()['id'] ?? 0), 'multi_settings', 'settings', 'multi', 'mode=' . $mode . ' thr=' . $thr . ' ip=' . $ipm . ' bypass=' . count($byp));
+    echo json_encode(['ok'=>true,'msg'=>'Multi-hesap koruması kaydedildi (' . count($byp) . ' bypass)']);
     exit;
 }
 if ($act === 'save_turnstile') {

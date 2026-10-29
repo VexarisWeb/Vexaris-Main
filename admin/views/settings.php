@@ -30,6 +30,12 @@ $whSandbox = setting_get('whop_sandbox','0')==='1';
 $muEnabled = setting_get('multi_enabled','1')==='1';
 $muExtra = setting_get('multi_extra_domains','');
 $muAutoban = setting_get('multi_autoban','1')==='1';
+$muMode = setting_get('multi_mode','notify');
+$muThr = (int)setting_get('multi_ban_threshold','3');
+$muIpMax = (int)setting_get('multi_ip_max','3');
+$muBypass = setting_get('multi_bypass_emails','');
+$muBypassN = 0;
+foreach (preg_split('/[\s,;]+/', $muBypass) as $bE) if (filter_var(trim($bE), FILTER_VALIDATE_EMAIL)) $muBypassN++;
 $tsHas = trim($tsSecret) !== '';
 $goHas = trim($goSec) !== '';
 $dcHas = trim($dcSec) !== '';
@@ -79,12 +85,37 @@ $secPh = 'Kayıtlı — değiştirmek için yazın, boş bırakılırsa korunur'
     </div>
     <div class="table-card" style="padding:1.4rem;margin-bottom:1.2rem">
         <div style="font-weight:800;color:#fff;margin-bottom:.4rem"><i class="fas fa-user-shield" style="color:var(--cyan)"></i> Multi-Account Protection</div>
-        <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem">Kayıtlar <strong style="color:var(--cyan)">sadece güvenilir sağlayıcılara</strong> açıktır (Gmail, Yahoo, Outlook/Hotmail/Live/MSN, iCloud, Proton, Tuta, GMX, AOL, FastMail, Yandex ve benzerleri). Aynı cihaza/parmak izine bağlı <strong style="color:var(--cyan)">2. ve sonraki hesaplar anında banlanır</strong>; ilk (ana) hesaba dokunulmaz. Yalnızca ortak IP ise ban yok, bayrak var.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem">
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem">Kayıtlar <strong style="color:var(--cyan)">sadece güvenilir sağlayıcılara</strong> açıktır (Gmail, Yahoo, Outlook/Hotmail/Live/MSN, iCloud, Proton, Tuta, GMX, AOL, FastMail, Yandex ve benzerleri). Aynı cihazdan aynı ağda <strong style="color:var(--cyan)">3. hesap</strong> açılırsa <strong style="color:#ff8080">gruptaki tüm hesaplar</strong> (en eski dahil) banlanır. Aynı cihaz <strong style="color:#ff8080">farklı ağdan</strong> ikinci hesap açarsa <em>Yüksek Şüpheli Hareket</em> sayılır ve yine hepsi banlanır. Yalnızca ortak IP (farklı cihazlar) ban getirmez; IP başına hesap tavanı uygulanır.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.7rem">
             <label style="font-size:.8rem;color:var(--muted)"><input type="checkbox" id="muEnabled" <?= $muEnabled?'checked':'' ?> style="accent-color:var(--cyan)"> Koruma aktif</label>
-            <label style="font-size:.8rem;color:var(--muted)"><input type="checkbox" id="muAutoban" <?= $muAutoban?'checked':'' ?> style="accent-color:var(--cyan)"> Otomatik ban (acımasız)</label>
+            <label style="font-size:.8rem;color:var(--muted)">Mod
+                <select id="muMode" style="width:100%;margin-top:.25rem;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.4rem .5rem;font-size:.78rem">
+                    <option value="off" <?= $muMode==='off'?'selected':'' ?>>Kapalı</option>
+                    <option value="shadow" <?= $muMode==='shadow'?'selected':'' ?>>İzleme (ban yok)</option>
+                    <option value="notify" <?= $muMode==='notify'?'selected':'' ?>>Bildirim (ban yok)</option>
+                    <option value="graduated" <?= $muMode==='graduated'?'selected':'' ?>>Aktif — acımasız ban</option>
+                </select>
+            </label>
+            <label style="font-size:.8rem;color:var(--muted)">Ban eşiği (aynı cihaz+IP hesap)
+                <input type="number" id="muThr" min="2" max="20" value="<?= $muThr ?>" style="width:100%;margin-top:.25rem;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.4rem .5rem;font-size:.78rem">
+            </label>
+            <label style="font-size:.8rem;color:var(--muted)">IP başına max hesap
+                <input type="number" id="muIpMax" min="1" max="50" value="<?= $muIpMax ?>" style="width:100%;margin-top:.25rem;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.4rem .5rem;font-size:.78rem">
+            </label>
         </div>
-        <label style="font-size:.8rem;color:var(--muted);display:block;margin-top:.8rem">Ekstra izinli uzantılar (satır başına bir domain — örn: sirket.com)</label>
+
+        <div style="margin-top:1.1rem;padding:.9rem 1rem;background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.25);border-radius:12px">
+            <div style="font-weight:800;color:#4ade80;font-size:.85rem;margin-bottom:.3rem"><i class="fas fa-user-check"></i> Bypass — otomatik yaptırım uygulanmayacak hesaplar</div>
+            <p style="font-size:.74rem;color:var(--muted);margin-bottom:.5rem">Satır başına bir e-posta. Listede olan hesaplar <strong style="color:#4ade80">banlanmaz</strong>, mağaza kapısına takılmaz, e-posta sağlayıcı beyaz listesi de uygulanmaz. Parmak izleri yine kaydedilir ve panelde görünür.</p>
+            <textarea id="muBypass" rows="5" placeholder="info@vexaris.net&#10;ortak@firma.com" style="width:100%;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;font-family:monospace;font-size:.78rem"><?= htmlspecialchars($muBypass) ?></textarea>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.5rem;font-size:.74rem;color:var(--muted)">
+                <span><i class="fas fa-list"></i> Kayıtlı: <b style="color:#4ade80"><?= $muBypassN ?></b></span>
+                <span><i class="fas fa-lock"></i> Admin hesapları her zaman muaf</span>
+                <span><i class="fas fa-crown"></i> Sistem sahibi (en düşük id) asla banlanmaz</span>
+            </div>
+        </div>
+
+        <label style="font-size:.8rem;color:var(--muted);display:block;margin-top:.9rem">Ekstra izinli e-posta uzantıları (satır başına bir domain — örn: sirket.com)</label>
         <textarea id="muExtra" rows="2" placeholder="sirket.com&#10;okul.edu" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:.5rem .7rem;margin-top:.3rem;font-family:monospace;font-size:.78rem"><?= htmlspecialchars($muExtra) ?></textarea>
         <button onclick="saveMulti()" class="btn" style="margin-top:1rem"><i class="fas fa-floppy-disk"></i> Kaydet</button>
         <span id="muMsg" style="font-size:.78rem;margin-left:.6rem;display:none"></span>
@@ -212,7 +243,10 @@ $secPh = 'Kayıtlı — değiştirmek için yazın, boş bırakılırsa korunur'
         async function saveMulti(){
             const fd=new FormData(); fd.append('action','save_multi');
             fd.append('enabled',document.getElementById('muEnabled').checked?'1':'0');
-            fd.append('autoban',document.getElementById('muAutoban').checked?'1':'0');
+            fd.append('mode',document.getElementById('muMode').value);
+            fd.append('threshold',document.getElementById('muThr').value);
+            fd.append('ip_max',document.getElementById('muIpMax').value);
+            fd.append('bypass_emails',document.getElementById('muBypass').value);
             fd.append('extra_domains',document.getElementById('muExtra').value);
             const r=await fetch('/api/settings',{method:'POST',headers:{'X-CSRF-Token':VX_CSRF},body:fd}); const d=await r.json(); const m=document.getElementById('muMsg'); m.style.display='inline'; m.style.color=d.ok?'#4ade80':'#f87171'; m.textContent=d.msg||(d.ok?'Kaydedildi':'Hata'); setTimeout(()=>m.style.display='none',3000);
         }

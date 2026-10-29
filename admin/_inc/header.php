@@ -9,6 +9,7 @@ $tab = $_GET['tab'] ?? 'dashboard';
 $tabPermissions = [
     'dashboard'   => 'dashboard',
     'users'       => 'users',
+    'multi'       => 'users',
     'products'    => 'products',
     'licenses'    => 'licenses',
     'stores'      => 'licenses',
@@ -40,6 +41,8 @@ if ($pdo) { try { $new_reports = (int)$pdo->query("SELECT COUNT(*) FROM store_re
 $user = current_user();
 $myRole = user_role();
 $csrf = csrf_token();
+$multi_open = 0;
+if ($pdo) { try { require_once __DIR__ . '/../../core/multi.php'; $multi_open = multi_open_alert_count($pdo, (int)($user['id'] ?? 0)); } catch (Throwable $e) {} }
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -295,6 +298,12 @@ $csrf = csrf_token();
         <?php if (has_permission('users')): ?>
         <a href="/admin?tab=users" class="sidebar__link <?= $tab === 'users' ? 'active' : '' ?>">
             <i class="fas fa-users"></i> Kullanıcılar
+        </a>
+        <a href="/admin?tab=multi" class="sidebar__link <?= $tab === 'multi' ? 'active' : '' ?>">
+            <i class="fas fa-user-shield"></i> Multi-Hesap
+            <?php if ($multi_open > 0): ?>
+                <span class="sidebar__count"><?= $multi_open ?></span>
+            <?php endif; ?>
         </a>
         <?php endif; ?>
 

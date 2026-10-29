@@ -78,6 +78,76 @@ csrf_check();
 
 $id = (int)($_POST['id'] ?? 0);
 
+// ── Multi-hesap grubu işlemleri ──────────────────────────────
+if ($action === 'multi_group') {
+    require_once __DIR__ . '/../core/multi.php';
+    require_once __DIR__ . '/../core/risk.php';
+    multi_ensure_tables($pdo);
+    $gkey = (string)($_POST['gkey'] ?? '');
+    $op = (string)($_POST['op'] ?? '');
+    if ($gkey === '' || !in_array($op, ['ban', 'dismiss', 'bypass'], true)) {
+        echo json_encode(['ok' => false, 'msg' => 'Geçersiz istek.']);
+        exit;
+    }
+    $st = $pdo->prepare("SELECT gkey, member_ids, member_count FROM multi_groups WHERE gkey = ? LIMIT 1");
+    $st->execute([$gkey]);
+    $grp = $st->fetch();
+    if (!$grp) { echo json_encode(['ok' => false, 'msg' => 'Grup bulunamadı.']); exit; }
+    $memberIds = array_values(array_filter(array_map('intval', explode(',', (string)$grp['member_ids']))));
+    if ($op === 'dismiss') {
+        $pdo->prepare("UPDATE multi_groups SET status = 'dismissed' WHERE gkey = ?")->execute([$gkey]);
+        $pdo->prepare("DELETE FROM multi_alerts WHERE gkey = ?")->execute([$gkey]);
+        if (function_exists('audit_log')) audit_log($pdo, (int)(current_user()["id"] ?? 0), 'multi_dismiss', 'multi_group', $gkey, 'n=' . count($memberIds));
+        echo json_encode(['ok' => true, 'msg' => 'Grup yoksayıldı.']);
+        exit;
+    }
+    if ($op === 'bypass') {
+        $list = multi_bypass_emails(true);
+        $added = 0;
+        foreach ($memberIds as $mid) {
+            $q = $pdo->prepare("SELECT email FROM users WHERE id = ? LIMIT 1");
+            $q->execute([$mid]);
+            $em = strtolower(trim((string)$q->fetchColumn()));
+            if ($em !== '' && filter_var($em, FILTER_VALIDATE_EMAIL) && !in_array($em, $list, true)) { $list[] = $em; $added++; }
+        }
+        if ($added > 0) {
+            setting_set('multi_bypass_emails', implode("\n", $list));
+            multi_bypass_emails(true);
+        }
+        $pdo->prepare("UPDATE multi_groups SET status = 'dismissed' WHERE gkey = ?")->execute([$gkey]);
+        $pdo->prepare("DELETE FROM multi_alerts WHERE gkey = ?")->execute([$gkey]);
+        if (function_exists('audit_log')) audit_log($pdo, (int)(current_user()["id"] ?? 0), 'multi_bypass', 'multi_group', $gkey, 'added=' . $added);
+        echo json_encode(['ok' => true, 'msg' => $added . ' e-posta bypass listesine eklendi.']);
+        exit;
+    }
+    $banned = 0; $skipped = 0;
+    foreach ($memberIds as $mid) {
+        if (multi_is_exempt($pdo, $mid)) { $skipped++; continue; }
+        try {
+            $q = $pdo->prepare("UPDATE users SET is_active = 0, ban_reason = 'multi' WHERE id = ? AND is_active = 1");
+            $q->execute([$mid]);
+            if ($q->rowCount() < 1) continue;
+            if (function_exists('sessions_kill_all')) { sessions_kill_all($pdo, $mid, false); }
+            else {
+                $pdo->prepare("UPDATE users SET session_version = session_version + 1 WHERE id = ?")->execute([$mid]);
+                $pdo->prepare("UPDATE user_sessions SET revoked = 1 WHERE user_id = ?")->execute([$mid]);
+                $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = ?")->execute([$mid]);
+            }
+            risk_event_log($pdo, $mid, $gkey, 'manual_ban', 'banned', 'admin_manual', '', '', client_ip());
+            try {
+                notify_user($mid, 'rejected', 'Account suspended — multiple accounts',
+                    'Your account was suspended for violating the one-account-per-person policy. If you believe this is a mistake, contact info@vexaris.net to appeal.');
+            } catch (Throwable $e2) {}
+            $banned++;
+        } catch (Throwable $e) {}
+    }
+    $pdo->prepare("UPDATE multi_groups SET status = 'banned' WHERE gkey = ?")->execute([$gkey]);
+    $pdo->prepare("DELETE FROM multi_alerts WHERE gkey = ?")->execute([$gkey]);
+    if (function_exists('audit_log')) audit_log($pdo, (int)(current_user()["id"] ?? 0), 'multi_ban', 'multi_group', $gkey, 'banned=' . $banned . ' skipped=' . $skipped);
+    echo json_encode(['ok' => true, 'msg' => $banned . ' hesap banlandı' . ($skipped > 0 ? ', ' . $skipped . ' muaf atlandı' : '') . '.']);
+    exit;
+}
+
 // ── Bağlantılı hesaplar (GET/POST) ───────────────────────────
 if ($action === 'links') {
     if ($id <= 0) {
@@ -99,7 +169,16 @@ if ($action === 'links') {
         }
         $flags = $pdo->prepare("SELECT linked_user_id, `sig` AS `signal`, detail, created_at FROM multi_flags WHERE user_id = ? ORDER BY created_at DESC LIMIT 20");
         $flags->execute([$id]);
-        echo json_encode(['ok' => true, 'linked' => $detail, 'flags' => $flags->fetchAll()]);
+        $groups = [];
+        $gs = $pdo->prepare("SELECT gkey, gtype, member_count, active_count, ip_set, reason, status, last_seen FROM multi_groups WHERE FIND_IN_SET(?, member_ids) ORDER BY last_seen DESC LIMIT 10");
+        $gs->execute([$id]);
+        foreach ($gs->fetchAll() as $g) {
+            $g['ip_set'] = (string)$g['ip_set'];
+            $groups[] = $g;
+        }
+        $vidRow = $pdo->prepare("SELECT vid, bits, country, last_seen FROM user_devices WHERE user_id = ? AND vid <> '' ORDER BY last_seen DESC LIMIT 1");
+        $vidRow->execute([$id]);
+        echo json_encode(['ok' => true, 'linked' => $detail, 'flags' => $flags->fetchAll(), 'groups' => $groups, 'device' => ($vidRow->fetch() ?: null)]);
     } catch (Throwable $e) {
         echo json_encode(['ok' => false, 'msg' => 'Sorgu hatası.']);
     }

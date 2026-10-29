@@ -1,6 +1,6 @@
 <?php
 $today_users = 0; $today_views = 0; $open_tickets = 0; $pending_orders = 0;
-$pending_apps = []; $open_list = []; $unread_mails = []; $unread_n = 0;
+$pending_apps = []; $open_list = []; $unread_mails = []; $unread_n = 0; $multi_open = 0;
 $chart = []; $top_pages = []; $recent_users = [];
 try {
     $today_users = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE DATE(created_at)=CURDATE()")->fetchColumn();
@@ -12,6 +12,10 @@ try {
     try {
         $unread_n = (int)$pdo->query("SELECT COUNT(*) FROM inbound_emails WHERE is_read=0 AND deleted=0 AND spam=0 AND spam_checked=1")->fetchColumn();
         $unread_mails = $pdo->query("SELECT id, to_addr, from_addr, subject, created_at FROM inbound_emails WHERE deleted=0 AND spam=0 AND spam_checked=1 ORDER BY id DESC LIMIT 5")->fetchAll();
+    } catch (Throwable $e) {}
+    try {
+        require_once dirname(__DIR__, 2) . '/core/multi.php';
+        $multi_open = multi_open_alert_count($pdo, (int)(current_user()['id'] ?? 0));
     } catch (Throwable $e) {}
     $rows = $pdo->query("SELECT DATE(created_at) d, COUNT(*) c FROM page_views WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY d")->fetchAll();
     $ur = $pdo->query("SELECT DATE(created_at) d, COUNT(*) c FROM users WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY d")->fetchAll();
@@ -70,6 +74,9 @@ foreach ($chart as $c) $maxV = max($maxV, $c['v']);
 <?php endif; ?>
 <?php if ($unread_n > 0): ?>
 <div class="dash-alert" style="background:rgba(0,212,255,.07);border-color:rgba(0,212,255,.3)"><i class="fas fa-inbox" style="color:var(--cyan)"></i><span><b><?= $unread_n ?> okunmamış e-posta</b> var.</span><a href="/admin?tab=inbox">Gelen Kutusu &rarr;</a></div>
+<?php endif; ?>
+<?php if (!empty($multi_open)): ?>
+<div class="dash-alert" style="background:rgba(251,146,60,.08);border-color:rgba(251,146,60,.35)"><i class="fas fa-user-shield" style="color:#fb923c"></i><span><b><?= (int)$multi_open ?> multi-hesap grubu</b> inceleme bekliyor.</span><a href="/admin?tab=multi">İncele &rarr;</a></div>
 <?php endif; ?>
 
 <div class="section-title"><i class="fas fa-bolt"></i> Hızlı İşlemler</div>

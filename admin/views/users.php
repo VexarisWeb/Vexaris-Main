@@ -223,6 +223,24 @@ async function loadUsers(page) {
     }
 }
 
+document.addEventListener('DOMContentLoaded', function(){
+    const q = new URLSearchParams(location.search);
+    const want = parseInt(q.get('u') || 0);
+    if (!(want > 0)) return;
+    const qq = q.get('q') || '';
+    if (qq && document.getElementById('userSearch') && document.getElementById('userSearch').value === '') {
+        document.getElementById('userSearch').value = qq;
+        usersSearch = qq;
+        loadUsers(1);
+    }
+    let tries = 0;
+    const t = setInterval(function(){
+        tries++;
+        if (usersData && usersData.find(x => parseInt(x.id) === want)) { clearInterval(t); openUserModal(want); }
+        else if (tries > 40) { clearInterval(t); }
+    }, 250);
+});
+
 function rowOpen(ev, id) {
     if (ev && ev.target && ev.target.closest('a,button,input,select,textarea')) return;
     openUserModal(id);
@@ -275,6 +293,19 @@ async function loadLinks(id) {
             html += d.linked.map(l => '<div style="display:flex;align-items:center;gap:.6rem;padding:.45rem .6rem;background:rgba(251,146,60,.06);border:1px solid rgba(251,146,60,.25);border-radius:9px;margin-bottom:.4rem;font-size:.82rem"><i class="fas fa-link" style="color:#fb923c"></i><strong>' + esc(l.username) + '</strong><span style="color:var(--muted)">' + esc(l.email) + '</span><span class="badge badge-susp" style="margin-left:auto">' + esc(SIGNAL_LABELS[l.signal] || l.signal) + '</span></div>').join('');
         } else {
             html += '<div style="font-size:.82rem;color:#4ade80"><i class="fas fa-check-circle"></i> Bağlantılı hesap yok.</div>';
+        }
+        if (d.groups && d.groups.length) {
+            html += '<div style="font-size:.78rem;font-weight:700;color:var(--muted);margin:.9rem 0 .5rem">MULTI-HESAP GRUPLARI</div>';
+            html += d.groups.map(g => {
+                const tip = g.gtype === 'ip' ? 'IP' : 'Cihaz';
+                const ipler = (g.ip_set || '').split(',').filter(Boolean);
+                return '<div style="padding:.5rem .6rem;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:9px;margin-bottom:.4rem;font-size:.8rem">'
+                    + '<b>' + esc(tip) + '</b> &middot; ' + esc(g.member_count) + ' hesap (' + esc(g.active_count) + ' aktif)'
+                    + ' <span class="badge ' + (g.status === 'banned' ? 'badge-rev' : 'badge-susp') + '" style="margin-left:.4rem">' + esc(g.status) + '</span>'
+                    + (g.reason ? '<div style="color:var(--muted);font-size:.74rem;margin-top:3px">sebep: ' + esc(g.reason) + '</div>' : '')
+                    + (ipler.length ? '<div style="color:var(--muted);font-size:.72rem;margin-top:3px;font-family:monospace">IP: ' + esc(ipler.join(', ')) + '</div>' : '')
+                    + '</div>';
+            }).join('');
         }
         if (d.flags && d.flags.length) {
             html += '<div style="font-size:.78rem;font-weight:700;color:var(--muted);margin:.8rem 0 .5rem">BAYRAKLAR</div>';
