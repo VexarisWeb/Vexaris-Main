@@ -678,6 +678,8 @@ function multi_group_upsert(\PDO $pdo, string $gkey, string $gtype, array $membe
 }
 
 function multi_group_sync(\PDO $pdo, int $uid): array {
+    static $done = [];
+    if ($uid > 0 && isset($done[$uid])) return $done[$uid];
     $out = ['groups' => 0, 'alerts' => 0];
     if ($uid <= 0 || !multi_enabled() || multi_mode() === 'off') return $out;
     try {
@@ -730,6 +732,7 @@ function multi_group_sync(\PDO $pdo, int $uid): array {
             $out['groups']++;
         }
     } catch (Throwable $e) {}
+    $done[$uid] = $out;
     return $out;
 }
 
@@ -761,4 +764,14 @@ function multi_group_rows(\PDO $pdo, string $status = 'watch', int $limit = 100)
         $st->execute([$status]);
         return $st->fetchAll();
     } catch (Throwable $e) { return []; }
+}
+
+function multi_groups_prune(\PDO $pdo): int {
+    $n = 0;
+    try {
+        $pdo->exec("DELETE FROM multi_groups WHERE (SELECT COUNT(*) FROM users u WHERE FIND_IN_SET(u.id, multi_groups.member_ids)) < 2");
+        $pdo->exec("DELETE a FROM multi_alerts a LEFT JOIN multi_groups g ON g.gkey = a.gkey WHERE g.id IS NULL");
+        $n = (int)$pdo->query("SELECT COUNT(*) FROM multi_groups")->fetchColumn();
+    } catch (Throwable $e) {}
+    return $n;
 }
