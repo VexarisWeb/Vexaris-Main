@@ -191,6 +191,16 @@ function oauth_unique_username(string $base, \PDO $pdo): string {
     }
 }
 
+function oauth_err_set(string $e): void {
+    $GLOBALS['vx_oauth_err'] = $e;
+}
+
+function oauth_err_take(): string {
+    $e = (string)($GLOBALS['vx_oauth_err'] ?? '');
+    unset($GLOBALS['vx_oauth_err']);
+    return $e;
+}
+
 function oauth_find_or_create(string $p, array $n): ?array {
     $pdo = db();
     if (!$pdo) return null;
@@ -210,6 +220,17 @@ function oauth_find_or_create(string $p, array $n): ?array {
             try { require_once __DIR__ . '/multi.php'; } catch (Throwable $e0) {}
             if (!multi_email_allowed($candEmail)) return null;
         }
+        try {
+            if (function_exists('multi_ip_gate')) {
+                $gIp = multi_ip_gate($pdo, client_ip());
+                if (!$gIp['ok']) {
+                    $bl = multi_bypass_emails();
+                    $ce = strtolower(trim($candEmail));
+                    $isBy = $bl && $ce !== '' && (in_array($ce, $bl, true) || in_array(multi_normalize_email($ce), $bl, true));
+                    if (!$isBy) { oauth_err_set('iplimit'); return null; }
+                }
+            }
+        } catch (Throwable $eIp) {}
         $seed = $n['name'] ?? ($n['email'] ? strstr($n['email'], '@', true) : 'kullanici');
         $uname = oauth_unique_username($seed, $pdo);
         $email = $n['email'] ?: ($uname . '@' . $p . '.local');
@@ -290,7 +311,7 @@ function oauth_finish(string $p): array {
         return ['target' => '/dashboard/account?linked=' . $p];
     }
     $user = oauth_find_or_create($p, $norm);
-    if (!$user) return ['error' => 'no_user'];
+    if (!$user) return ['error' => (oauth_err_take() ?: 'no_user')];
     // Kayıt sonrası: whitelist + multi koruması (OAuth'ta bypass yok).
     try {
         require_once __DIR__ . '/multi.php';
@@ -300,7 +321,11 @@ function oauth_finish(string $p): array {
             if (!empty($user['email']) && !multi_email_allowed((string)$user['email'])) {
                 return ['error' => 'domain'];
             }
+            if (!multi_is_exempt($pdoM2, (int)$user['id']) && multi_ip_over_cap($pdoM2, client_ip(), (int)$user['id'])) {
+                return ['error' => 'iplimit'];
+            }
             multi_after_login($pdoM2, (int)$user['id']);
+            try { multi_group_sync($pdoM2, (int)$user['id']); } catch (Throwable $eGs) {}
             if (multi_enforce($pdoM2, (int)$user['id']) === 'banned') {
                 return ['error' => 'banned'];
             }

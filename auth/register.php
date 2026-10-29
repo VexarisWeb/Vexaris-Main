@@ -20,6 +20,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $accepted  = !empty($_POST['accept_terms']);
     $pdo = db();
     $rlOk = $pdo ? api_rate_limit($pdo, 'register', client_ip(), 5, 3600) : true;
+    $ipGateOk = true;
+    $ipGateMsg = '';
+    if ($pdo && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        try {
+            $gIp = multi_ip_gate($pdo, client_ip());
+            if (!$gIp['ok']) {
+                $be = strtolower(trim($email));
+                $bl = multi_bypass_emails();
+                $isBy = $bl && $be !== '' && (in_array($be, $bl, true) || in_array(multi_normalize_email($be), $bl, true));
+                if (!$isBy) { $ipGateOk = false; $ipGateMsg = $gIp['msg']; }
+            }
+        } catch (Throwable $eIp) {}
+    }
 
     if (!$pdo) {
         $error = 'Could not connect to the database. Please try again later.';
@@ -33,6 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please enter a valid email address.';
     } elseif (turnstile_enabled() && !turnstile_verify($_POST['cf-turnstile-response'] ?? $_POST['cf_token'] ?? '', client_ip())) {
         $error = 'Security verification failed. Please complete Turnstile.';
+    } elseif (!$ipGateOk) {
+        $error = $ipGateMsg;
     } elseif (strlen($password) < 8) {
         $error = 'Password must be at least 8 characters.';
     } elseif (!preg_match('/[A-Z]/', $password) || !preg_match('/[a-z]/', $password) || !preg_match('/[0-9]/', $password)) {
@@ -61,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $id = (int) $pdo->lastInsertId();
                     multi_after_register($pdo, $id, $multiChk);
+                    try { multi_group_sync($pdo, $id); } catch (Throwable $eGs) {}
                     // Acımasız kural: bağlantılı grupta yeni hesap multi ise anında ban.
                     if (multi_enforce($pdo, $id) === 'banned') {
                         header('Location: /banned');

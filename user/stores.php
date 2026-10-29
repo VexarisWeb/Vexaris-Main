@@ -1,6 +1,7 @@
 <?php
 $activePage = 'stores';
 require_once __DIR__ . '/../core/db.php';
+require_once __DIR__ . '/../core/multi.php';
 boot_session();
 require_login();
 $user = current_user();
@@ -94,6 +95,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $st = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') LIMIT 1 FOR UPDATE");
         $st->execute([$slug]);
         if ($st->fetch()) { $pdo->rollBack(); if ($logoPath !== '' && is_file($logoPath)) @unlink($logoPath); stores_json(['ok' => false, 'msg' => 'Subdomain taken.']); }
+        if (!$isAdmin && $effPlan === 'free') {
+            $gate = multi_store_gate($pdo, $uid, multi_normalize_email($uemail));
+            if (!$gate['ok']) {
+                $pdo->rollBack();
+                if ($logoPath !== '' && is_file($logoPath)) @unlink($logoPath);
+                stores_json(['ok' => false, 'code' => 'device_store_limit', 'msg' => $gate['msg']]);
+            }
+        }
         $st = $pdo->prepare("SELECT password FROM users WHERE id=? LIMIT 1");
         $st->execute([$uid]);
         $ohash = (string)$st->fetchColumn();
@@ -885,6 +894,8 @@ if(createBtn){createBtn.addEventListener('click',function(){
   fd.append('store_name',document.getElementById('nxStoreName').value);
   fd.append('slug',slugIn.value);
   fd.append('cf-turnstile-response',tsToken());
+  fd.append('fp',(window.VXFP&&VXFP.fp)||'');
+  fd.append('vid',(window.VXFP&&VXFP.vid)||'');
   fd.append('category',nxCat);
   fd.append('lang',nxLang);
   if(nxLogo)fd.append('logo',nxLogo);

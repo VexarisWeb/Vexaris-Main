@@ -34,6 +34,63 @@ function multi_ensure_tables(\PDO $pdo): void {
             KEY idx_mf_user (user_id),
             KEY idx_mf_read (is_read)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS multi_groups (
+            id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            gkey         VARCHAR(64) NOT NULL,
+            gtype        VARCHAR(12) NOT NULL DEFAULT 'device',
+            member_ids   VARCHAR(600) NOT NULL DEFAULT '',
+            member_count INT UNSIGNED NOT NULL DEFAULT 0,
+            active_count INT UNSIGNED NOT NULL DEFAULT 0,
+            ip_set       VARCHAR(600) NOT NULL DEFAULT '',
+            reason       VARCHAR(32) NOT NULL DEFAULT '',
+            status       VARCHAR(12) NOT NULL DEFAULT 'watch',
+            first_seen   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_seen    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_mg_gkey (gkey),
+            KEY idx_mg_status (status),
+            KEY idx_mg_type (gtype)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        ensure_column($pdo, 'multi_groups', 'active_count', '`active_count` INT UNSIGNED NOT NULL DEFAULT 0');
+        $pdo->exec("CREATE TABLE IF NOT EXISTS multi_alerts (
+            id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            gkey       VARCHAR(64) NOT NULL DEFAULT '',
+            user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+            is_read    TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_ma_user (user_id),
+            KEY idx_ma_read (is_read),
+            UNIQUE KEY uq_ma_gkey_user (gkey, user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS risk_events (
+            id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+            gkey       VARCHAR(64) NOT NULL DEFAULT '',
+            action     VARCHAR(24) NOT NULL DEFAULT '',
+            decision   VARCHAR(12) NOT NULL DEFAULT '',
+            reasons    VARCHAR(255) NOT NULL DEFAULT '',
+            vid        CHAR(32) NOT NULL DEFAULT '',
+            did        CHAR(32) NOT NULL DEFAULT '',
+            ip         VARCHAR(45) NOT NULL DEFAULT '',
+            bypassed   TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_re_user (user_id),
+            KEY idx_re_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS fp_nonces (
+            nonce      CHAR(32) NOT NULL PRIMARY KEY,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_fn_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        ensure_column($pdo, 'user_devices', 'vid', "`vid` CHAR(32) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'user_devices', 'fp_ver', '`fp_ver` TINYINT NOT NULL DEFAULT 0');
+        ensure_column($pdo, 'user_devices', 'bits', "`bits` VARCHAR(600) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'user_devices', 'fp_salt_ver', '`fp_salt_ver` TINYINT NOT NULL DEFAULT 1');
+        ensure_column($pdo, 'user_devices', 'country', "`country` CHAR(2) NOT NULL DEFAULT ''");
+        ensure_column($pdo, 'user_devices', 'bypassed', '`bypassed` TINYINT(1) NOT NULL DEFAULT 0');
+        try {
+            $hasVid = $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_devices' AND INDEX_NAME = 'idx_ud_vid'")->fetchColumn();
+            if (!(int)$hasVid) $pdo->exec("ALTER TABLE `user_devices` ADD KEY `idx_ud_vid` (`vid`)");
+        } catch (Throwable $eIdx) {}
         ensure_column($pdo, 'users', 'email_norm', "`email_norm` VARCHAR(160) NULL");
         ensure_column($pdo, 'users', 'reg_ip', "`reg_ip` VARCHAR(45) NULL");
         ensure_column($pdo, 'users', 'ban_reason', "`ban_reason` VARCHAR(20) NOT NULL DEFAULT ''");
@@ -176,8 +233,8 @@ function multi_after_register(\PDO $pdo, int $uid, array $chk): void {
         multi_ensure_tables($pdo);
         $ip = client_ip();
         $ua = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
-        $pdo->prepare("INSERT INTO user_devices (user_id, did, fp, ip, user_agent, event) VALUES (?,?,?,?,?,'register')")
-            ->execute([$uid, multi_device_id(), multi_client_fp(), $ip !== '' ? $ip : null, $ua !== '' ? $ua : null]);
+        $pdo->prepare("INSERT INTO user_devices (user_id, did, fp, vid, ip, user_agent, event, bypassed) VALUES (?,?,?,?,?,?,'register',?)")
+            ->execute([$uid, multi_device_id(), multi_client_fp(), multi_client_vid(), $ip !== '' ? $ip : null, $ua !== '' ? $ua : null, multi_is_exempt($pdo, $uid) ? 1 : 0]);
         foreach ((array)($chk['linked'] ?? []) as $lid) {
             multi_flag($pdo, $uid, (int)$lid, 'register_link', 'Kayıtta bağlantılı cihaz: ' . implode(',', (array)($chk['signals'] ?? [])));
         }
@@ -193,17 +250,18 @@ function multi_after_login(\PDO $pdo, int $uid): void {
         multi_ensure_tables($pdo);
         $did = multi_device_id();
         $fp = multi_client_fp();
+        $vid = multi_client_vid();
         $ip = client_ip();
         $ua = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
         $st = $pdo->prepare("SELECT id FROM user_devices WHERE user_id = ? AND did = ? AND fp = ? LIMIT 1");
         $st->execute([$uid, $did, $fp]);
         $rowId = $st->fetchColumn();
         if ($rowId) {
-            $pdo->prepare("UPDATE user_devices SET last_seen = NOW(), ip = ?, user_agent = ? WHERE id = ?")
-                ->execute([$ip !== '' ? $ip : null, $ua !== '' ? $ua : null, (int)$rowId]);
+            $pdo->prepare("UPDATE user_devices SET last_seen = NOW(), ip = ?, user_agent = ?, vid = IF(? <> '', ?, vid), bypassed = ? WHERE id = ?")
+                ->execute([$ip !== '' ? $ip : null, $ua !== '' ? $ua : null, $vid, $vid, multi_is_exempt($pdo, $uid) ? 1 : 0, (int)$rowId]);
         } else {
-            $pdo->prepare("INSERT INTO user_devices (user_id, did, fp, ip, user_agent, event) VALUES (?,?,?,?,?,'login')")
-                ->execute([$uid, $did, $fp, $ip !== '' ? $ip : null, $ua !== '' ? $ua : null]);
+            $pdo->prepare("INSERT INTO user_devices (user_id, did, fp, vid, ip, user_agent, event, bypassed) VALUES (?,?,?,?,?,?,'login',?)")
+                ->execute([$uid, $did, $fp, $vid, $ip !== '' ? $ip : null, $ua !== '' ? $ua : null, multi_is_exempt($pdo, $uid) ? 1 : 0]);
         }
         foreach (multi_linked_ids($pdo, $uid) as $lid => $sig) {
             multi_flag($pdo, $uid, (int)$lid, 'login_link', 'Girişte bağlantı: ' . $sig);
@@ -294,7 +352,9 @@ function multi_ban_reason(\PDO $pdo, int $uid): string {
 // Dönüş: 'clean' | 'main' | 'banned'
 function multi_enforce(\PDO $pdo, int $uid): string {
     if ($uid <= 0 || !multi_enabled()) return 'clean';
+    if (multi_mode() !== 'harsh') return 'clean';
     if (multi_setting('multi_autoban', '1') !== '1') return 'clean';
+    if (multi_is_exempt($pdo, $uid)) return 'clean';
     try {
         multi_ensure_tables($pdo);
         $st = $pdo->prepare("SELECT id, is_admin, role, is_active, created_at FROM users WHERE id = ? LIMIT 1");
@@ -372,4 +432,332 @@ function multi_enforce(\PDO $pdo, int $uid): string {
     } catch (Throwable $e) {
         return 'clean'; // fail-open
     }
+}
+
+function multi_secret(): string {
+    static $s = null;
+    if ($s !== null) return $s;
+    $v = '';
+    foreach (['VX_FP_SECRET', 'VX_MASTER_KEY'] as $k) {
+        $env = getenv($k);
+        if ($env !== false && strlen(trim($env)) >= 32) { $v = trim($env); break; }
+        try {
+            if (function_exists('vx_secret')) {
+                $f = vx_secret($k, '');
+                if (strlen($f) >= 32) { $v = $f; break; }
+            }
+        } catch (Throwable $e) {}
+        $fp = '/var/www/html/install/.vx_master_key';
+        if ($v === '' && is_readable($fp)) {
+            $raw = trim((string)@file_get_contents($fp));
+            if (strlen($raw) >= 32) { $v = $raw; break; }
+        }
+    }
+    $s = $v;
+    return $s;
+}
+
+function fp_hash(string $kind, string $value): string {
+    if ($value === '') return '';
+    $s = multi_secret();
+    if ($s === '') return '';
+    $k = hash_hmac('sha256', $kind . ':v1', $s, true);
+    return substr(hash_hmac('sha256', $value, $k), 0, 32);
+}
+
+function multi_bypass_emails(bool $fresh = false): array {
+    static $list = null;
+    if ($list !== null && !$fresh) return $list;
+    $list = [];
+    try {
+        $raw = multi_setting('multi_bypass_emails', '');
+        foreach (preg_split('/[\s,;]+/', $raw) as $e) {
+            $e = strtolower(trim($e));
+            if ($e !== '' && filter_var($e, FILTER_VALIDATE_EMAIL)) $list[] = $e;
+        }
+        $list = array_values(array_unique($list));
+    } catch (Throwable $e) {}
+    return $list;
+}
+
+function multi_sys_owner_id(\PDO $pdo): int {
+    static $id = null;
+    if ($id !== null) return $id;
+    $id = 0;
+    try { $id = (int)$pdo->query("SELECT id FROM users WHERE is_admin = 1 ORDER BY id ASC LIMIT 1")->fetchColumn(); } catch (Throwable $e) {}
+    return $id;
+}
+
+function multi_is_exempt(\PDO $pdo, int $uid): bool {
+    static $cache = [];
+    if ($uid <= 0) return false;
+    if (array_key_exists($uid, $cache)) return $cache[$uid];
+    $out = false;
+    try {
+        $st = $pdo->prepare("SELECT id, email, is_admin, role FROM users WHERE id = ? LIMIT 1");
+        $st->execute([$uid]);
+        $u = $st->fetch();
+        if ($u) {
+            if ((int)$u['is_admin'] === 1) {
+                $out = true;
+            } elseif ((string)($u['role'] ?? 'user') !== 'user') {
+                $out = true;
+            } elseif (multi_sys_owner_id($pdo) === $uid) {
+                $out = true;
+            } else {
+                $e = strtolower(trim((string)$u['email']));
+                $list = multi_bypass_emails();
+                if ($list && (in_array($e, $list, true) || in_array(multi_normalize_email($e), $list, true))) $out = true;
+            }
+        }
+    } catch (Throwable $e) {}
+    $cache[$uid] = $out;
+    return $out;
+}
+
+function multi_mode(): string {
+    $m = strtolower(trim(multi_setting('multi_mode', 'notify')));
+    return in_array($m, ['off', 'shadow', 'notify', 'graduated', 'harsh'], true) ? $m : 'notify';
+}
+
+function multi_ip_max(): int {
+    $n = (int)multi_setting('multi_ip_max', '3');
+    if ($n < 1) $n = 1;
+    if ($n > 50) $n = 50;
+    return $n;
+}
+
+function multi_ban_threshold(): int {
+    $n = (int)multi_setting('multi_ban_threshold', '3');
+    if ($n < 2) $n = 2;
+    if ($n > 20) $n = 20;
+    return $n;
+}
+
+function multi_exempt_sql(): array {
+    $sql = " AND is_admin = 0 AND role = 'user'";
+    $args = [];
+    $list = multi_bypass_emails();
+    if ($list) {
+        $sql .= " AND email NOT IN (" . implode(',', array_fill(0, count($list), '?')) . ")";
+        foreach ($list as $e) $args[] = $e;
+    }
+    return [$sql, $args];
+}
+
+function multi_ip_active_count(\PDO $pdo, string $ip, int $excludeUid = 0): int {
+    if ($ip === '') return 0;
+    try {
+        [$exSql, $exArgs] = multi_exempt_sql();
+        $sql = "SELECT COUNT(*) FROM users WHERE reg_ip = ? AND is_active = 1 AND reg_ip <> ''" . $exSql;
+        $args = array_merge([$ip], $exArgs);
+        if ($excludeUid > 0) { $sql .= " AND id <> ?"; $args[] = $excludeUid; }
+        $st = $pdo->prepare($sql);
+        $st->execute($args);
+        return (int)$st->fetchColumn();
+    } catch (Throwable $e) { return 0; }
+}
+
+function multi_ip_over_cap(\PDO $pdo, string $ip, int $uid): bool {
+    if ($ip === '' || $uid <= 0) return false;
+    try {
+        [$exSql, $exArgs] = multi_exempt_sql();
+        $sql = "SELECT COUNT(*) FROM users WHERE reg_ip = ? AND reg_ip <> '' AND is_active = 1 AND id < ?" . $exSql;
+        $st = $pdo->prepare($sql);
+        $st->execute(array_merge([$ip, $uid], $exArgs));
+        return (int)$st->fetchColumn() >= multi_ip_max();
+    } catch (Throwable $e) { return false; }
+}
+
+function multi_ip_gate(\PDO $pdo, string $ip): array {
+    if (!multi_enabled() || multi_mode() === 'off') return ['ok' => true, 'msg' => ''];
+    $max = multi_ip_max();
+    $n = multi_ip_active_count($pdo, $ip);
+    if ($n >= $max) {
+        return ['ok' => false, 'msg' => 'Rate limit exceeded — too many accounts from this network. Contact info@vexaris.net if you believe this is a mistake.'];
+    }
+    return ['ok' => true, 'msg' => ''];
+}
+
+function multi_client_vid(): string {
+    $v = strtolower(trim((string)($_POST['vid'] ?? ($_COOKIE['vex_vid'] ?? ''))));
+    return (bool)preg_match('/^[0-9a-f]{32}$/', $v) ? $v : '';
+}
+
+function multi_linked_device_users(\PDO $pdo, int $uid, string $emailNorm = ''): array {
+    $out = [];
+    if ($uid <= 0) return $out;
+    try {
+        $st = $pdo->prepare("SELECT DISTINCT vid, did FROM user_devices WHERE user_id = ?");
+        $st->execute([$uid]);
+        foreach ($st->fetchAll() as $d) {
+            foreach (['vid', 'did'] as $col) {
+                if (empty($d[$col])) continue;
+                $q = $pdo->prepare("SELECT DISTINCT d.user_id FROM user_devices d JOIN users u ON u.id = d.user_id AND u.is_active = 1 WHERE d.`$col` = ? AND d.user_id <> ? LIMIT 20");
+                $q->execute([$d[$col], $uid]);
+                foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $x) $out[(int)$x] = $col;
+            }
+        }
+        $st = $pdo->prepare("SELECT id FROM users WHERE id = ? LIMIT 1");
+        $st->execute([$uid]);
+        $row = $st->fetch();
+        if (!$row) return $out;
+        if ($emailNorm === '') {
+            $e = $pdo->prepare("SELECT email_norm FROM users WHERE id = ? LIMIT 1");
+            $e->execute([$uid]);
+            $emailNorm = (string)$e->fetchColumn();
+        }
+        if ($emailNorm !== '') {
+            $q = $pdo->prepare("SELECT id FROM users WHERE email_norm = ? AND id <> ? LIMIT 20");
+            $q->execute([$emailNorm, $uid]);
+            foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $x) $out[(int)$x] = $out[(int)$x] ?? 'email_norm';
+        }
+    } catch (Throwable $e) {}
+    return $out;
+}
+
+function multi_store_gate(\PDO $pdo, int $uid, string $emailNorm = ''): array {
+    if (!multi_enabled() || multi_mode() === 'off') return ['ok' => true, 'msg' => '', 'linked' => []];
+    if ($uid <= 0) return ['ok' => true, 'msg' => '', 'linked' => []];
+    try {
+        multi_ensure_tables($pdo);
+        if (multi_is_exempt($pdo, $uid)) return ['ok' => true, 'msg' => '', 'linked' => []];
+        $linked = multi_linked_device_users($pdo, $uid, $emailNorm);
+        if (!$linked) return ['ok' => true, 'msg' => '', 'linked' => []];
+        $hit = [];
+        foreach (array_keys($linked) as $lid) {
+            $st = $pdo->prepare("SELECT COUNT(*) FROM hosted_stores WHERE user_id = ? AND status IN ('active','provisioning')");
+            $st->execute([$lid]);
+            $n = (int)$st->fetchColumn();
+            if ($n === 0) {
+                $st = $pdo->prepare("SELECT COUNT(*) FROM hosting_jobs WHERE user_id = ? AND status IN ('pending','claimed')");
+                $st->execute([$lid]);
+                $n = (int)$st->fetchColumn();
+            }
+            if ($n > 0) $hit[] = $lid;
+        }
+        if ($hit) {
+            return ['ok' => false, 'linked' => $hit,
+                'msg' => 'A store already exists on this device. One free store per person — delete the existing store or upgrade. Contact info@vexaris.net if you believe this is a mistake.'];
+        }
+    } catch (Throwable $e) {}
+    return ['ok' => true, 'msg' => '', 'linked' => []];
+}
+
+function risk_event_log(\PDO $pdo, int $uid, string $gkey, string $action, string $decision, string $reasons = '', string $vid = '', string $did = '', string $ip = '', bool $bypassed = false): void {
+    if ($uid <= 0) return;
+    try {
+        $pdo->prepare("INSERT INTO risk_events (user_id, gkey, action, decision, reasons, vid, did, ip, bypassed) VALUES (?,?,?,?,?,?,?,?,?)")
+            ->execute([$uid, $gkey, $action, $decision, mb_substr($reasons, 0, 255), $vid, $did, $ip, $bypassed ? 1 : 0]);
+    } catch (Throwable $e) {}
+}
+
+function multi_group_upsert(\PDO $pdo, string $gkey, string $gtype, array $members, array $ips, string $reason, int $activeCount = 0): void {
+    if ($gkey === '' || !$members) return;
+    try {
+        $ids = implode(',', array_map('intval', $members));
+        $ipStr = implode(',', array_slice(array_values(array_unique(array_filter($ips))), 0, 40));
+        $st = $pdo->prepare("SELECT id, status FROM multi_groups WHERE gkey = ? LIMIT 1");
+        $st->execute([$gkey]);
+        $row = $st->fetch();
+        if ($row) {
+            $pdo->prepare("UPDATE multi_groups SET member_ids = ?, member_count = ?, active_count = ?, ip_set = ?, last_seen = NOW(), reason = ? WHERE id = ?")
+                ->execute([$ids, count($members), $activeCount, $ipStr, $reason, (int)$row['id']]);
+        } else {
+            $pdo->prepare("INSERT INTO multi_groups (gkey, gtype, member_ids, member_count, active_count, ip_set, reason, status) VALUES (?,?,?,?,?,?,?, 'watch')")
+                ->execute([$gkey, $gtype, $ids, count($members), $activeCount, $ipStr, $reason]);
+        }
+        $alertMin = $gtype === 'ip' ? max(3, multi_ban_threshold()) : 2;
+        if ($activeCount >= $alertMin) {
+            $admins = $pdo->query("SELECT id FROM users WHERE is_admin = 1 AND is_active = 1")->fetchAll(PDO::FETCH_COLUMN);
+            $ins = $pdo->prepare("INSERT IGNORE INTO multi_alerts (gkey, user_id) VALUES (?,?)");
+            foreach ($admins as $aid) $ins->execute([$gkey, (int)$aid]);
+        }
+    } catch (Throwable $e) {}
+}
+
+function multi_group_sync(\PDO $pdo, int $uid): array {
+    $out = ['groups' => 0, 'alerts' => 0];
+    if ($uid <= 0 || !multi_enabled() || multi_mode() === 'off') return $out;
+    try {
+        multi_ensure_tables($pdo);
+        $vids = []; $dids = []; $ips = [];
+        $st = $pdo->prepare("SELECT vid, did, ip FROM user_devices WHERE user_id = ?");
+        $st->execute([$uid]);
+        foreach ($st->fetchAll() as $m) {
+            if (!empty($m['vid'])) $vids[(string)$m['vid']] = true;
+            if (!empty($m['did'])) $dids[(string)$m['did']] = true;
+            if (!empty($m['ip'])) $ips[(string)$m['ip']] = true;
+        }
+        $st = $pdo->prepare("SELECT reg_ip FROM users WHERE id = ? LIMIT 1");
+        $st->execute([$uid]);
+        $regIp = (string)$st->fetchColumn();
+        if ($regIp !== '') $ips[$regIp] = true;
+        $exempt = multi_is_exempt($pdo, $uid);
+
+        foreach (['vid' => $vids, 'did' => $dids] as $col => $set) {
+            foreach (array_keys($set) as $val) {
+                $q = $pdo->prepare("SELECT d.user_id AS uid, MAX(u.is_active) AS act, GROUP_CONCAT(DISTINCT d.ip) AS ips
+                    FROM user_devices d JOIN users u ON u.id = d.user_id
+                    WHERE d.`$col` = ? GROUP BY d.user_id");
+                $q->execute([$val]);
+                $ms = []; $active = 0; $ipx = [];
+                foreach ($q->fetchAll() as $r) {
+                    $ms[(int)$r['uid']] = true;
+                    if ((int)$r['act'] === 1) $active++;
+                    foreach (explode(',', (string)$r['ips']) as $oneIp) {
+                        $oneIp = trim($oneIp);
+                        if ($oneIp !== '') $ipx[] = $oneIp;
+                    }
+                }
+                if (count($ms) < 2) continue;
+                $gkey = ($col === 'vid' ? 'd_' : 'c_') . $val;
+                multi_group_upsert($pdo, $gkey, 'device', array_keys($ms), $ipx, $col === 'vid' ? 'same_fingerprint' : 'same_cookie', $active);
+                $out['groups']++;
+                if (!$exempt && $active >= 2) {
+                    risk_event_log($pdo, $uid, $gkey, 'group_sync', 'watch', $col === 'vid' ? 'same_fingerprint' : 'same_cookie', $col === 'vid' ? $val : '', $col === 'did' ? $val : '', $regIp);
+                }
+            }
+        }
+        foreach (array_keys($ips) as $ipx) {
+            $q = $pdo->prepare("SELECT id FROM users WHERE reg_ip = ? AND is_active = 1");
+            $q->execute([$ipx]);
+            $ms = [];
+            foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $x) $ms[(int)$x] = true;
+            if (count($ms) < 2) continue;
+            multi_group_upsert($pdo, 'i_' . md5($ipx), 'ip', array_keys($ms), [$ipx], 'shared_ip', count($ms));
+            $out['groups']++;
+        }
+    } catch (Throwable $e) {}
+    return $out;
+}
+
+function multi_groups_rebuild_all(\PDO $pdo): array {
+    $out = ['users' => 0, 'groups' => 0];
+    try {
+        multi_ensure_tables($pdo);
+        $ids = $pdo->query("SELECT DISTINCT user_id FROM user_devices WHERE user_id > 0")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($ids as $uid) {
+            multi_group_sync($pdo, (int)$uid);
+            $out['users']++;
+        }
+        $out['groups'] = (int)$pdo->query("SELECT COUNT(*) FROM multi_groups")->fetchColumn();
+    } catch (Throwable $e) {}
+    return $out;
+}
+
+function multi_open_alert_count(\PDO $pdo, int $adminId = 0): int {
+    try {
+        $st = $pdo->prepare("SELECT COUNT(DISTINCT a.gkey) FROM multi_alerts a JOIN multi_groups g ON g.gkey = a.gkey WHERE a.user_id = ? AND a.is_read = 0 AND g.status = 'watch'");
+        $st->execute([$adminId]);
+        return (int)$st->fetchColumn();
+    } catch (Throwable $e) { return 0; }
+}
+
+function multi_group_rows(\PDO $pdo, string $status = 'watch', int $limit = 100): array {
+    try {
+        $st = $pdo->prepare("SELECT * FROM multi_groups WHERE status = ? ORDER BY member_count DESC, last_seen DESC LIMIT " . (int)$limit);
+        $st->execute([$status]);
+        return $st->fetchAll();
+    } catch (Throwable $e) { return []; }
 }

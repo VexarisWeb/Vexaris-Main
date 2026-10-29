@@ -38,9 +38,13 @@ if ($act === 'callback') {
         header('Location: /banned');
         exit;
     }
-    if ($code !== 'taken' && $code !== 'domain') $code = 'social';
+    if ($code !== 'taken' && $code !== 'domain' && $code !== 'iplimit') $code = 'social';
     if ($code === 'domain') {
         header('Location: ' . (is_logged_in() ? '/dashboard/account?err=domain' : '/login?err=domain'));
+        exit;
+    }
+    if ($code === 'iplimit') {
+        header('Location: /login?err=iplimit');
         exit;
     }
     header('Location: ' . (is_logged_in() ? '/dashboard/account?err=' . $code : '/login?err=social'));

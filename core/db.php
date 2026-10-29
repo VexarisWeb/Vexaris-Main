@@ -867,6 +867,68 @@ function run_migrations(): void {
             PRIMARY KEY (ticket_id, user_id),
             KEY idx_tt_time (updated_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS multi_groups (
+            id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            gkey         VARCHAR(64) NOT NULL,
+            gtype        VARCHAR(12) NOT NULL DEFAULT 'device',
+            member_ids   VARCHAR(600) NOT NULL DEFAULT '',
+            member_count INT UNSIGNED NOT NULL DEFAULT 0,
+            active_count INT UNSIGNED NOT NULL DEFAULT 0,
+            ip_set       VARCHAR(600) NOT NULL DEFAULT '',
+            reason       VARCHAR(32) NOT NULL DEFAULT '',
+            status       VARCHAR(12) NOT NULL DEFAULT 'watch',
+            first_seen   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_seen    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_mg_gkey (gkey),
+            KEY idx_mg_status (status),
+            KEY idx_mg_type (gtype)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        ensure_column($pdo, 'multi_groups', 'active_count', '`active_count` INT UNSIGNED NOT NULL DEFAULT 0');
+        $pdo->exec("CREATE TABLE IF NOT EXISTS multi_alerts (
+            id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            gkey       VARCHAR(64) NOT NULL DEFAULT '',
+            user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+            is_read    TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_ma_user (user_id),
+            KEY idx_ma_read (is_read),
+            UNIQUE KEY uq_ma_gkey_user (gkey, user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS risk_events (
+            id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+            gkey       VARCHAR(64) NOT NULL DEFAULT '',
+            action     VARCHAR(24) NOT NULL DEFAULT '',
+            decision   VARCHAR(12) NOT NULL DEFAULT '',
+            reasons    VARCHAR(255) NOT NULL DEFAULT '',
+            vid        CHAR(32) NOT NULL DEFAULT '',
+            did        CHAR(32) NOT NULL DEFAULT '',
+            ip         VARCHAR(45) NOT NULL DEFAULT '',
+            bypassed   TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_re_user (user_id),
+            KEY idx_re_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS fp_nonces (
+            nonce      CHAR(32) NOT NULL PRIMARY KEY,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_fn_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        try {
+            $hasUd = (bool)$pdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_devices'")->fetchColumn();
+        } catch (Exception $e) { $hasUd = false; }
+        if ($hasUd) {
+            ensure_column($pdo, 'user_devices', 'vid', "`vid` CHAR(32) NOT NULL DEFAULT ''");
+            ensure_column($pdo, 'user_devices', 'fp_ver', '`fp_ver` TINYINT NOT NULL DEFAULT 0');
+            ensure_column($pdo, 'user_devices', 'bits', "`bits` VARCHAR(600) NOT NULL DEFAULT ''");
+            ensure_column($pdo, 'user_devices', 'fp_salt_ver', '`fp_salt_ver` TINYINT NOT NULL DEFAULT 1');
+            ensure_column($pdo, 'user_devices', 'country', "`country` CHAR(2) NOT NULL DEFAULT ''");
+            ensure_column($pdo, 'user_devices', 'bypassed', '`bypassed` TINYINT(1) NOT NULL DEFAULT 0');
+        }
+        try {
+            $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('multi_mode','notify'),('multi_ban_threshold','3'),('multi_ip_max','3'),('multi_bypass_emails','')");
+        } catch (Exception $e) {}
     } catch (Exception $e) {
         error_log('Vexaris migration hatası: ' . $e->getMessage());
     }

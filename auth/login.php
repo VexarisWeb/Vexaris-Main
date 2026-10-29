@@ -61,6 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         header('Location: /banned?why=' . urlencode((string)($user['ban_reason'] ?? 'ban')));
                         exit;
                     }
+                    $overCap = false;
+                    try {
+                        $overCap = !multi_is_exempt($pdo, (int)$user['id']) && multi_ip_over_cap($pdo, $rlIp, (int)$user['id']);
+                    } catch (Throwable $eCap) {}
+                    if ($overCap) {
+                        $error = 'Rate limit exceeded — too many accounts from this network. Contact info@vexaris.net if you believe this is a mistake.';
+                    } else {
                     // Bağlantılı grupta bu hesap multi ise anında ban (oturum açılmadan).
                     try {
                         if (multi_enforce($pdo, (int)$user['id']) === 'banned') {
@@ -78,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     session_regenerate_id(true);
                     try { $pdo->prepare("DELETE FROM api_rate_limits WHERE ip=? AND scope IN ('login',?)")->execute([$rlIp, $rlUser]); } catch (Throwable $eRl) {}
                     try { multi_after_login($pdo, (int)$user['id']); } catch (Throwable $e0) {}
+                    try { multi_group_sync($pdo, (int)$user['id']); } catch (Throwable $eGs) {}
                     if ($remember) {
                         try {
                             $pdoR = db();
@@ -94,6 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $afterLogin = vex_safe_next($_POST['next'] ?? '');
                     header('Location: ' . ($afterLogin ?: ($user['is_admin'] ? '/admin' : '/dashboard')));
                     exit;
+                    }
                 } else {
                     $error = 'Email/username or password is incorrect.';
                 }
@@ -107,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (!$error && isset($_GET['err'])) {
-    $errMap = ['social' => 'Social sign-in failed. Please try again.', 'disabled' => 'This sign-in method is currently disabled.', 'activation' => 'Activation link is invalid or expired.', 'domain' => 'This email provider is not accepted. Please use a trusted provider (Gmail, Yahoo, Outlook, iCloud, Proton or similar).'];
+    $errMap = ['social' => 'Social sign-in failed. Please try again.', 'disabled' => 'This sign-in method is currently disabled.', 'activation' => 'Activation link is invalid or expired.', 'domain' => 'This email provider is not accepted. Please use a trusted provider (Gmail, Yahoo, Outlook, iCloud, Proton or similar).', 'iplimit' => 'Rate limit exceeded — too many accounts from this network. Contact info@vexaris.net if you believe this is a mistake.'];
     if (isset($errMap[$_GET['err']])) $error = $errMap[$_GET['err']];
 }
 
