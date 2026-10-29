@@ -91,6 +91,19 @@ try {
     $counts['spam']  = (int)$pdo->query("SELECT COUNT(*) FROM store_reports WHERE status='spam'")->fetchColumn();
     $counts['all']   = (int)$pdo->query("SELECT COUNT(*) FROM store_reports")->fetchColumn();
     $counts['pending'] = (int)$pdo->query("SELECT COUNT(*) FROM store_reports WHERE spam_checked=0 AND status='new'")->fetchColumn();
+
+    $fpCounts = [];
+    $fps = [];
+    foreach ((array)$rows as $__r) {
+        $__fp = (string)($__r['fp'] ?? '');
+        if ($__fp !== '') $fps[$__fp] = true;
+    }
+    if ($fps) {
+        $in = implode(',', array_fill(0, count($fps), '?'));
+        $st = $pdo->prepare("SELECT fp, COUNT(*) FROM store_reports WHERE fp IN ($in) GROUP BY fp");
+        $st->execute(array_keys($fps));
+        foreach ((array)$st->fetchAll(\PDO::FETCH_NUM) as $__c) $fpCounts[(string)$__c[0]] = (int)$__c[1];
+    }
 } catch (\Throwable $e) {}
 
 $cfgEnabled = report_setting($pdo, 'report_enabled', '1') === '1';
@@ -154,6 +167,7 @@ $statusBadge = function (string $st): string {
                     <th style="width:150px">Sebep</th>
                     <th>Mesaj</th>
                     <th style="width:110px">IP</th>
+                    <th style="width:110px">Ziyaretçi</th>
                     <th style="width:110px">CLEF</th>
                     <th style="width:80px">Durum</th>
                     <th style="width:210px;text-align:center">İşlemler</th>
@@ -161,7 +175,7 @@ $statusBadge = function (string $st): string {
             </thead>
             <tbody>
                 <?php if (!$rows): ?>
-                <tr><td colspan="9" style="text-align:center;padding:2.5rem" class="text-muted">Rapor yok.</td></tr>
+                <tr><td colspan="10" style="text-align:center;padding:2.5rem" class="text-muted">Rapor yok.</td></tr>
                 <?php endif; ?>
                 <?php foreach ($rows as $r): ?>
                 <tr>
@@ -184,6 +198,16 @@ $statusBadge = function (string $st): string {
                         <?php else: ?><span class="text-muted">—</span><?php endif; ?>
                     </td>
                     <td class="text-muted" style="font-size:.75rem"><?= e2((string)$r['ip']) ?></td>
+                    <td class="text-muted" style="font-size:.72rem">
+                        <?php $__fp = (string)($r['fp'] ?? ''); ?>
+                        <?php if ($__fp !== ''): ?>
+                            <code style="font-size:.7rem"><?= e2(substr($__fp, 0, 8)) ?></code>
+                            <?php $__n = (int)($fpCounts[$__fp] ?? 1); ?>
+                            <?php if ($__n > 1): ?>
+                            <div style="color:#fbbf24;font-weight:700"><?= $__n ?> rapor</div>
+                            <?php endif; ?>
+                        <?php else: ?><span>—</span><?php endif; ?>
+                    </td>
                     <td>
                         <?php if ((int)$r['spam_checked'] === 1): ?>
                         <span style="font-size:.78rem;font-weight:700;color:<?= (int)$r['spam'] === 1 ? '#f87171' : '#4ade80' ?>"><?= (int)$r['spam_score'] ?>%</span>
