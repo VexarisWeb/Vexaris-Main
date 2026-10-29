@@ -14,7 +14,7 @@ $BASE = isset($BASE) ? $BASE : '';
           Open your store today,<br />keep 100% of every sale.
         </h2>
         <p class="mt-4 max-w-lg text-[15px] leading-relaxed text-[#9aa3ac]">
-          Vexaris takes no cut from your sales — no per-order percentage, no revenue share.
+          Vexaris takes no cut from your sales: no per-order percentage, no revenue share.
           Your branded storefront, automated delivery, and license inventory are ready
           the moment your account is created. Start free, upgrade as you grow.
         </p>

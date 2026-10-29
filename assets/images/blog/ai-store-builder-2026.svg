@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" font-family="'Segoe UI',Arial,sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#131a35"/>
+    </linearGradient>
+    <linearGradient id="acc" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <text x="80" y="120" fill="#8b93b8" font-size="30" letter-spacing="6">2026 PLAYBOOK</text>
+  <text x="80" y="205" fill="#ffffff" font-size="72" font-weight="800">AI Store Builder</text>
+  <text x="80" y="270" fill="#aeb6dd" font-size="38">Set up a digital product store with AI,</text>
+  <text x="80" y="320" fill="#aeb6dd" font-size="38">from one conversation.</text>
+
+  <!-- chat bubble -->
+  <rect x="80" y="380" width="330" height="150" rx="18" fill="#1b2344" stroke="#39406b" stroke-width="2"/>
+  <rect x="105" y="408" width="240" height="16" rx="8" fill="#4d568c"/>
+  <rect x="105" y="438" width="280" height="16" rx="8" fill="#3b4375"/>
+  <rect x="105" y="468" width="190" height="16" rx="8" fill="#3b4375"/>
+  <circle cx="380" cy="510" r="14" fill="#1b2344"/>
+  <text x="105" y="396" fill="#6b76a8" font-size="18">YOUR ANSWERS</text>
+
+  <!-- arrow -->
+  <path d="M440 455 L540 455" stroke="url(#acc)" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <path d="M536 443 L560 455 L536 467" fill="none" stroke="url(#acc)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="452" y="432" fill="#22d3ee" font-size="20" font-weight="700">AI</text>
+
+  <!-- storefront mock -->
+  <rect x="590" y="360" width="530" height="190" rx="16" fill="#101736" stroke="#2c3563" stroke-width="2"/>
+  <rect x="590" y="360" width="530" height="46" rx="16" fill="#1b2344"/>
+  <circle cx="620" cy="383" r="8" fill="#6366f1"/>
+  <rect x="645" y="375" width="150" height="16" rx="8" fill="#39406b"/>
+  <rect x="620" y="430" width="220" height="26" rx="6" fill="url(#acc)" opacity="0.85"/>
+  <rect x="620" y="470" width="300" height="14" rx="7" fill="#39406b"/>
+  <rect x="620" y="496" width="250" height="14" rx="7" fill="#2c3563"/>
+  <rect x="900" y="430" width="90" height="90" rx="10" fill="#1b2344" stroke="#39406b"/>
+  <rect x="1005" y="430" width="90" height="90" rx="10" fill="#1b2344" stroke="#39406b"/>
+  <text x="620" y="540" fill="#6b76a8" font-size="18">LIVE STORE</text>
+
+  <text x="80" y="592" fill="#5f6890" font-size="24" font-weight="600">vexaris.net</text>
+  <text x="950" y="592" fill="#5f6890" font-size="24">0% platform commission</text>
+</svg>
