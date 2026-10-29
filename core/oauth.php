@@ -326,7 +326,8 @@ function oauth_finish(string $p): array {
             }
             multi_after_login($pdoM2, (int)$user['id']);
             try { multi_group_sync($pdoM2, (int)$user['id']); } catch (Throwable $eGs) {}
-            if (multi_enforce($pdoM2, (int)$user['id']) === 'banned') {
+            if (!function_exists('risk_guard')) require_once __DIR__ . '/risk.php';
+            if (risk_guard($pdoM2, (int)$user['id'], 'login') === 'banned') {
                 return ['error' => 'banned'];
             }
             $st = $pdoM2->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");

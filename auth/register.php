@@ -3,6 +3,7 @@ require_once __DIR__ . '/../core/db.php';
 require_once __DIR__ . '/../core/turnstile.php';
 require_once __DIR__ . '/../core/oauth.php';
 require_once __DIR__ . '/../core/multi.php';
+require_once __DIR__ . '/../core/risk.php';
 boot_session();
 
 if (is_logged_in()) {
@@ -78,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     multi_after_register($pdo, $id, $multiChk);
                     try { multi_group_sync($pdo, $id); } catch (Throwable $eGs) {}
                     // Acımasız kural: bağlantılı grupta yeni hesap multi ise anında ban.
-                    if (multi_enforce($pdo, $id) === 'banned') {
+                    if (risk_guard($pdo, $id, 'register') === 'banned') {
                         header('Location: /banned');
                         exit;
                     }

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../core/db.php';
 require_once __DIR__ . '/../core/turnstile.php';
 require_once __DIR__ . '/../core/oauth.php';
 require_once __DIR__ . '/../core/multi.php';
+require_once __DIR__ . '/../core/risk.php';
 boot_session();
 
 function vex_safe_next($v): string {
@@ -70,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                     // Bağlantılı grupta bu hesap multi ise anında ban (oturum açılmadan).
                     try {
-                        if (multi_enforce($pdo, (int)$user['id']) === 'banned') {
+                        if (risk_guard($pdo, (int)$user['id'], 'login') === 'banned') {
                             header('Location: /banned');
                             exit;
                         }
