@@ -33,6 +33,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         report_setting_set($pdo, 'report_rate_hours', (string)max(1, min(168, (int)($_POST['report_rate_hours'] ?? 12))));
         report_setting_set($pdo, 'report_pow_bits', (string)max(10, min(20, (int)($_POST['report_pow_bits'] ?? 14))));
         report_setting_set($pdo, 'report_min_seconds', (string)max(1, min(30, (int)($_POST['report_min_seconds'] ?? 2))));
+        report_setting_set($pdo, 'report_msg_min', (string)max(3, min(500, (int)($_POST['report_msg_min'] ?? 10))));
         report_setting_set($pdo, 'report_domain_daily', (string)max(1, min(100, (int)($_POST['report_domain_daily'] ?? 8))));
         report_setting_set($pdo, 'report_clef_enabled', !empty($_POST['report_clef_enabled']) ? '1' : '0');
         $model = trim(mb_substr((string)($_POST['report_clef_model'] ?? 'clef'), 0, 40));
@@ -247,6 +248,11 @@ $statusBadge = function (string $st): string {
             <div>
                 <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem">En kısa doldurma süresi (sn)</label>
                 <input type="number" min="1" max="30" name="report_min_seconds" value="<?= (int)$cfgMinSec ?>"
+                       style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:.5rem .7rem;font-size:.85rem">
+            </div>
+            <div>
+                <label style="display:block;font-size:.78rem;color:var(--muted);margin-bottom:.35rem">Zorunlu açıklama (en az karakter)</label>
+                <input type="number" min="3" max="500" name="report_msg_min" value="<?= (int)report_msg_min($pdo) ?>"
                        style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:.5rem .7rem;font-size:.85rem">
             </div>
             <div>

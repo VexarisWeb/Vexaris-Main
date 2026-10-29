@@ -147,6 +147,62 @@ function report_scan_pending(\PDO $pdo, int $limit = 5): int {
     return $n;
 }
 
+function report_fp_key(): string {
+    static $k = null;
+    if ($k !== null) return $k;
+    $out = '';
+    if (function_exists('multi_secret')) {
+        try { $out = (string)multi_secret(); } catch (\Throwable $e) {}
+    }
+    if ($out === '' && function_exists('_vx_k')) $out = trim((string)_vx_k());
+    if ($out === '') $out = report_pow_key();
+    $k = $out;
+    return $k;
+}
+
+function report_fp_hash(string $raw): string {
+    $raw = trim($raw);
+    if ($raw === '') return '';
+    $raw = mb_substr($raw, 0, 512);
+    return substr(hash_hmac('sha256', 'rptfp|' . $raw, report_fp_key()), 0, 32);
+}
+
+function report_msg_min(\PDO $pdo): int {
+    $n = (int)report_setting($pdo, 'report_msg_min', '10');
+    if ($n < 3) $n = 3;
+    if ($n > 500) $n = 500;
+    return $n;
+}
+
+function report_server_fp(string $ip): string {
+    $h = function (string $k): string {
+        $v = (string)($_SERVER[$k] ?? '');
+        return mb_strtolower(mb_substr(trim($v), 0, 200));
+    };
+    $ua = $h('HTTP_USER_AGENT');
+    if ($ua === '') return '';
+    $ua = (string)preg_replace('~\s+~', ' ', $ua);
+    $parts = [
+        'ua'  => $ua,
+        'al'  => $h('HTTP_ACCEPT_LANGUAGE'),
+        'cu'  => $h('HTTP_SEC_CH_UA'),
+        'cp'  => $h('HTTP_SEC_CH_UA_PLATFORM'),
+        'cm'  => $h('HTTP_SEC_CH_UA_MOBILE'),
+        'uaf' => $h('HTTP_SEC_CH_UA_FULL_VERSION_LIST'),
+    ];
+    $net = '';
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        $oct = explode('.', $ip);
+        $net = ($oct[0] ?? '') . '.' . ($oct[1] ?? '') . '.' . ($oct[2] ?? '');
+    } elseif (strpos($ip, ':') !== false) {
+        $net = implode(':', array_slice(explode(':', $ip), 0, 4));
+    }
+    $raw = '';
+    foreach ($parts as $k => $v) $raw .= $k . '=' . $v . "\n";
+    $raw .= 'net=' . $net;
+    return substr(hash_hmac('sha256', 'rptsrv|' . $raw, report_fp_key()), 0, 32);
+}
+
 function report_pow_bits(\PDO $pdo): int {
     $b = (int)report_setting($pdo, 'report_pow_bits', '14');
     if ($b < 10) $b = 10;

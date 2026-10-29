@@ -67,6 +67,7 @@ if ($act === 'config') {
         'endpoint' => 'https://vexaris.net/api/report.php',
         'window' => $hours * 3600,
         'hours' => $hours,
+        'msg_min' => report_msg_min($pdo),
         'categories' => $reasons,
     ]);
 }
@@ -187,14 +188,18 @@ try {
 } catch (\Throwable $e) {
 }
 
-$elapsed = (int)($in['elapsed'] ?? 0);
+$elapsed = array_key_exists('elapsed', $in) ? (int)$in['elapsed'] : -1;
 $acts    = (int)($in['acts'] ?? 0);
 $minSec  = max(1, min(30, (int)report_setting($pdo, 'report_min_seconds', '2')));
-if ($elapsed > 86400000) {
-    rpt_json(403, ['ok' => false, 'msg' => 'timing']);
-}
-if ($elapsed < ($minSec * 1000) && $acts < 2) {
-    rpt_json(403, ['ok' => false, 'msg' => 'timing']);
+if ($elapsed >= 0) {
+    if ($elapsed > 86400000) {
+        rpt_json(403, ['ok' => false, 'msg' => 'timing']);
+    }
+    if ($elapsed < ($minSec * 1000) && $acts < 2) {
+        rpt_json(403, ['ok' => false, 'msg' => 'timing']);
+    }
+} elseif (((int)($in['pow_bits'] ?? 0)) > 0 && random_int(1, 50) === 1) {
+    error_log('[VX] report legacy client: ' . $domain);
 }
 
 $domDaily = max(1, min(100, (int)report_setting($pdo, 'report_domain_daily', '8')));
@@ -211,9 +216,10 @@ try {
 $reason = strtolower(trim((string)($in['reason'] ?? '')));
 if (!report_reason_valid($reason)) rpt_json(422, ['ok' => false, 'msg' => 'reason']);
 
+$msgMin = report_msg_min($pdo);
 $message = rpt_text((string)($in['message'] ?? ''), 1500);
-if ($reason === 'other' && mb_strlen($message) < 5) {
-    rpt_json(422, ['ok' => false, 'msg' => 'message_required']);
+if (mb_strlen($message) < $msgMin) {
+    rpt_json(422, ['ok' => false, 'msg' => 'message_required', 'min' => $msgMin]);
 }
 
 $lang = strtolower(trim((string)($in['lang'] ?? 'en'))) === 'tr' ? 'tr' : 'en';
@@ -222,9 +228,15 @@ $storeCat = strtolower(rpt_text((string)($in['store_category'] ?? ''), 30));
 $storeCat = (string)preg_replace('/[^a-z]/', '', $storeCat);
 
 $hours = max(1, min(168, (int)report_setting($pdo, 'report_rate_hours', '12')));
+$fp = report_server_fp($ip);
 try {
-    $st = $pdo->prepare("SELECT created_at FROM store_reports WHERE ip=? AND created_at > DATE_SUB(NOW(), INTERVAL ? HOUR) ORDER BY id DESC LIMIT 1");
-    $st->execute([$ip, $hours]);
+    if ($fp !== '') {
+        $st = $pdo->prepare("SELECT created_at FROM store_reports WHERE (ip=? OR fp=?) AND created_at > DATE_SUB(NOW(), INTERVAL ? HOUR) ORDER BY id DESC LIMIT 1");
+        $st->execute([$ip, $fp, $hours]);
+    } else {
+        $st = $pdo->prepare("SELECT created_at FROM store_reports WHERE ip=? AND created_at > DATE_SUB(NOW(), INTERVAL ? HOUR) ORDER BY id DESC LIMIT 1");
+        $st->execute([$ip, $hours]);
+    }
     $last = $st->fetchColumn();
 } catch (\Throwable $e) {
     $last = false;
@@ -238,8 +250,8 @@ if ($last !== false && $last !== null) {
 
 $ua = mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
 try {
-    $ins = $pdo->prepare("INSERT INTO store_reports (store_name, store_category, domain, origin, reason, message, lang, ip, user_agent) VALUES (?,?,?,?,?,?,?,?,?)");
-    $ins->execute([$storeName, $storeCat, $domain, mb_substr($originHost, 0, 190), $reason, $message, $lang, $ip, $ua]);
+    $ins = $pdo->prepare("INSERT INTO store_reports (store_name, store_category, domain, origin, reason, message, lang, ip, user_agent, fp) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    $ins->execute([$storeName, $storeCat, $domain, mb_substr($originHost, 0, 190), $reason, $message, $lang, $ip, $ua, $fp]);
     $id = (int)$pdo->lastInsertId();
 } catch (\Throwable $e) {
     rpt_json(500, ['ok' => false, 'msg' => 'db']);

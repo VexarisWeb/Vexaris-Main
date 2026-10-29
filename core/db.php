@@ -766,8 +766,10 @@ function run_migrations(): void {
             spam_score     TINYINT      NOT NULL DEFAULT 0,
             spam_reason    VARCHAR(190) NOT NULL DEFAULT '',
             spam_checked   TINYINT(1)   NOT NULL DEFAULT 0,
+            fp             CHAR(32)     NOT NULL DEFAULT '',
             created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
             KEY idx_sr_ip (ip, created_at),
+            KEY idx_sr_fp (fp, created_at),
             KEY idx_sr_status (status, created_at),
             KEY idx_sr_checked (spam_checked, created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
@@ -778,6 +780,12 @@ function run_migrations(): void {
             KEY idx_rpu_created (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        ensure_column($pdo, 'store_reports', 'fp', "`fp` CHAR(32) NOT NULL DEFAULT ''");
+        try {
+            $hasFpIdx = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='store_reports' AND INDEX_NAME='idx_sr_fp'")->fetchColumn();
+            if (!$hasFpIdx) $pdo->exec("ALTER TABLE `store_reports` ADD KEY `idx_sr_fp` (`fp`,`created_at`)");
+        } catch (\Throwable $e) {}
+
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_enabled','0')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_site_key','')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('turnstile_secret','')");
@@ -785,6 +793,7 @@ function run_migrations(): void {
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_rate_hours','12')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_pow_bits','14')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_min_seconds','2')");
+        $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_msg_min','10')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_domain_daily','8')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_clef_enabled','1')");
         $pdo->exec("INSERT IGNORE INTO settings (`key`,`value`) VALUES ('report_clef_model','clef')");
