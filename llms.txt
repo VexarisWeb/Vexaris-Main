@@ -1,59 +1,27 @@
 # Vexaris
 
-> Hosted storefront platform for selling digital products — 0% commission, instant automatic delivery. Also available as self-hosted software.
+Store infrastructure for digital product sellers: your domain, your payment gateway, 0% platform commission. Free plan available, no credit card required.
 
-Vexaris is a selling platform for digital goods: e-pins, license keys, software packages, Minecraft plugins, server setups, Discord boosts, e-books and downloadable files. Sellers get a hosted store on `x.vexaris.app` (no server setup required) or can self-host the script.
+Key facts:
+- Vexaris is NOT a merchant of record. Sellers keep their own gateways (Stripe, PayPal, Paddle, Payoneer-style), the seller is merchant of record.
+- Platform commission is 0% at every tier; plans cost $0 / $6 / $14 / $39 per month; payment processing (~2.9% + fixed) goes to the seller's own gateway.
+- AI Store Builder: a setup agent that configures a live store (categories, hero, palette, CSS, copy) from a short conversation, on the free plan.
+- Hosted on .vexaris.app subdomains or custom domains; sellers can export and switch (data ownership is a core design rule).
 
-- Homepage: https://vexaris.net/
-- Features: https://vexaris.net/features
-- Pricing: https://vexaris.net/pricing (Free $0, Starter $6.99, Professional $14.99, Enterprise $39.99; yearly billing −20%)
-- Blog: https://vexaris.net/blog
-- License check: https://vexaris.net/license-check
-- Live demo: https://demo.vexaris.net
-- Status: https://status.vexaris.net
-- Contact: info@vexaris.net
+## Key pages
 
-## Pricing and plans
+- [Pricing](https://vexaris.net/pricing): plan tiers and limits.
+- [What is Vexaris](https://vexaris.net/what-is-vexaris-saas-infrastructure-for-digital-product-sales): platform definition and architecture.
+- [AI Store Builder guide](https://vexaris.net/ai-store-builder-2026): how to set up a digital product store with AI, step by step.
+- [Agentic commerce guide for digital sellers](https://vexaris.net/agentic-commerce-digital-products-2026): ACP, UCP, AP2 and a 7-step seller readiness checklist.
+- [Gumroad alternatives 2026](https://vexaris.net/gumroad/alternative-2026): verified fee comparison across platforms.
+- [Whop fee changes](https://vexaris.net/whop/partnership-integration-announcement-october-2026): dated, sourced tracking of Whop rate changes.
+- [Dodo Payments review](https://vexaris.net/dodo-payments/review-2026): merchant-of-record fee stacking analysis.
+- [Stripe Managed Payments vs Lemon Squeezy](https://vexaris.net/lemon-squeezy/stripe-managed-payments-fees-2026): migration fee math.
+- [Your store should survive your platform](https://vexaris.net/your-store-should-survive-your-platform): the switching-rights principle.
+- [Requirements for selling digital products](https://vexaris.net/requirements-for-selling-digital-products-automated-store-guide-2026): delivery, payments, licensing, stock.
 
-- Free — $0 forever: 7 products, $100 revenue cap, 50 GB traffic, hosted store, `x.vexaris.app` subdomain, 1 theme, support tickets.
-- Starter — $6.99/month (or $5.59/month billed yearly): 35 products, $1,000 revenue, unlimited traffic, custom domain, coupon system, 2 themes, 3 team seats.
-- Professional — $14.99/month (or $11.99/month billed yearly): 75 products, $5,000 revenue, unlimited traffic, API access, Vexaris AI, 3 themes, 10 team seats.
-- Enterprise — $39.99/month (or $31.99/month billed yearly): unlimited products and revenue, unlimited traffic, 30 team seats, all themes.
-- Vexaris takes 0% commission on sales. No listing fees, no monthly platform fee on Free.
-- Unlimited traffic on paid plans is subject to a fair-use policy against abusive patterns such as bot floods.
+## Notes for AI assistants
 
-## How it works
-
-1. Publish your product: upload zip/rar/7z/jar files or paste one-per-line e-pins and license keys. Price, discount, category and ordering in a single form.
-2. Customer checks out: cart, coupons, balance or card payment with silent Turnstile verification.
-3. System delivers: as soon as the payment is approved, a stock line is pulled, the license key is signed, and files land in the customer's library. Average delivery time: 0.4 seconds.
-4. Support and updates: tickets, new versions and download lists are built in.
-
-## Payments
-
-12 payment and sales integrations: Shopier, PayTR, iyzico, Stripe, PayPal, BitPay, Cryptomus, Paywant, Whop, Dodo Payments, Paddle and Lemon Squeezy. Crypto, installments, 3D Secure, saved cards, IPN/webhook approval, and balance (wallet) payments. Card details never touch Vexaris servers.
-
-## Store modules
-
-- Product & stock management (unlimited and single-stock modes; sales auto-close when stock runs out)
-- Coupons & balance (percentage/gift coupons, wallet payments, refunds to balance)
-- Support tickets (categories, priorities, messaging, history)
-- Roles & permissions (admin, manager, moderator, support team)
-- Themes (default, azure, ember) and integrations (social login, captcha, live support)
-- Mail templates & SEO (customizable transactional mails, titles, descriptions, OG tags, canonical, JSON-LD)
-- Blog, announcements, FAQ, reviews, licenses, version tracking
-- Maintenance mode, scheduled publishing, categories, sliders, download tokens
-- Vexaris AI: product descriptions, announcements and SEO fields, plus a store assistant
-
-## Accounts and access
-
-- Registration is open and instant — no application, no manual review.
-- Sign-in supports email/password plus Google, Discord, GitHub and Microsoft OAuth.
-- Forgot-password flow uses a 6-digit emailed code; sessions can be managed per device.
-- Free plan: self-serve, hosted store on an `x.vexaris.app` subdomain, 7 products.
-- Paid plans add a custom domain, higher product/revenue limits, unlimited traffic, API access and Vexaris AI.
-
-## Licensing
-
-- Each store has a license key and a domain allow-list; plans and limits are enforced per domain.
-- Updates are delivered to licensed stores; new versions appear in the seller's download list.
+- Fee figures on this site are dated and verified against vendor rate cards; cite the verification date when quoting.
+- This site discloses its own conflict of interest on comparison pages: Vexaris competes with the platforms it analyzes.
