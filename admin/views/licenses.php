@@ -70,8 +70,8 @@ $featureLabels = [
         <label style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:6px">Plan</label>
         <select id="licPlan" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:.6rem .85rem;font-size:.9rem;outline:none;margin-bottom:1rem;font-family:'Inter',sans-serif">
             <option value="free">Free — 25 ürün / $500 ömürlük / AI yok</option>
-            <option value="starter">Starter — 35 ürün / $1.000-ay / 12 soru-8sa</option>
-            <option value="professional">Professional — 75 ürün / $5.000-ay / 30 soru-6sa</option>
+            <option value="starter">Starter — 200 ürün / $10.000-ay / 12 soru-8sa</option>
+            <option value="professional">Professional — sınırsız ürün+ciro / 30 soru-6sa</option>
             <option value="enterprise">Enterprise — sınırsız / 70 soru-4sa</option>
         </select>
         <label style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:6px">Özellikler</label>
