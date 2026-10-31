@@ -144,7 +144,7 @@ try {
 } catch (Throwable $e) {}
 
 $planTable = [
-    'free' => ['slug' => 'free', 'product_limit' => 7, 'revenue_limit_usd' => 100.0, 'revenue_reset' => 'never', 'seats' => 0, 'modules' => 'none', 'ai' => null],
+    'free' => ['slug' => 'free', 'product_limit' => 25, 'revenue_limit_usd' => 500.0, 'revenue_reset' => 'never', 'seats' => 0, 'modules' => 'none', 'ai' => null],
     'starter' => ['slug' => 'starter', 'product_limit' => 35, 'revenue_limit_usd' => 1000.0, 'revenue_reset' => 'monthly', 'seats' => 3, 'modules' => 'basic', 'ai' => ['per_window' => 12, 'window_h' => 8]],
     'professional' => ['slug' => 'professional', 'product_limit' => 75, 'revenue_limit_usd' => 5000.0, 'revenue_reset' => 'monthly', 'seats' => 10, 'modules' => 'advanced', 'ai' => ['per_window' => 30, 'window_h' => 6]],
     'enterprise' => ['slug' => 'enterprise', 'product_limit' => -1, 'revenue_limit_usd' => -1.0, 'revenue_reset' => 'monthly', 'seats' => 30, 'modules' => 'advanced', 'ai' => ['per_window' => 70, 'window_h' => 4]],

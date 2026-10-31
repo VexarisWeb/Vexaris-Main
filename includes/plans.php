@@ -5,7 +5,7 @@ $PLANS = [
   ['slug'=>'free','name'=>'Free','icon'=>'spark','desc'=>'Core features to get started.','popular'=>false,
    'price_m'=>'$0','price_y'=>'$0','bill_m'=>'free forever','bill_y'=>'free forever','cta'=>'Start for free',
    'feats'=>[
-    ['Sales commission','0%'],['Products','7'],['Revenue','$100'],['Traffic','50 GB'],['Hosting',true],['Subdomain',true],['Custom domain',false],
+    ['Sales commission','0%'],['Products','25'],['Revenue','$500'],['Traffic','50 GB'],['Hosting',true],['Subdomain',true],['Custom domain',false],
     ['Automatic delivery',true],['Payment integrations',true],['Coupon system',true],['Support tickets',true],
     ['Permission system',false],['Team',false],['Vexaris AI',false],['Themes','1'],['Module system',false],['API',false],['Support','Basic'],
   ]],
