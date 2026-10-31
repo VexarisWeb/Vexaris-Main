@@ -48,10 +48,9 @@ $BASE = isset($BASE) ? $BASE : '';
           delivery for e-pins, e-books, license keys, software packages, and more.
         </p>
         <div class="mt-6 flex gap-2.5">
-          <a href="https://discord.com" target="_blank" rel="noreferrer noopener" aria-label="Discord" class="grid place-items-center w-10 h-10 rounded-lg border border-[#262c33] text-[#9aa3ac] hover:text-[#5865F2] hover:border-[#5865F2]/60 hover:-translate-y-0.5 hover:scale-105 transition-all duration-300"><i class="fa-brands fa-discord text-[18px]"></i></a>
-          <a href="https://x.com" target="_blank" rel="noreferrer noopener" aria-label="X" class="grid place-items-center w-10 h-10 rounded-lg border border-[#262c33] text-[#9aa3ac] hover:text-white hover:border-white/50 hover:-translate-y-0.5 hover:scale-105 transition-all duration-300"><i class="fa-brands fa-x-twitter text-[16px]"></i></a>
-          <a href="https://github.com" target="_blank" rel="noreferrer noopener" aria-label="GitHub" class="grid place-items-center w-10 h-10 rounded-lg border border-[#262c33] text-[#9aa3ac] hover:text-white hover:border-white/50 hover:-translate-y-0.5 hover:scale-105 transition-all duration-300"><i class="fa-brands fa-github text-[18px]"></i></a>
-          <a href="https://instagram.com" target="_blank" rel="noreferrer noopener" aria-label="Instagram" class="grid place-items-center w-10 h-10 rounded-lg border border-[#262c33] text-[#9aa3ac] hover:text-[#E1306C] hover:border-[#E1306C]/60 hover:-translate-y-0.5 hover:scale-105 transition-all duration-300"><i class="fa-brands fa-instagram text-[18px]"></i></a>
+          <a href="https://discord.gg/qxxWph44Gz" target="_blank" rel="noreferrer noopener" aria-label="Discord" class="grid place-items-center w-10 h-10 rounded-lg border border-[#262c33] text-[#9aa3ac] hover:text-[#5865F2] hover:border-[#5865F2]/60 hover:-translate-y-0.5 hover:scale-105 transition-all duration-300"><i class="fa-brands fa-discord text-[18px]"></i></a>
+          <a href="https://youtube.com/@vexarisweb" target="_blank" rel="noreferrer noopener" aria-label="YouTube" class="grid place-items-center w-10 h-10 rounded-lg border border-[#262c33] text-[#9aa3ac] hover:text-[#FF0000] hover:border-[#FF0000]/60 hover:-translate-y-0.5 hover:scale-105 transition-all duration-300"><i class="fa-brands fa-youtube text-[18px]"></i></a>
+          <a href="https://www.instagram.com/vexarisnet" target="_blank" rel="noreferrer noopener" aria-label="Instagram" class="grid place-items-center w-10 h-10 rounded-lg border border-[#262c33] text-[#9aa3ac] hover:text-[#E1306C] hover:border-[#E1306C]/60 hover:-translate-y-0.5 hover:scale-105 transition-all duration-300"><i class="fa-brands fa-instagram text-[18px]"></i></a>
         </div>
       </div>
 
