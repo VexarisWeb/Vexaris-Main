@@ -49,7 +49,7 @@ $VEX_LOGO = '/assets/images/vexaris-logo.png';
         <div class="blog-grid">
             <?php foreach ($posts as $p): ?>
             <a href="/<?= htmlspecialchars($p['slug']) ?>" class="blog-card" aria-label="<?= htmlspecialchars($p['title']) ?>">
-                <?php $cardCover = $p['cover_image'] ?: ('/blog-cover.php?slug=' . rawurlencode((string)$p['slug'])); ?>
+                <?php $cardCover = blog_cover_url($p['cover_image'] ?: ('/blog-cover.php?slug=' . rawurlencode((string)$p['slug']))); ?>
                 <div class="blog-card__img-wrap">
                     <img src="<?= htmlspecialchars($cardCover) ?>" alt="<?= htmlspecialchars($p['title']) ?>"<?= (function_exists('vx_img_attrs') ? vx_img_attrs($cardCover) : '') ?: ' width="1200" height="630"' ?> loading="lazy" decoding="async">
                 </div>

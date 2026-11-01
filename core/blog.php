@@ -142,12 +142,31 @@ function blog_markdown_to_html(string $md): string {
 
 function blog_content_render(string $content): string {
     if (strpos($content, '<') !== false && preg_match('/<[a-z][a-z0-9]*(\s[^<>]*)?\/?>/i', $content)) {
-        return $content;
+        return blog_wrap_tables($content);
     }
     if (preg_match('/(^|\n)\s*(#{1,3}\s|[-*+]\s|>\s|```|\|)|(^|\n)\s*.*\*\*.+\*\*|(^|\n)\s*.*\[[^\]]+\]\([^)]+\)/m', $content)) {
         return blog_markdown_to_html($content);
     }
     return '<p>' . nl2br(htmlspecialchars($content, ENT_QUOTES, 'UTF-8')) . '</p>';
+}
+
+function blog_cover_url(string $path): string {
+    if ($path === '' || strpos($path, '/blog-cover.php') === 0) return $path;
+    $root = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+    $v = 0;
+    if ($root !== '' && $path !== '' && $path[0] === '/') {
+        $file = $root . $path;
+        if (is_file($file)) $v = (int)filemtime($file);
+    }
+    return $v > 0 ? $path . (strpos($path, '?') === false ? '?' : '&') . 'v=' . $v : $path;
+}
+
+function blog_wrap_tables(string $html): string {
+    if (stripos($html, '<table') === false) return $html;
+    $out = preg_replace('#<div\s+class="md-table"\s*>\s*(<table)#i', '$1', $html);
+    if (!is_string($out)) $out = $html;
+    $out = preg_replace('#<table(\s[^>]*)?>(.*?)</table>#is', '<div class="md-table"><table$1>$2</table></div>', $out);
+    return is_string($out) ? $out : $html;
 }
 
 function blog_excerpt_text(array $post, int $len = 160): string {

@@ -143,7 +143,7 @@ $GLOBALS['seoPost'] = $post;
             </div>
         </div>
 
-        <?php $postCover = $post['cover_image'] ?: ('/blog-cover.php?slug=' . rawurlencode((string)$post['slug'])); ?>
+        <?php $postCover = blog_cover_url($post['cover_image'] ?: ('/blog-cover.php?slug=' . rawurlencode((string)$post['slug']))); ?>
         <div class="blog-post__cover">
             <img src="<?= htmlspecialchars($postCover) ?>" alt="<?= htmlspecialchars($post['title']) ?>"<?= (function_exists('vx_img_attrs') ? vx_img_attrs($postCover) : '') ?: ' width="1200" height="630"' ?>>
         </div>
@@ -165,7 +165,7 @@ $GLOBALS['seoPost'] = $post;
             <h3 class="blog-post__other-title">Other Posts</h3>
             <div class="blog-post__other-grid">
                 <?php foreach ($other as $o):
-                    $oCover = ((string)($o['cover_image'] ?? '')) !== '' ? $o['cover_image'] : ('/blog-cover.php?slug=' . rawurlencode((string)$o['slug']));
+                    $oCover = blog_cover_url(((string)($o['cover_image'] ?? '')) !== '' ? $o['cover_image'] : ('/blog-cover.php?slug=' . rawurlencode((string)$o['slug'])));
                 ?>
                 <a href="/<?= htmlspecialchars($o['slug']) ?>" class="other-card" aria-label="<?= htmlspecialchars($o['title']) ?>">
                     <div class="other-card__img">
@@ -230,8 +230,11 @@ $GLOBALS['seoPost'] = $post;
     .blog-post__body .md-table tbody td:first-child { white-space: nowrap; }
     .blog-post__body tbody tr:nth-child(even) { background: rgba(255,255,255,.03); }
     @media (max-width: 700px) {
-        .blog-post__body .md-table table { min-width: 520px; font-size: .86rem; }
-        .blog-post__body .md-table th, .blog-post__body .md-table td { padding: .5rem .6rem; }
+        .blog-post__body .md-table { margin: 1.2rem -1.1rem; border-radius: 0; border-left: 0; border-right: 0; }
+        .blog-post__body .md-table table { min-width: 520px; font-size: .82rem; }
+        .blog-post__body .md-table th, .blog-post__body .md-table td { padding: .45rem .55rem; }
+        .blog-post__body .md-table tbody td:first-child { position: sticky; left: 0; z-index: 2; background: #0b1220; box-shadow: 1px 0 0 rgba(255,255,255,.12); }
+        .blog-post__body .md-table thead th:first-child { position: sticky; left: 0; z-index: 3; background: #0e1a2b; }
     }
     .blog-post__body li { margin-bottom: .4rem; }
     .blog-post__body li::marker { color: var(--cyan); }
