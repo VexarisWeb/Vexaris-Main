@@ -225,16 +225,15 @@ $GLOBALS['seoPost'] = $post;
     .blog-post__body .md-table thead th:last-child, .blog-post__body .md-table tbody td:last-child { border-right: 0; }
     .blog-post__body .md-table thead tr:first-child th { border-top: 0; }
     .blog-post__body .md-table tbody tr:last-child td { border-bottom: 0; }
-    .blog-post__body th, .blog-post__body td { border: 1px solid rgba(255,255,255,.12); padding: .65rem .8rem; text-align: left; vertical-align: top; }
-    .blog-post__body thead th { background: rgba(0,212,255,.08); font-weight: 800; color: #fff; white-space: nowrap; }
-    .blog-post__body .md-table tbody td:first-child { white-space: nowrap; }
+    .blog-post__body th, .blog-post__body td { border: 1px solid rgba(255,255,255,.12); padding: .65rem .8rem; text-align: left; vertical-align: top; word-break: normal; overflow-wrap: normal; hyphens: none; }
+    .blog-post__body thead th { background: rgba(0,212,255,.08); font-weight: 800; color: #fff; }
     .blog-post__body tbody tr:nth-child(even) { background: rgba(255,255,255,.03); }
     @media (max-width: 700px) {
-        .blog-post__body .md-table { margin: 1.2rem -1.1rem; border-radius: 0; border-left: 0; border-right: 0; }
-        .blog-post__body .md-table table { min-width: 520px; font-size: .82rem; }
-        .blog-post__body .md-table th, .blog-post__body .md-table td { padding: .45rem .55rem; }
-        .blog-post__body .md-table tbody td:first-child { position: sticky; left: 0; z-index: 2; background: #0b1220; box-shadow: 1px 0 0 rgba(255,255,255,.12); }
-        .blog-post__body .md-table thead th:first-child { position: sticky; left: 0; z-index: 3; background: #0e1a2b; }
+        .blog-post__body .md-table { margin: 1.2rem 0; border-radius: 12px; }
+        .blog-post__body .md-table table { min-width: 600px; font-size: .86rem; table-layout: auto; }
+        .blog-post__body .md-table th, .blog-post__body .md-table td { padding: .55rem .65rem; }
+        .blog-post__body .md-table th:first-child, .blog-post__body .md-table td:first-child { min-width: 120px; }
+        .blog-post__body .md-table th:not(:first-child), .blog-post__body .md-table td:not(:first-child) { min-width: 170px; }
     }
     .blog-post__body li { margin-bottom: .4rem; }
     .blog-post__body li::marker { color: var(--cyan); }
