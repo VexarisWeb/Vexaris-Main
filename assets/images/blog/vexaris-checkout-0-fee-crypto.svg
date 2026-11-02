@@ -20,7 +20,7 @@
   <text x="76" y="244" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="92" font-weight="800" letter-spacing="-2" fill="#ffffff">0% COMMISSION</text>
   <text x="76" y="344" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="92" font-weight="800" letter-spacing="-2" fill="#ffffff" fill-opacity="0.92">CRYPTO PAYMENTS</text>
 
-  <text x="80" y="404" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="30" fill="#ffffff" fill-opacity="0.72">Introducing Vexaris Checkout | USDT and USDC, TRC-20</text>
+  <text x="80" y="404" font-family="Segoe UI,Helvetica,Arial,sans-serif" font-size="30" fill="#ffffff" fill-opacity="0.72">Introducing Vexaris Checkout | USDT and USDC, six networks</text>
 
   <rect x="660" y="446" width="460" height="96" rx="18" fill="#000000" fill-opacity="0.35"/>
   <text x="688" y="488" font-family="Consolas,Menlo,monospace" font-size="22" fill="#7cf0c4">FUNDS GO TO YOUR WALLET</text>

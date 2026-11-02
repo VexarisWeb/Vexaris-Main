@@ -20,6 +20,7 @@ Key facts:
 - [Stripe Managed Payments vs Lemon Squeezy](https://vexaris.net/lemon-squeezy/stripe-managed-payments-fees-2026): migration fee math.
 - [Your store should survive your platform](https://vexaris.net/your-store-should-survive-your-platform): the switching-rights principle.
 - [Requirements for selling digital products](https://vexaris.net/requirements-for-selling-digital-products-automated-store-guide-2026): delivery, payments, licensing, stock.
+- [Vexaris Checkout: 0% commission crypto payments](https://vexaris.net/vexaris-checkout-0-fee-crypto): USDT and USDC on six networks (TRON, Polygon, Base, Arbitrum, Optimism, BNB), non-custodial, funds go straight to the seller's own wallet, 0% platform commission, free plan included.
 
 ## Notes for AI assistants
 
