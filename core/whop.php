@@ -116,7 +116,11 @@ function whop_create_plan_checkout(string $plan, string $cycle, array $metadata,
             'title' => mb_substr($ptitle, 0, 120, 'UTF-8'),
             'plan_type' => 'renewal',
             'billing_period' => $period,
-            'initial_price' => round($amount, 2),
+            /* initial_price renewal planlarda ILK ODEMEYE EKLENIR (Whop:
+               "for renewal plans, this is charged on top of the first
+               renewal_price"). 6.99+6.99=13.98 gibi cift tahsilat olusuyordu;
+               ilk odeme = renewal_price olmali, yani 0. */
+            'initial_price' => 0,
             'renewal_price' => round($amount, 2),
             'currency' => whop_currency(),
             'product' => [
@@ -138,10 +142,21 @@ function whop_create_plan_checkout(string $plan, string $cycle, array $metadata,
         $url = 'https://whop.com/checkout/' . $res['plan']['id'];
     }
     if ($url === '') return ['error' => 'Whop geçersiz yanıt döndü.'];
+    /* Guvenlik kemeri: sunucu initial_price'i sifirlamadiysa (veya eski
+       cift-ucretli bir plani yeniden kullandiysa) musteriye 2x fiyat
+       gosterilmesin; checkout iptal edilir ve admin log'a yazilir. */
+    $rplan = is_array($res['plan'] ?? null) ? $res['plan'] : [];
+    $rInit = isset($rplan['initial_price']) ? (float)$rplan['initial_price'] : 0.0;
+    $rRenew = isset($rplan['renewal_price']) ? (float)$rplan['renewal_price'] : (float)$amount;
+    if ($rInit > 0.005 || abs(($rInit + $rRenew) - (float)$amount) > 0.011) {
+        error_log('Whop plan fiyat dogrulama hatasi: plan=' . ($rplan['id'] ?? '?')
+            . ' initial=' . $rInit . ' renewal=' . $rRenew . ' beklenen=' . $amount);
+        return ['error' => 'Ödeme yapılandırması doğrulanamadı. Lütfen daha sonra tekrar deneyin.'];
+    }
     return [
         'url' => $url,
         'checkout_id' => (string)($res['id'] ?? ''),
-        'plan_id' => (string)($res['plan']['id'] ?? ''),
+        'plan_id' => (string)($rplan['id'] ?? ''),
     ];
 }
 
