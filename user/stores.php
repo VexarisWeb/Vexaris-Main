@@ -108,7 +108,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $ohash = (string)$st->fetchColumn();
         if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $ohash)) $ohash = '';
         $cat = strtolower(trim((string)($_POST['category'] ?? 'other')));
-        if (!in_array($cat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $cat = 'other';
+        if (!in_array($cat, ['epin', 'ebook', 'design', 'software', 'game', 'other'], true)) $cat = 'other';
         $langSel = strtolower(trim((string)($_POST['lang'] ?? 'en')));
         if ($langSel !== 'tr' && $langSel !== 'en') $langSel = 'en';
         $logoUrl = '';
@@ -217,7 +217,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['action'] ?? ''
         $ohash = (string)$st->fetchColumn();
         if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $ohash)) $ohash = '';
         $ucat = strtolower(trim((string)($row['category'] ?? 'other')));
-        if (!in_array($ucat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $ucat = 'other';
+        if (!in_array($ucat, ['epin', 'ebook', 'design', 'software', 'game', 'other'], true)) $ucat = 'other';
         $ulang = strtolower(trim((string)($row['lang'] ?? 'en')));
         if ($ulang !== 'tr' && $ulang !== 'en') $ulang = 'en';
         $ins = $pdo->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?, ?, '', ?, 'update','pending', ?, ?)");
@@ -385,7 +385,7 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
             <div class="nx-sname"><?= $sname !== '' ? htmlspecialchars($sname) : htmlspecialchars($store['domain']) ?></div>
             <div class="nx-sdom"><?= htmlspecialchars($store['domain']) ?></div>
         </div>
-        <?php $scat = strtolower((string)($store['category'] ?? 'other')); $scMap = ['epin' => 'E-PIN', 'ebook' => 'E-Book', 'design' => 'Design', 'software' => 'Software', 'other' => 'Other']; ?>
+        <?php $scat = strtolower((string)($store['category'] ?? 'other')); $scMap = ['epin' => 'E-PIN', 'ebook' => 'E-Book', 'design' => 'Design', 'software' => 'Software', 'game' => 'Game Server', 'other' => 'Other']; ?>
         <div class="nx-sbadges">
             <span class="nx-sbadge" style="background:rgba(139,92,246,.14);color:#c4a5fb;"><?= htmlspecialchars($scMap[$scat] ?? 'Other') ?></span>
             <span class="nx-sbadge" style="background:<?= $sp === 'free' ? 'rgba(255,255,255,.07);color:#cfd6e4' : 'rgba(0,212,255,.12);color:#7dd7fc' ?>;"><?= htmlspecialchars($sp) ?></span>
@@ -606,7 +606,8 @@ $updAvail = $latestVer !== '' && version_compare($latestVer, (string)($store['ap
                 <button type="button" class="nx-cat" data-cat="ebook"><i class="fas fa-book-open" style="width:18px;text-align:center;color:#8cb8ff;"></i> E-Book / Courses</button>
                 <button type="button" class="nx-cat" data-cat="design"><i class="fas fa-pen-ruler" style="width:18px;text-align:center;color:#8cb8ff;"></i> Design</button>
                 <button type="button" class="nx-cat" data-cat="software"><i class="fas fa-code" style="width:18px;text-align:center;color:#8cb8ff;"></i> Software / Bot</button>
-                <button type="button" class="nx-cat" data-cat="other" style="grid-column:1 / -1;"><i class="fas fa-box" style="width:18px;text-align:center;color:#8cb8ff;"></i> Other</button>
+                <button type="button" class="nx-cat" data-cat="game"><i class="fas fa-gamepad" style="width:18px;text-align:center;color:#8cb8ff;"></i> Game Server</button>
+                <button type="button" class="nx-cat" data-cat="other"><i class="fas fa-box" style="width:18px;text-align:center;color:#8cb8ff;"></i> Other</button>
             </div>
             <div id="nxCatMsg" style="display:none;font-size:12px;color:#f87171;margin-bottom:10px;">Pick what you want to sell to continue.</div>
             <label style="display:block;font-size:12px;font-weight:700;color:#9aa3ac;margin-bottom:6px;">Language</label>

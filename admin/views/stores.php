@@ -2,7 +2,7 @@
 $db = db();
 if (!function_exists('nx_store_type_label')) {
     function nx_store_type_label(string $c): string {
-        $m = ['epin' => 'E-PIN', 'ebook' => 'E-Book', 'design' => 'Design', 'software' => 'Software', 'other' => 'Other'];
+        $m = ['epin' => 'E-PIN', 'ebook' => 'E-Book', 'design' => 'Design', 'software' => 'Software', 'game' => 'Game Server', 'other' => 'Other'];
         return $m[strtolower(trim($c))] ?? 'Other';
     }
 }
@@ -39,7 +39,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && (($_POST['store_action']
                     $plOh = (string)$st->fetchColumn();
                     if (!preg_match('/^\$(2y|2a|argon2i|argon2id)\$/', $plOh)) $plOh = '';
                     $pcat = strtolower(trim((string)($row['category'] ?? 'other')));
-                    if (!in_array($pcat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $pcat = 'other';
+                    if (!in_array($pcat, ['epin', 'ebook', 'design', 'software', 'game', 'other'], true)) $pcat = 'other';
                     $plang = strtolower(trim((string)($row['lang'] ?? 'en')));
                     if ($plang !== 'tr' && $plang !== 'en') $plang = 'en';
                     $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?,?,?, ?, 'provision','pending', ?, ?)")
@@ -77,7 +77,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array(($_POST['store_
                     $oh = (string)$st->fetchColumn();
                     if (!preg_match('/^\\$(2y|2a|argon2i|argon2id)\\$/', $oh)) $oh = '';
                     $mcat = strtolower(trim((string)($row['category'] ?? 'other')));
-                    if (!in_array($mcat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $mcat = 'other';
+                    if (!in_array($mcat, ['epin', 'ebook', 'design', 'software', 'game', 'other'], true)) $mcat = 'other';
                     $mlang = strtolower(trim((string)($row['lang'] ?? 'en')));
                     if ($mlang !== 'tr' && $mlang !== 'en') $mlang = 'en';
                     $db->prepare("INSERT INTO hosting_jobs (user_id, slug, plan, owner, site_name, lang, kind, status, owner_hash, category) VALUES (?,?,?, ?, '', ?, 'update','pending', ?, ?)")
@@ -152,7 +152,7 @@ foreach ($revByCur as $c => $v) $revParts[] = htmlspecialchars(store_money($v, $
                 <tr>
                     <td><?= (int)$r['id'] ?></td>
                     <td><a href="https://<?= htmlspecialchars($r['domain']) ?>" target="_blank" rel="noopener" style="color:var(--cyan);font-weight:600;"><?= htmlspecialchars($r['domain']) ?></a></td>
-                    <td><?php $cat = strtolower((string)($r['category'] ?? 'other')); $cs = ['epin' => 'background:rgba(255,122,26,.14);color:#ffb37a', 'ebook' => 'background:rgba(43,212,255,.14);color:#7dd7fc', 'design' => 'background:rgba(168,85,247,.16);color:#c4a5fb', 'software' => 'background:rgba(34,197,94,.14);color:#4ade80', 'other' => 'background:rgba(255,255,255,.07);color:#cfd6e4']; ?><span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;<?= $cs[$cat] ?? $cs['other'] ?>"><?= htmlspecialchars(nx_store_type_label($cat)) ?></span></td>
+                    <td><?php $cat = strtolower((string)($r['category'] ?? 'other')); $cs = ['epin' => 'background:rgba(255,122,26,.14);color:#ffb37a', 'ebook' => 'background:rgba(43,212,255,.14);color:#7dd7fc', 'design' => 'background:rgba(168,85,247,.16);color:#c4a5fb', 'software' => 'background:rgba(34,197,94,.14);color:#4ade80', 'game' => 'background:rgba(34,197,94,.18);color:#86efac', 'other' => 'background:rgba(255,255,255,.07);color:#cfd6e4']; ?><span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;<?= $cs[$cat] ?? $cs['other'] ?>"><?= htmlspecialchars(nx_store_type_label($cat)) ?></span></td>
                     <td><span style="text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.05em;"><?= htmlspecialchars($r['plan']) ?></span>
                         <form method="POST" action="/admin?tab=stores" style="margin:4px 0 0;display:flex;gap:4px;">
                             <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf ?? '') ?>">

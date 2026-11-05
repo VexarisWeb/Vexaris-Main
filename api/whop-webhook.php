@@ -30,7 +30,7 @@ function whop_downgrade_store(PDO $pdo, int $uid): void {
             $pdo->prepare("UPDATE hosting_jobs SET plan='free' WHERE id=?")->execute([(int)$pendingJob['id']]);
         }
         $dcat = strtolower(trim((string)($srow['category'] ?? 'other')));
-        if (!in_array($dcat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $dcat = 'other';
+        if (!in_array($dcat, ['epin', 'ebook', 'design', 'software', 'game', 'other'], true)) $dcat = 'other';
         $dlang = strtolower(trim((string)($srow['lang'] ?? 'en')));
         if ($dlang !== 'tr' && $dlang !== 'en') $dlang = 'en';
         $pdo->prepare("UPDATE hosted_stores SET plan='free' WHERE slug=?")->execute([$slug]);
@@ -96,7 +96,7 @@ function whop_apply_store_plan(PDO $pdo, int $uid, string $plan, string $metaSlu
         $pdo->prepare("UPDATE hosted_stores SET plan=? WHERE slug=?")->execute([$plan, $slug]);
 
         $cat = strtolower(trim((string)($hrow['category'] ?? 'other')));
-        if (!in_array($cat, ['epin', 'ebook', 'design', 'software', 'other'], true)) $cat = 'other';
+        if (!in_array($cat, ['epin', 'ebook', 'design', 'software', 'game', 'other'], true)) $cat = 'other';
         $lang = strtolower(trim((string)($hrow['lang'] ?? 'en')));
         if ($lang !== 'tr' && $lang !== 'en') $lang = 'en';
         $pending = $pdo->prepare("SELECT id FROM hosting_jobs WHERE slug=? AND status IN ('pending','claimed') ORDER BY id DESC LIMIT 1");
