@@ -155,6 +155,8 @@ function legal_defaults(): array {
 <div class="legal__sect" id="k15">
     <h2>15. Communication</h2>
     <p>For your questions, comments and requests regarding these Terms, you can reach us at <strong>info@vexaris.net</strong> or via the <a href="mailto:destek@vexaris.net">contact form</a> on the Site.</p>
+    <p>By registering an account and accepting these Terms, you consent to receive electronic communications from Vexaris at your registered e-mail address: in addition to service messages required for the operation of your account (activation, password reset, billing, subscription and security notices), product updates, feature announcements and promotional/campaign e-mails sent through authorized e-mail service providers. This consent is given as part of these Terms.</p>
+    <p>Every marketing e-mail contains an unsubscribe link; you may stop marketing communications at any time, free of charge and without providing a reason, by using that link or by contacting <strong>info@vexaris.net</strong>. Service and account-security e-mails continue regardless of this preference. How your personal data is processed in these communications is explained in the Privacy Policy.</p>
 </div>
 
 <div class="legal__sect" id="k16">
@@ -308,6 +310,7 @@ HTML;
         <li>Software hosting and server service providers,</li>
         <li>Payment institutions and banks, including the subscription billing provider (within the scope of purchasing transactions),</li>
         <li>OAuth identity providers, limited to the data required to verify your sign-in,</li>
+        <li>E-mail delivery and messaging service providers, for sending account, security and (where you have consented) marketing e-mails on behalf of Vexaris,</li>
         <li>Authorized public institutions, administrative authorities and courts (in cases of legal obligation),</li>
         <li>Companies providing audit, legal and consultancy services.</li>
     </ul>
