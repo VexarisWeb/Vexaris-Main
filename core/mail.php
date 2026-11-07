@@ -11,11 +11,23 @@ function mail_get_settings(\PDO $pdo): array {
     return $cfg;
 }
 
+function mail_transfer_name(string $transfer): string {
+    $t = strtolower(trim($transfer));
+    $map = ['brevo' => 'Brevo API', 'customerio' => 'Customer.io API', 'smtp' => 'SMTP', 'sendmail' => 'Sunucu (sendmail)'];
+    return $map[$t] ?? ($t !== '' ? $t : 'Sunucu (sendmail)');
+}
+
+function mail_transfer_ready(array $cfg): bool {
+    if (($cfg['mail_enabled'] ?? '0') !== '1') return false;
+    $t = strtolower(trim((string)($cfg['mail_transfer'] ?? 'sendmail')));
+    if ($t === 'brevo') return trim((string)($cfg['mail_brevo_api_key'] ?? '')) !== '';
+    if ($t === 'customerio') return mail_customerio_secret($cfg) !== '';
+    if ($t === 'smtp') return trim((string)($cfg['mail_smtp_host'] ?? '')) !== '' && trim((string)($cfg['mail_smtp_user'] ?? '')) !== '';
+    return true;
+}
+
 function mail_is_configured(\PDO $pdo): bool {
-    $cfg = mail_get_settings($pdo);
-    return (($cfg['mail_enabled'] ?? '0') === '1')
-        && trim((string)($cfg['mail_smtp_host'] ?? '')) !== ''
-        && trim((string)($cfg['mail_smtp_user'] ?? '')) !== '';
+    return mail_transfer_ready(mail_get_settings($pdo));
 }
 
 function mail_render(string $template, array $vars): string {
@@ -61,6 +73,94 @@ function mail_wrap_layout(\PDO $pdo, string $bodyHtml, array $vars): string {
          . '</td></tr></table></td></tr></table></body></html>';
 }
 
+function mail_plain_body(string $bodyHtml, array $vars): string {
+    $plainSrc = mail_render($bodyHtml, $vars);
+    $plainSrc = str_ireplace(['<br>', '<br/>', '<br />', '</p>', '</div>', '</tr>', '</h1>', '</h2>', '</h3>'], "\n", $plainSrc);
+    return html_entity_decode(trim((string)preg_replace('/[ \t\x0B\f]+/', ' ', (string)preg_replace('/\n\s*\n+/', "\n\n", strip_tags($plainSrc)))), ENT_QUOTES, 'UTF-8');
+}
+
+function mail_customerio_secret(array $cfg): string {
+    $key = function_exists('vx_secret') ? trim((string)vx_secret('CIO_APP_KEY')) : '';
+    if ($key === '') $key = trim((string)($cfg['mail_customerio_api_key'] ?? ''));
+    return $key;
+}
+
+function mail_customerio_trigger(string $subject, bool $raw): string {
+    if ($raw) return 'vexaris-support-reply';
+    $s = strtolower($subject);
+    $map = [
+        'password reset code'    => 'vexaris-password-reset',
+        'password was set'       => 'vexaris-password-set',
+        'activate your account'  => 'vexaris-activation',
+        'email verification'     => 'vexaris-email-verification',
+        'store deletion code'    => 'vexaris-store-deletion',
+        'store is ready'         => 'vexaris-store-ready',
+        'store has been deleted' => 'vexaris-store-deleted',
+        'store has been suspend' => 'vexaris-store-suspended',
+    ];
+    foreach ($map as $needle => $trigger) {
+        if (strpos($s, $needle) !== false) return $trigger;
+    }
+    return 'vexaris-transactional';
+}
+
+function mail_send_customerio(\PDO $pdo, array $cfg, string $to, string $subject, string $bodyHtml, array $vars = [], array $from = []): bool {
+    $apiKey = mail_customerio_secret($cfg);
+    if ($apiKey === '' || !function_exists('curl_init')) {
+        error_log('VX mail: Customer.io transfer secili ama API anahtari yok veya curl eksik.');
+        return false;
+    }
+    $fromEmail = trim((string)($from['email'] ?? ''));
+    $fromName = trim((string)($from['name'] ?? ''));
+    if ($fromEmail === '') $fromEmail = trim((string)($cfg['mail_from_email'] ?? ''));
+    if ($fromName === '') $fromName = trim((string)($cfg['mail_from_name'] ?? ''));
+    if ($fromEmail === '') $fromEmail = 'info@vexaris.net';
+    $siteName = '';
+    try {
+        $st = $pdo->prepare("SELECT `value` FROM settings WHERE `key`='site_name' LIMIT 1");
+        $st->execute();
+        $siteName = (string)$st->fetchColumn();
+    } catch (Exception $e) {}
+    if ($fromName === '') $fromName = $siteName !== '' ? $siteName : 'Vexaris';
+    $raw = !empty($from['raw']);
+    $payload = [
+        'to'        => $to,
+        'from'      => '"' . str_replace(['"', "\r", "\n"], ' ', $fromName) . '" <' . $fromEmail . '>',
+        'identifiers' => ['email' => $to],
+        'subject'   => mail_render($subject, $vars),
+        'body'      => $raw ? mail_render($bodyHtml, $vars) : mail_wrap_layout($pdo, $bodyHtml, $vars),
+        'body_plain' => mail_plain_body($bodyHtml, $vars),
+        'transactional_message_id' => mail_customerio_trigger($subject, $raw),
+        'auto_create' => true,
+        'send_to_unsubscribed' => true,
+        'tracked' => (($cfg['mail_cio_tracked'] ?? '0') === '1'),
+        'disable_message_retention' => (($cfg['mail_cio_retention_off'] ?? '1') === '1'),
+        'disable_css_preprocessing' => true,
+    ];
+    $replyTo = trim((string)($from['reply_to'] ?? ''));
+    if ($replyTo !== '') $payload['reply_to'] = $replyTo;
+    $url = trim((string)($cfg['mail_customerio_api_url'] ?? ''));
+    if ($url === '') $url = 'https://api.customer.io/v1/send/email';
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_TIMEOUT => 12,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json', 'Authorization: Bearer ' . $apiKey],
+        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
+    ]);
+    $resp = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($resp === false || $code < 200 || $code >= 300) {
+        error_log('VX mail customerio: HTTP ' . $code . ' ' . ($err !== '' ? $err . ' ' : '') . mb_substr((string)$resp, 0, 240));
+        return false;
+    }
+    return true;
+}
+
 function mail_send_brevo(\PDO $pdo, array $cfg, string $to, string $subject, string $bodyHtml, array $vars = [], array $from = []): bool {
     $apiKey = trim((string)($cfg['mail_brevo_api_key'] ?? ''));
     if ($apiKey === '' || !function_exists('curl_init')) {
@@ -79,9 +179,7 @@ function mail_send_brevo(\PDO $pdo, array $cfg, string $to, string $subject, str
         $siteName = (string)$st->fetchColumn();
     } catch (Exception $e) {}
     if ($fromName === '') $fromName = $siteName !== '' ? $siteName : 'Vexaris';
-    $plainSrc = mail_render($bodyHtml, $vars);
-    $plainSrc = str_ireplace(['<br>', '<br/>', '<br />', '</p>', '</div>', '</tr>', '</h1>', '</h2>', '</h3>'], "\n", $plainSrc);
-    $plain = html_entity_decode(trim((string)preg_replace('/[ \t\x0B\f]+/', ' ', (string)preg_replace('/\n\s*\n+/', "\n\n", strip_tags($plainSrc)))), ENT_QUOTES, 'UTF-8');
+    $plain = mail_plain_body($bodyHtml, $vars);
     $payload = [
         'sender' => ['email' => $fromEmail, 'name' => $fromName],
         'to' => [['email' => $to]],
@@ -116,6 +214,9 @@ function mail_send(\PDO $pdo, string $to, string $subject, string $bodyHtml, arr
     $transfer = strtolower(trim((string)($cfg['mail_transfer'] ?? 'sendmail')));
     if ($transfer === 'brevo') {
         return mail_send_brevo($pdo, $cfg, $to, $subject, $bodyHtml, $vars, $from);
+    }
+    if ($transfer === 'customerio') {
+        return mail_send_customerio($pdo, $cfg, $to, $subject, $bodyHtml, $vars, $from);
     }
 
     if (!is_file(VX_MAIL_AUTOLOAD)) {
@@ -167,9 +268,7 @@ function mail_send(\PDO $pdo, string $to, string $subject, string $bodyHtml, arr
         $mail->addAddress($to);
         $mail->isHTML(true);
         // Düz-metin yedeği: HTML görüntülenemezse asla ham kod görünmesin
-        $plainSrc = mail_render($bodyHtml, $vars);
-        $plainSrc = str_ireplace(['<br>', '<br/>', '<br />', '</p>', '</div>', '</tr>', '</h1>', '</h2>', '</h3>'], "\n", $plainSrc);
-        $mail->AltBody = html_entity_decode(trim((string)preg_replace('/[ \t\x0B\f]+/', ' ', (string)preg_replace('/\n\s*\n+/', "\n\n", strip_tags($plainSrc)))), ENT_QUOTES, 'UTF-8');
+        $mail->AltBody = mail_plain_body($bodyHtml, $vars);
         $mail->Subject = mail_render($subject, $vars);
         $mail->Body    = !empty($from['raw']) ? mail_render($bodyHtml, $vars) : mail_wrap_layout($pdo, $bodyHtml, $vars);
         $mail->send();

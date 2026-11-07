@@ -101,7 +101,7 @@ $ERRMSG = [
 
 $mailCfg = mail_get_settings($pdo);
 $transfer = strtolower(trim((string)($mailCfg['mail_transfer'] ?? 'sendmail')));
-$transferName = ['brevo' => 'Brevo API', 'smtp' => 'SMTP', 'sendmail' => 'Sunucu (sendmail)'][$transfer] ?? $transfer;
+$transferName = mail_transfer_name($transfer);
 $aliases = ib_aliases($pdo, $IB_DEF_ALIASES);
 
 $folder = in_array($_GET['folder'] ?? 'inbox', ['inbox', 'sent', 'starred', 'trash', 'spam'], true) ? (string)($_GET['folder'] ?? 'inbox') : 'inbox';
@@ -531,13 +531,11 @@ if (isset($_GET['sent'])) { $flashOk = $OKMSG['sent']; }
 
 <?php if ($composing): ?>
 <?php
-$mailReady = ($mailCfg['mail_enabled'] ?? '0') === '1';
-if ($transfer === 'brevo') { $mailReady = $mailReady && trim((string)($mailCfg['mail_brevo_api_key'] ?? '')) !== ''; }
-elseif ($transfer === 'smtp') { $mailReady = $mailReady && trim((string)($mailCfg['mail_smtp_host'] ?? '')) !== ''; }
+$mailReady = mail_transfer_ready($mailCfg);
 $cmpTitle = $isFwd ? 'İlet' : ($replyRow ? 'Yanıtla' : 'Yeni Mail');
 ?>
 <?php if (!$mailReady): ?>
-<div class="alert-msg alert-err" style="display:block"><i class="fas fa-triangle-exclamation"></i> Mail servisi hazır değil. <a href="/admin?tab=settings" style="color:inherit;text-decoration:underline">Ayarlar</a> sekmesinden Brevo/SMTP yapılandır.</div>
+<div class="alert-msg alert-err" style="display:block"><i class="fas fa-triangle-exclamation"></i> Mail servisi hazır değil. <a href="/admin?tab=settings" style="color:inherit;text-decoration:underline">Ayarlar</a> sekmesinden Customer.io/Brevo/SMTP yapılandır.</div>
 <?php endif; ?>
 <div class="ib-main">
 <div class="ib-cmp">
@@ -808,9 +806,7 @@ $cmpTitle = $isFwd ? 'İlet' : ($replyRow ? 'Yanıtla' : 'Yeni Mail');
 <?php endif; ?>
 
 <?php
-$mailReadyS = ($mailCfg['mail_enabled'] ?? '0') === '1';
-if ($transfer === 'brevo') { $mailReadyS = $mailReadyS && trim((string)($mailCfg['mail_brevo_api_key'] ?? '')) !== ''; }
-elseif ($transfer === 'smtp') { $mailReadyS = $mailReadyS && trim((string)($mailCfg['mail_smtp_host'] ?? '')) !== ''; }
+$mailReadyS = mail_transfer_ready($mailCfg);
 $sigNow = (string)ib_cfg($pdo, 'mail_signature', '');
 $defFromNow = (string)ib_cfg($pdo, 'mail_default_from', $aliases[0]);
 $spamEnabled = ib_cfg($pdo, 'mail_spam_enabled', '1') === '1';
