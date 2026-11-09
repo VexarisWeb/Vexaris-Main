@@ -17,6 +17,16 @@ if (!function_exists('e')) {
   function e($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 }
 
+$gsLatest = null;
+try {
+  $gsPdo = db();
+  if ($gsPdo) {
+    $gsSt = $gsPdo->prepare("SELECT slug, title, created_at FROM blog_posts WHERE status='published' ORDER BY created_at DESC, id DESC LIMIT 1");
+    $gsSt->execute();
+    $gsLatest = $gsSt->fetch(PDO::FETCH_ASSOC) ?: null;
+  }
+} catch (Throwable $e) { $gsLatest = null; }
+
 $GS_FEATS = [
   ['icon' => 'bolt', 'title' => 'RCON delivery', 'desc' => 'Payment clears, command runs. The buyer types their in game name at checkout and the item is in their inventory before they close the tab.'],
   ['icon' => 'server', 'title' => 'Delivery queue', 'desc' => 'Server offline? The delivery waits with a status and a retry time. Send it again from the panel or close it by hand.'],
@@ -87,9 +97,16 @@ $crumbJson = [
     .gs-hero { position:relative; overflow:hidden; padding:7rem 0 3.5rem; }
     @media (min-width:768px) { .gs-hero { padding:8.5rem 0 5rem; } }
     .gs-dots { position:absolute; inset:0; background-image:radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px); background-size:22px 22px; -webkit-mask-image:radial-gradient(70% 60% at 50% 10%, #000 10%, transparent 100%); mask-image:radial-gradient(70% 60% at 50% 10%, #000 10%, transparent 100%); pointer-events:none; }
-    .gs-hero-grid { position:relative; display:grid; gap:2.5rem; align-items:center; }
-    @media (min-width:1024px) { .gs-hero-grid { grid-template-columns:1.02fr .98fr; gap:3rem; } }
+    .gs-hero-grid { position:relative; display:grid; grid-template-columns:minmax(0,1fr); gap:2.5rem; align-items:center; }
+    .gs-hero-grid > *, .gs-grid > *, .gs-split > *, .gs-honest > *, .gs-faq > * { min-width:0; }
+    @media (min-width:1024px) { .gs-hero-grid { grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr); gap:3rem; } }
     .gs-eyebrow { display:inline-flex; align-items:center; gap:.55rem; font-family:var(--font-mono); font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--gs-grass); border:1px solid rgba(116,192,145,.28); background:rgba(116,192,145,.07); border-radius:999px; padding:.42rem .9rem; }
+    .gs-eyebrow--link { text-decoration:none; max-width:100%; overflow:hidden; transition:border-color .2s ease, background .2s ease; }
+    .gs-eyebrow--link:hover { border-color:rgba(116,192,145,.55); background:rgba(116,192,145,.12); }
+    .gs-eyebrow-k { color:var(--gs-grass-2); opacity:.85; flex-shrink:0; }
+    .gs-eyebrow-k::after { content:''; }
+    .gs-eyebrow-t { min-width:0; flex:1 1 auto; color:#dfe7e1; text-transform:none; letter-spacing:.01em; font-family:var(--font-body); font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .gs-eyebrow-ar { color:var(--gs-grass); flex-shrink:0; }
     .gs-dot { width:6px; height:6px; border-radius:999px; background:var(--gs-grass); box-shadow:0 0 0 3px rgba(116,192,145,.16); flex-shrink:0; }
     .gs-h1 { font-family:var(--font-display); font-weight:800; letter-spacing:-.035em; line-height:1.03; font-size:clamp(2.05rem,4.6vw,3.5rem); margin:1.15rem 0 0; color:#f2f4f2; }
     .gs-lead { color:var(--muted); font-size:15.5px; line-height:1.72; margin-top:1.15rem; max-width:34rem; }
@@ -126,15 +143,15 @@ $crumbJson = [
     @media (min-width:768px) { .gs-sec { padding:5rem 0; } }
     .gs-h2 { font-family:var(--font-display); font-weight:800; letter-spacing:-.03em; font-size:clamp(1.55rem,3.1vw,2.25rem); line-height:1.12; color:#f2f4f2; }
     .gs-sub { color:var(--muted); font-size:14.5px; line-height:1.72; max-width:58ch; margin-top:.75rem; }
-    .gs-grid { display:grid; gap:1rem; grid-template-columns:1fr; margin-top:2rem; }
-    @media (min-width:640px) { .gs-grid { grid-template-columns:1fr 1fr; } }
+    .gs-grid { display:grid; gap:1rem; grid-template-columns:minmax(0,1fr); margin-top:2rem; }
+    @media (min-width:640px) { .gs-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
     @media (min-width:1024px) { .gs-grid { grid-template-columns:repeat(3,1fr); } }
     .gs-card { border:1px solid var(--line); border-radius:14px; background:#10141a; padding:1.25rem 1.2rem; }
     .gs-card-ic { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; background:var(--gs-glow); color:var(--gs-grass); margin-bottom:.85rem; }
     .gs-card h3 { font-family:var(--font-display); font-weight:700; font-size:15.5px; color:#e9e7e2; margin:0 0 .35rem; letter-spacing:-.01em; }
     .gs-card p { font-size:13.5px; line-height:1.65; color:var(--muted); margin:0; }
     .gs-split { display:grid; gap:2.2rem; align-items:start; }
-    @media (min-width:960px) { .gs-split { grid-template-columns:.85fr 1.15fr; gap:3rem; } }
+    @media (min-width:960px) { .gs-split { grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); gap:3rem; } }
     .gs-step { display:flex; gap:.9rem; padding-bottom:1.05rem; border-bottom:1px dashed rgba(255,255,255,.07); }
     .gs-step:last-child { border-bottom:0; padding-bottom:0; }
     .gs-step-n { font-family:var(--font-mono); font-size:11px; color:var(--gs-grass); padding-top:.2rem; flex-shrink:0; }
@@ -192,7 +209,15 @@ $crumbJson = [
       <div class="gs-wrap">
         <div class="gs-hero-grid">
           <div>
+            <?php if ($gsLatest): ?>
+            <a class="gs-eyebrow gs-eyebrow--link" href="/<?= e($gsLatest['slug']) ?>" title="<?= e($gsLatest['title']) ?>">
+              <span class="gs-dot"></span>
+              <span class="gs-eyebrow-k">New guide</span>
+              <span class="gs-eyebrow-t"><?= e($gsLatest['title']) ?></span>
+            </a>
+            <?php else: ?>
             <span class="gs-eyebrow"><span class="gs-dot"></span>Game server stores</span>
+            <?php endif; ?>
             <h1 class="gs-h1">Free webstore<br />for your game server.</h1>
             <p class="gs-lead">Ranks, crates, keys and credits on a page your players can browse. When the payment clears, the store fires the RCON command and the item is in their inventory. No plugin, no manual messages.</p>
             <div class="gs-actions">
