@@ -92,6 +92,9 @@ RewriteRule ^features$            features.php         [L]
 # Fiyatlandırma
 RewriteRule ^pricing$             pricing.php          [L]
 
+# Oyun sunucusu mağazası
+RewriteRule ^game-server-store$    game-server-store.php    [L]
+
 # Sitemap
 RewriteRule ^sitemap\.xml$        sitemap.php          [L]
 

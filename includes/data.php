@@ -4,7 +4,7 @@
 $VEX_LOGO = '/assets/images/vexaris-logo.png';
 
 $FOOTER_COLS = [
-  ['title'=>'Platform','links'=>[['label'=>'Home','href'=>'/'],['label'=>'Features','href'=>'/features'],['label'=>'Pricing','href'=>'/pricing'],['label'=>'Blog','href'=>'/blog'],['label'=>'How It Works','href'=>'/#how-it-works'],['label'=>'Payment Methods','href'=>'/#payments']]],
+  ['title'=>'Platform','links'=>[['label'=>'Home','href'=>'/'],['label'=>'Features','href'=>'/features'],['label'=>'Pricing','href'=>'/pricing'],['label'=>'Game Server Stores','href'=>'/game-server-store'],['label'=>'Blog','href'=>'/blog'],['label'=>'How It Works','href'=>'/#how-it-works'],['label'=>'Payment Methods','href'=>'/#payments']]],
   ['title'=>'Legal','links'=>[['label'=>'Privacy Policy','href'=>'/privacy-policy'],['label'=>'Terms of Use','href'=>'/terms-of-use'],['label'=>'Cookie Policy','href'=>'/cookie-policy']]],
   ['title'=>'Support','links'=>[['label'=>'Help Center','href'=>'#faq'],['label'=>'FAQ','href'=>'#faq'],['label'=>'Contact','href'=>'mailto:destek@vexaris.net'],['label'=>'Status Page','href'=>'https://status.vexaris.net']]],
 ];
