@@ -115,11 +115,14 @@ $crumbJson = [
     .gs-rank span:first-child { font-family:var(--font-mono); font-size:11px; color:#5f6a76; width:12px; flex-shrink:0; }
     .gs-rank-name { color:#d3dae0; font-weight:600; }
     .gs-rank-amt { margin-left:auto; font-family:var(--font-mono); font-size:11.5px; color:var(--gs-grass-2); }
-    .gs-status { margin-top:.85rem; display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; border:1px solid rgba(116,192,145,.25); background:rgba(116,192,145,.07); border-radius:10px; padding:.5rem .6rem; font-family:var(--font-mono); font-size:11px; color:#b9d8c6; }
+    .gs-status { margin-top:.85rem; display:flex; align-items:center; gap:.45rem; border:1px solid rgba(116,192,145,.25); background:rgba(116,192,145,.07); border-radius:10px; padding:.5rem .6rem; font-family:var(--font-mono); font-size:11px; color:#b9d8c6; }
     .gs-status b { color:var(--gs-grass); font-weight:700; }
     .gs-status span, .gs-status b { white-space:nowrap; }
+    .gs-status-host { overflow:hidden; text-overflow:ellipsis; }
+    .gs-status-meta { margin-left:auto; }
     .gs-caption { margin-top:.7rem; font-size:11.5px; color:#7d858e; }
     .gs-sec { padding:4rem 0; border-top:1px solid var(--line); }
+    .gs-sec--last, .gs-sec.gs-sec--last { padding-bottom:0; }
     @media (min-width:768px) { .gs-sec { padding:5rem 0; } }
     .gs-h2 { font-family:var(--font-display); font-weight:800; letter-spacing:-.03em; font-size:clamp(1.55rem,3.1vw,2.25rem); line-height:1.12; color:#f2f4f2; }
     .gs-sub { color:var(--muted); font-size:14.5px; line-height:1.72; max-width:58ch; margin-top:.75rem; }
@@ -234,7 +237,7 @@ $crumbJson = [
                   <div class="gs-rank"><span>1</span><span class="gs-rank-name">Builder_04</span><span class="gs-rank-amt">$38.00</span></div>
                   <div class="gs-rank"><span>2</span><span class="gs-rank-name">nightfarm</span><span class="gs-rank-amt">$24.50</span></div>
                   <div class="gs-rank"><span>3</span><span class="gs-rank-name">kaya_</span><span class="gs-rank-amt">$11.00</span></div>
-                  <div class="gs-status"><span class="gs-dot"></span>play.yourserver.com <b>online</b> 42/100</div>
+                  <div class="gs-status"><span class="gs-dot"></span><span class="gs-status-host">play.yourserver.com</span><span class="gs-status-meta"><b>online</b> 42/100</span></div>
                 </div>
               </div>
             </div>
@@ -359,7 +362,7 @@ $crumbJson = [
       </div>
     </section>
 
-    <section class="gs-sec">
+    <section class="gs-sec gs-sec--last">
       <div class="gs-wrap">
         <h2 class="gs-h2">Questions server owners ask</h2>
         <div class="gs-faq">
@@ -377,5 +380,6 @@ $crumbJson = [
 
   <?php include __DIR__ . '/footer.php'; ?>
 </div>
+<script src="./assets/js/index.js?v=<?= filemtime(__DIR__ . '/assets/js/index.js') ?>"></script>
 </body>
 </html>
