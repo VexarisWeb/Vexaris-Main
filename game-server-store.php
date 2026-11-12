@@ -8,8 +8,8 @@ $loggedIn = is_logged_in();
 $cu = current_user();
 $GLOBALS['seoKey'] = 'game-server-store';
 $GLOBALS['seoFallback'] = [
-  'title' => 'Free Webstore for Your Game Server | 0% Commission',
-  'description' => 'Sell ranks, keys, crates and credits from your own game server store. RCON delivers in game the second payment clears. Free plan, 0% platform commission, no card.',
+  'title' => 'Free Minecraft Server Store Maker | 0% Commission',
+  'description' => 'Build a Minecraft server store for ranks, crates, keys and credits with instant RCON delivery. Free plan, 0% commission, no card. A Tebex alternative.',
 ];
 $BASE = '/';
 
@@ -50,6 +50,7 @@ $GS_FAQ = [
   ['q' => 'Can I sell ranks, keys and crates?', 'a' => 'Anything your server can grant with a console command. LuckPerms ranks, crate keys, in game currency, kits and spawn items all work, because the store only sends the command line you write.'],
   ['q' => 'Is RCON safe to expose?', 'a' => 'RCON traffic is not encrypted, so use a long random password, never reuse your admin password, and restrict the port where your host allows it. The store connects out to your server, so you can whitelist that connection instead of leaving RCON open to the whole internet.'],
   ['q' => 'Which payments can players use?', 'a' => 'Card gateways you connect yourself (Stripe, PayPal, Paddle, Lemon Squeezy, Dodo, iyzico, PayTR, Shopier and others) plus USDT and USDC over six networks with 0% platform commission. Payouts go straight to your own account.'],
+  ['q' => 'Is Vexaris a Tebex alternative?', 'a' => 'Yes, if you keep your own payment gateway. Both give you a hosted storefront and RCON delivery for Minecraft servers. Tebex is the merchant of record, files sales tax for you and takes a flat 5% of every sale. Vexaris stays out of the money: 0% per sale, you connect Stripe, PayPal or a crypto wallet, and you keep the difference. If you sell to players in many countries and do not want to handle VAT yourself, Tebex is the easier answer.'],
 ];
 
 $faqJson = [];
@@ -59,8 +60,8 @@ foreach ($GS_FAQ as $f) {
 $pageJson = [
   '@context' => 'https://schema.org',
   '@type' => 'WebPage',
-  'name' => 'Free webstore for your game server',
-  'description' => 'Game server store with RCON delivery, live server status and a ranking board. Free plan, 0% platform commission.',
+  'name' => 'Free Minecraft server store with RCON delivery',
+  'description' => 'Minecraft server store maker with RCON delivery, live server status and a ranking board. Free plan, 0% platform commission, Tebex alternative.',
   'url' => 'https://vexaris.net/game-server-store',
   'isPartOf' => ['@type' => 'WebSite', 'name' => 'Vexaris', 'url' => 'https://vexaris.net/'],
 ];
@@ -218,8 +219,8 @@ $crumbJson = [
             <?php else: ?>
             <span class="gs-eyebrow"><span class="gs-dot"></span>Game server stores</span>
             <?php endif; ?>
-            <h1 class="gs-h1">Free webstore<br />for your game server.</h1>
-            <p class="gs-lead">Ranks, crates, keys and credits on a page your players can browse. When the payment clears, the store fires the RCON command and the item is in their inventory. No plugin, no manual messages.</p>
+            <h1 class="gs-h1">Free Minecraft server store.<br />Live in minutes, not weeks.</h1>
+            <p class="gs-lead">Ranks, crates, keys and credits on a page your players can browse. When the payment clears, the store fires the RCON command and the item is in their inventory. It works as a store maker for Minecraft and other game servers: no plugin, no code, no manual messages. Run it on its own or next to Tebex.</p>
             <div class="gs-actions">
               <a href="<?= $loggedIn ? '/dashboard' : '/register' ?>" class="btn-primary px-6 py-3 text-sm inline-flex items-center gap-2">Create your store <?= vex_icon('arrow', 'w-4 h-4') ?></a>
               <a href="#rcon" class="btn-ghost px-6 py-3 text-sm font-semibold">How delivery works</a>
@@ -322,8 +323,8 @@ $crumbJson = [
 
     <section class="gs-sec">
       <div class="gs-wrap">
-        <h2 class="gs-h2">What a game store usually costs</h2>
-        <p class="gs-sub">The biggest name in server monetization is Tebex. Their free tier is free monthly and takes a flat 5% of every sale. Here is the whole picture, fees checked 9 November 2026 on tebex.io/pricing.</p>
+        <h2 class="gs-h2">Tebex alternative: the actual cost of a game store</h2>
+        <p class="gs-sub">Tebex is the biggest name in server monetization: $0 monthly, then a flat 5% of every sale. Vexaris takes 0%. Fees checked 9 November 2026 on tebex.io/pricing.</p>
         <div class="gs-table-wrap">
           <table class="gs-table">
             <thead>
