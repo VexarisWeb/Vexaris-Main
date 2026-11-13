@@ -9,6 +9,7 @@ $urls = [
     ['loc' => $base . '/', 'freq' => 'daily', 'pr' => '1.0', 'lastmod' => $today],
     ['loc' => $base . '/features', 'freq' => 'weekly', 'pr' => '0.9', 'lastmod' => $today],
     ['loc' => $base . '/pricing', 'freq' => 'weekly', 'pr' => '0.9', 'lastmod' => $today],
+    ['loc' => $base . '/gumroad-fee-calculator', 'freq' => 'monthly', 'pr' => '0.8', 'lastmod' => $today],
     ['loc' => $base . '/game-server-store', 'freq' => 'monthly', 'pr' => '0.8', 'lastmod' => $today],
     ['loc' => $base . '/blog', 'freq' => 'daily', 'pr' => '0.8', 'lastmod' => $today],
     ['loc' => $base . '/license-check', 'freq' => 'monthly', 'pr' => '0.7', 'lastmod' => $today],

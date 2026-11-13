@@ -39,6 +39,7 @@ location = /license-check { rewrite ^ /license-check.php last; }
 location = /features { rewrite ^ /features.php last; }
 location = /pricing { rewrite ^ /pricing.php last; }
 location = /game-server-store { rewrite ^ /game-server-store.php last; }
+location = /gumroad-fee-calculator { rewrite ^ /gumroad-fee-calculator.php last; }
 location = /sitemap.xml { rewrite ^ /sitemap.php last; }
 location = /terms-of-use { rewrite ^ /terms-of-use.php last; }
 location = /privacy-policy { rewrite ^ /privacy-policy.php last; }
